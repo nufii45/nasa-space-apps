@@ -70,7 +70,7 @@ function start({ mode, mission }) {
   stopGame();
   game = {
     state: newGame(), run, mode, placements: {},
-    log: createMissionLog(),
+    log: createMissionLog({ max: 300 }), // the kit keeps 40 lines by default; a full run logs more and must keep every sol
     gauges: {
       power: createGauge({ label: 'Power', icon: '⚡', max: LIMITS.power, low: LOW.power }),
       tank: createGauge({ label: 'Water tank', icon: '💧', max: LIMITS.tank, low: LOW.tank }),
