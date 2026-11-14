@@ -40,3 +40,8 @@ button:focus-visible { outline: 4px solid var(--warn); outline-offset: 2px; }
 .source-footer { text-align: center; padding: 8px 16px; font-size: 13px; color: var(--ink-quiet); }
 .source-footer a { color: inherit; }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* Kit test page */
+.kit-section h2 { font-size: 16px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-quiet); }
+.kit-row { gap: 20px; align-items: flex-end; }
+.kit-row .oc-log { flex: 1 1 320px; }

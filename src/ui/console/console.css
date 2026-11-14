@@ -1,0 +1,133 @@
+/* Outpost Dial console kit. Uses the tokens in src/styles.css. */
+:root {
+  --oc-bezel: #d9ccb4;
+  --oc-bezel-dark: #b9a98c;
+  --oc-cap: #3a4652;
+  --oc-cap-light: #56626e;
+  --oc-led-off: #8a8172;
+  --oc-shadow: 0 3px 0 rgba(60, 45, 20, 0.25);
+  --oc-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.oc-caption { font-size: 12px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-quiet); }
+.oc-row { display: flex; align-items: center; gap: 10px; }
+.oc-visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* LED */
+.oc-led { width: 14px; height: 14px; border-radius: 50%; background: var(--oc-led-off); box-shadow: inset 0 1px 2px rgba(0,0,0,.4); flex: none; }
+.oc-led.is-on { background: #4ee07a; box-shadow: 0 0 8px #4ee07a, inset 0 -1px 2px rgba(0,0,0,.2); }
+
+/* Knob */
+.oc-knob { display: inline-flex; flex-direction: column; align-items: center; gap: 4px; }
+.oc-knob-dial { border-radius: 50%; touch-action: none; cursor: grab; outline: none; }
+.oc-knob-dial:focus-visible { box-shadow: 0 0 0 4px var(--warn); }
+.oc-knob-dial.is-grabbed { cursor: grabbing; }
+.oc-knob-dial.is-denied { animation: oc-shake 0.3s; }
+.oc-knob-svg { display: block; overflow: visible; }
+.oc-knob-bezel { fill: var(--oc-bezel); stroke: var(--oc-bezel-dark); stroke-width: 3; }
+.oc-knob-cap { fill: var(--oc-cap); }
+.oc-knob-face { fill: var(--oc-cap-light); }
+.oc-knob-pointer { fill: #fff; }
+.oc-knob-body { transform-origin: 100px 100px; transition: transform 0.18s var(--oc-spring); }
+.oc-knob-led { fill: var(--oc-led-off); transition: fill 0.1s; }
+.oc-knob-led.is-on { fill: #4ee07a; filter: drop-shadow(0 0 4px #4ee07a); }
+.oc-knob-label { font: 800 15px ui-rounded, system-ui, sans-serif; fill: var(--ink); cursor: pointer; letter-spacing: 0.06em; }
+.oc-knob-label.is-disabled { fill: var(--ink-quiet); cursor: not-allowed; }
+
+/* Toggle */
+.oc-toggle-wrap { display: inline-flex; flex-direction: column; gap: 6px; }
+.oc-toggle { display: inline-flex; align-items: center; gap: 10px; min-height: 64px; padding: 8px 12px; border: none; background: none; cursor: pointer; font: inherit; font-weight: 800; }
+.oc-toggle:focus-visible { outline: 4px solid var(--warn); border-radius: 12px; }
+.oc-toggle-track { position: relative; width: 36px; height: 60px; border-radius: 10px; background: var(--oc-cap); box-shadow: inset 0 2px 4px rgba(0,0,0,.5); }
+.oc-toggle-lever { position: absolute; left: 4px; right: 4px; height: 26px; bottom: 4px; border-radius: 6px; background: linear-gradient(#f4f4f4, #c7c7c7); box-shadow: 0 2px 0 rgba(0,0,0,.35); transition: bottom 0.15s var(--oc-spring); }
+.oc-toggle.is-on .oc-toggle-lever { bottom: 30px; }
+.oc-toggle-state { min-width: 3ch; letter-spacing: 0.08em; }
+
+/* Cover button */
+.oc-cover-wrap { display: inline-flex; flex-direction: column; align-items: center; gap: 6px; }
+.oc-cover-housing { position: relative; width: 132px; height: 132px; border-radius: 20px; background: var(--oc-bezel); box-shadow: var(--oc-shadow), inset 0 0 0 3px var(--oc-bezel-dark); display: grid; place-items: center; perspective: 400px; }
+.oc-big-button { width: 96px; height: 96px; border-radius: 50%; border: none; font: 900 16px ui-rounded, system-ui, sans-serif; letter-spacing: 0.06em; color: #fff; cursor: pointer; box-shadow: 0 6px 0 rgba(0,0,0,.35); transition: transform 0.08s, box-shadow 0.08s; }
+.oc-big-button.tone-go { background: radial-gradient(circle at 35% 30%, #4fc37f, var(--ok)); }
+.oc-big-button.tone-storm { background: radial-gradient(circle at 35% 30%, #e86a5f, var(--storm)); }
+.oc-big-button:focus-visible { outline: 4px solid var(--warn); outline-offset: 4px; }
+.oc-big-button:disabled { filter: grayscale(1); cursor: not-allowed; }
+.oc-cover-wrap.is-pressed .oc-big-button { transform: translateY(5px); box-shadow: 0 1px 0 rgba(0,0,0,.35); }
+.oc-cover { position: absolute; inset: 8px; border-radius: 16px; border: 3px solid rgba(255,255,255,.6); cursor: pointer;
+  background: repeating-linear-gradient(-45deg, #f2bd2c 0 12px, #2e2e2e 12px 24px);
+  transform-origin: top center; transition: transform 0.25s var(--oc-spring); backface-visibility: hidden; }
+.oc-cover:focus-visible { outline: 4px solid var(--warn); }
+.oc-cover-hint { font-weight: 900; color: #fff; background: #2e2e2e; padding: 2px 8px; border-radius: 6px; letter-spacing: 0.1em; }
+.oc-cover-wrap.is-open .oc-cover { transform: rotateX(-105deg); }
+.oc-cover-wrap.is-open .oc-cover-hint { visibility: hidden; }
+
+/* Gauge */
+.oc-gauge { background: var(--panel); border-radius: var(--radius); padding: 10px 10px 8px; color: var(--panel-ink); min-width: 140px; box-shadow: var(--oc-shadow); }
+.oc-gauge-svg { display: block; width: 100%; height: auto; }
+.oc-gauge-arc { fill: none; stroke: #55636f; stroke-width: 4; }
+.oc-gauge-low-zone { fill: none; stroke: var(--warn); stroke-width: 6; }
+.oc-gauge-tick { stroke: #9fb0bb; stroke-width: 2; }
+.oc-gauge-needle { transform-origin: 80px 84px; transition: transform 0.4s var(--oc-spring); }
+.oc-gauge-needle-shape { fill: #ff8a3d; }
+.oc-gauge-hub { fill: #e8e2d4; }
+.oc-gauge-foot { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.oc-gauge-foot .oc-caption { color: #b9c6cf; }
+.oc-gauge-readout { margin-left: auto; font: 800 20px ui-monospace, Menlo, monospace; }
+.oc-gauge-flag { font-weight: 900; color: #1b1b1b; background: var(--warn); border-radius: 4px; padding: 0 6px; font-size: 12px; }
+.oc-gauge-flag:empty { display: none; }
+.oc-gauge.is-low .oc-gauge-readout { color: #ffc861; }
+
+/* Lamps */
+.oc-lamps { display: flex; flex-wrap: wrap; gap: 12px; }
+.oc-lamp { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 72px; }
+.oc-lamp-bulb { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-size: 20px; background: var(--oc-led-off); box-shadow: inset 0 -3px 6px rgba(0,0,0,.3); transition: background 0.15s; }
+.oc-lamp-word { font: 900 11px ui-rounded, system-ui, sans-serif; letter-spacing: 0.1em; min-height: 14px; }
+.oc-lamp[data-state='ok'] .oc-lamp-bulb { background: #4ee07a; box-shadow: 0 0 12px #4ee07a; }
+.oc-lamp[data-state='warn'] .oc-lamp-bulb { background: #ffb020; box-shadow: 0 0 12px #ffb020; animation: oc-blink 1s steps(2) infinite; }
+.oc-lamp[data-state='storm'] .oc-lamp-bulb { background: #ff4d3d; box-shadow: 0 0 16px #ff4d3d; animation: oc-blink 0.5s steps(2) infinite; }
+.oc-lamps-wrap.is-storm .oc-lamp-bulb { background: #ff4d3d; }
+.oc-lamps-wrap.is-sweeping .oc-lamp-bulb { animation: oc-sweep 0.6s 3; }
+.oc-lamps-wrap.is-sweeping .oc-lamp:nth-child(2) .oc-lamp-bulb { animation-delay: 0.1s; }
+.oc-lamps-wrap.is-sweeping .oc-lamp:nth-child(3) .oc-lamp-bulb { animation-delay: 0.2s; }
+.oc-lamps-wrap.is-sweeping .oc-lamp:nth-child(4) .oc-lamp-bulb { animation-delay: 0.3s; }
+.oc-lamps-wrap.is-sweeping .oc-lamp:nth-child(5) .oc-lamp-bulb { animation-delay: 0.4s; }
+
+/* Mission log */
+.oc-log { display: flex; flex-direction: column; gap: 6px; }
+.oc-log-screen { background: #0f1a14; color: var(--panel-ink); font: 14px/1.45 ui-monospace, Menlo, monospace; border-radius: var(--radius); padding: 12px; height: 180px; overflow-y: auto; box-shadow: inset 0 0 0 3px #26332b, inset 0 0 24px rgba(78, 224, 122, .12); }
+.oc-log-line.type-warn { color: #ffd27a; }
+.oc-log-line.type-storm, .oc-log-line.type-dose, .oc-log-line.type-home { color: #ff9c8f; }
+.oc-log-line.type-science { color: #9fd8ff; }
+.oc-log-cursor { animation: oc-blink 0.8s steps(2) infinite; }
+
+/* Info drawer */
+.oc-drawer { border: none; padding: 0; width: min(560px, 100vw); max-height: 80vh; margin: auto auto 0; border-radius: 20px 20px 0 0; background: #fffdf8; color: var(--ink); box-shadow: 0 -8px 30px rgba(0,0,0,.25); }
+.oc-drawer[open] { animation: oc-slide-up 0.25s var(--oc-spring); }
+.oc-drawer::backdrop { background: rgba(30, 25, 15, .35); }
+.oc-drawer-head { display: flex; align-items: center; gap: 12px; padding: 16px 16px 8px; border-bottom: 4px solid var(--oc-bezel); }
+.oc-drawer-title { flex: 1; margin: 0; font-size: 20px; }
+.oc-drawer-close { min-width: 48px; min-height: 48px; border-radius: 12px; border: 2px solid var(--ink); background: #fff; font-size: 20px; cursor: pointer; }
+.oc-drawer-tabs { display: flex; gap: 4px; padding: 8px 16px 0; overflow-x: auto; }
+.oc-drawer-tab { min-height: 44px; padding: 0 14px; border: 2px solid var(--oc-bezel-dark); border-bottom: none; border-radius: 10px 10px 0 0; background: var(--oc-bezel); font: 800 13px ui-rounded, system-ui, sans-serif; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; }
+.oc-drawer-tab[aria-selected='true'] { background: #fff; }
+.oc-drawer-panel { padding: 16px; font-size: 17px; line-height: 1.5; border-top: 2px solid var(--oc-bezel-dark); }
+.oc-drawer-source { padding: 0 16px 16px; margin: 0; font-size: 13px; color: var(--ink-quiet); }
+
+/* Ticker tape */
+.oc-tape { display: flex; flex-direction: column; align-items: center; }
+.oc-tape-slot { width: min(380px, 92%); height: 18px; border-radius: 9px; background: var(--oc-cap); box-shadow: inset 0 3px 4px rgba(0,0,0,.6); }
+.oc-tape-paper { width: min(340px, 84%); margin-top: -9px; padding: 16px 16px 20px; background: #fffef9; font: 15px/1.5 ui-monospace, Menlo, monospace; box-shadow: 0 4px 10px rgba(0,0,0,.15);
+  -webkit-mask: linear-gradient(#000 calc(100% - 8px), transparent 0), conic-gradient(from 135deg at top, #000 90deg, transparent 0) bottom / 12px 8px repeat-x;
+  mask: linear-gradient(#000 calc(100% - 8px), transparent 0), conic-gradient(from 135deg at top, #000 90deg, transparent 0) bottom / 12px 8px repeat-x; }
+.oc-tape-paper:empty { display: none; }
+.oc-tape-line { display: block; }
+.oc-tape-line.is-printing { animation: oc-print 0.35s ease-out; }
+
+@keyframes oc-blink { 50% { opacity: 0.35; } }
+@keyframes oc-sweep { 0%, 100% { background: var(--oc-led-off); } 40% { background: #ff4d3d; box-shadow: 0 0 18px #ff4d3d; } }
+@keyframes oc-shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+@keyframes oc-slide-up { from { transform: translateY(40%); opacity: 0; } }
+@keyframes oc-print { from { clip-path: inset(0 0 100% 0); transform: translateY(-6px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .oc-knob-body, .oc-gauge-needle, .oc-toggle-lever, .oc-cover { transition: none; }
+}
