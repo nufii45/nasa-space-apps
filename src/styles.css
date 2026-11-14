@@ -1,4 +1,4 @@
-/* Console look tokens. Role C replaces the debug UI with the real console kit; keep these names. */
+/* Console look tokens, shared by the game and the console kit (src/ui/console/console.css); keep these names. */
 :root {
   --console: #f6eddd;      /* cream, from the Learn Arduino inspiration */
   --panel: #2f3a45;        /* slate screens */
@@ -30,10 +30,16 @@ button:focus-visible { outline: 4px solid var(--warn); outline-offset: 2px; }
 .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .card { background: #fff; border-radius: var(--radius); padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 0 rgba(0,0,0,0.08); }
 .gauges { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
-.gauge { background: var(--panel); color: var(--panel-ink); border-radius: var(--radius); padding: 12px; }
-.gauge strong { font-size: 28px; display: block; }
-.log { background: var(--panel); color: var(--panel-ink); font-family: ui-monospace, Menlo, monospace; border-radius: var(--radius); padding: 12px; max-height: 220px; overflow: auto; font-size: 14px; }
-.log .warn { color: #ffd27a; } .log .storm, .log .dose, .log .home { color: #ff9c8f; }
+#app > * { margin-bottom: 12px; }
+#app [tabindex='-1']:focus { outline: none; }
+.top-bar { display: flex; justify-content: flex-end; width: min(960px, 100%); margin: 0 auto; padding: 8px 16px 0; }
+.console-row { gap: 24px; align-items: flex-end; justify-content: center; }
+.hint { color: var(--ink-quiet); }
+.crew-row { margin-bottom: 8px; }
+.crew-name { min-width: 56px; }
+.help-row { margin-top: 12px; }
+.countdown { font-size: 20px; font-weight: 800; }
+.countdown strong { font-size: 40px; }
 .banner { background: var(--warn); color: #000; padding: 8px 12px; border-radius: var(--radius); margin-bottom: 12px; font-weight: 700; }
 .storm-alert { background: var(--storm); color: #fff; }
 .crew-dose { font-size: 13px; color: var(--ink-quiet); }
