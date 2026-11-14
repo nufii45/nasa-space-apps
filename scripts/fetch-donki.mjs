@@ -26,7 +26,7 @@ async function get(type, start, end) {
       const text = await res.text();
       return text.trim() ? JSON.parse(text) : [];
     }
-    console.warn(`  ${type} ${start}: HTTP ${res.status}, retry ${attempt}`);
+    console.warn(`  ${type} ${start}: HTTP ${res.status} ${(await res.text()).slice(0, 120)}, retry ${attempt}`);
     await new Promise((r) => setTimeout(r, 2000 * attempt));
   }
   throw new Error(`Failed: ${url}`);
@@ -36,10 +36,16 @@ const day = (t) => (t || '').slice(0, 10);
 const linkIds = (e) => (e.linkedEvents || []).map((l) => l.activityID);
 
 const raw = { FLR: [], SEP: [], CME: [] };
-for (let y = FROM; y <= TO; y++) {
+// DONKI rejects date ranges over 60 days (HTTP 400), so fetch in 60-day windows. End dates are inclusive.
+const DAY = 864e5;
+const iso = (ms) => new Date(ms).toISOString().slice(0, 10);
+const stop = Date.UTC(TO, 11, 31);
+for (let t = Date.UTC(FROM, 0, 1); t <= stop; t += 61 * DAY) {
+  const start = iso(t);
+  const end = iso(Math.min(t + 60 * DAY, stop));
   for (const type of Object.keys(raw)) {
-    console.log(`Fetching ${type} ${y}...`);
-    raw[type].push(...(await get(type, `${y}-01-01`, `${y}-12-31`)));
+    console.log(`Fetching ${type} ${start}..${end}`);
+    raw[type].push(...(await get(type, start, end)));
   }
 }
 await mkdir('data/raw', { recursive: true });
