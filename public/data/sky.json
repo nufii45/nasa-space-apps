@@ -1,0 +1,16 @@
+{
+  "source": "SAMPLE DATA - not real. Replace by running: npm run fetch:donki",
+  "sourceUrl": "https://ccmc.gsfc.nasa.gov/tools/DONKI",
+  "fetched": null,
+  "sample": true,
+  "range": ["2017-01-01", "2017-12-31"],
+  "events": [
+    { "date": "2017-03-20", "type": "flare", "class": "M1.0", "particles": true, "id": "SAMPLE-1", "url": null },
+    { "date": "2017-06-14", "type": "flare", "class": "C5.0", "particles": true, "id": "SAMPLE-2", "url": null },
+    { "date": "2017-07-14", "type": "flare", "class": "M2.0", "particles": true, "id": "SAMPLE-3", "url": null },
+    { "date": "2017-09-06", "type": "flare", "class": "X9.0", "particles": false, "id": "SAMPLE-4", "url": null },
+    { "date": "2017-09-10", "type": "flare", "class": "X8.0", "particles": true, "id": "SAMPLE-5", "url": null },
+    { "date": "2017-09-12", "type": "cme-mars", "warnFrom": "2017-09-10", "id": "SAMPLE-6", "url": null }
+  ],
+  "featured": { "sept2017": { "start": "2017-09-04", "seed": 2017 } }
+}
