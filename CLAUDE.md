@@ -35,8 +35,9 @@ Commands verified 2026-11-14 on Node 24.18 / npm 11.16; all exited 0.
   tuning numbers, `sim.js` rules, `sky.js` storm windows, `rng.js`); `src/main.js` debug UI;
   `src/styles.css` console colour tokens; `scripts/` Node scripts (`fetch-donki.mjs`,
   `balance-sim.mjs`); `test/` Vitest rule tests; `public/data/sky.json` archived storm data;
-  `.github/workflows/github-pages-deploy.yml` tests, builds and deploys to GitHub Pages on
-  push to `main`.
+  `.github/workflows/ci.yml` tests and builds on push to `main` (no deploy).
+- **Deploy:** Cloudflare, set up by the user in the Cloudflare dashboard (build
+  `npm run build`, output `dist`). Agents never deploy.
 - **Conventions (inferred, please review):** Never put game rules in UI code; UI calls
   `step()` and draws the result. Change tuning numbers only in `constants.js`, then run
   `npm test` and `npm run balance`. Never call a NASA API from the browser; archived data

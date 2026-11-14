@@ -40,4 +40,4 @@ npm run build        # static site in dist/
 
 ## Deploy
 
-Push to `main`. The GitHub Actions workflow tests, builds and publishes to GitHub Pages (enable Pages with "GitHub Actions" as the source in the repo settings).
+Hosted on Cloudflare, set up in the Cloudflare dashboard (build command `npm run build`, output directory `dist`). The GitHub Actions workflow only tests and builds; it does not deploy.
