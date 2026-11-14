@@ -9,7 +9,7 @@ const WHAT = {
   pump: 'Move water from the tank into the Shelter walls. Water in the walls blocks the fast bits from the Sun.',
   lab: 'Do experiments in the Lab to earn science.',
   rover: 'Drive the rover far away to study rocks. You earn lots of science, but you are far from home.',
-  shelter: 'Rest in the Shelter. No work gets done, but it is the safest place in a storm.',
+  shelter: 'Rest in the Shelter. No work gets done.',
 };
 const WHERE = {
   outside: 'This job is outside. You get more sunburn out there, and storms hit hardest.',
@@ -22,11 +22,14 @@ const signed = (n) => (n > 0 ? `+${n}` : `${n}`);
 // -> the argument for drawer.open()
 export function jobCard(id) {
   const j = JOBS[id];
-  const effects = Object.entries(j.effect).map(([k, v]) => `${signed(v)} ${WORD[k] ?? k}`);
+  // The pump moves less when the walls are nearly full or the tank is low, so say "up to".
+  const effects = j.effect.wall
+    ? [`Moves up to ${-j.effect.tank} water from the tank into the walls.`, 'Leave some in the tank: the crew still need water to drink.']
+    : Object.entries(j.effect).map(([k, v]) => `${signed(v)} ${WORD[k] ?? k}`);
   const numbers = [
     j.power ? `Costs ${j.power} power.` : 'Costs no power.',
     ...(effects.length ? effects : ['Makes nothing.']),
-    ...(j.walkBackSeconds ? [`Commander mode: in a storm it takes ${j.walkBackSeconds} seconds to walk back.`] : []),
+    ...(j.walkBackSeconds ? [`Commander mode: in a storm it takes ${j.walkBackSeconds} seconds to come back.`] : []),
   ];
   return {
     title: j.name,

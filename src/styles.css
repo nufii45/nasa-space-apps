@@ -18,31 +18,25 @@
 body { margin: 0; min-height: 100vh; background: var(--console); display: flex; flex-direction: column; }
 main { flex: 1; width: min(960px, 100%); margin: 0 auto; padding: 16px; }
 h1, h2 { margin: 0 0 12px; letter-spacing: 0.02em; }
-.label { text-transform: uppercase; font-size: 12px; letter-spacing: 0.08em; color: var(--ink-quiet); font-weight: 700; }
 button {
   min-height: 48px; min-width: 48px; padding: 8px 16px; border-radius: var(--radius);
   border: 2px solid var(--ink); background: #fff; font: inherit; font-weight: 700; cursor: pointer;
 }
 button.primary { background: var(--ok); color: #fff; border-color: var(--ok); min-height: var(--tap); font-size: 20px; }
 button.danger { background: var(--storm); color: #fff; border-color: var(--storm); }
-button[aria-pressed='true'] { background: var(--ink); color: #fff; }
 button:focus-visible { outline: 4px solid var(--warn); outline-offset: 2px; }
 .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .card { background: #fff; border-radius: var(--radius); padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 0 rgba(0,0,0,0.08); }
 .gauges { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
 #app > * { margin-bottom: 12px; }
-#app [tabindex='-1']:focus { outline: none; }
+#app :is(h1, h2)[tabindex='-1']:focus { outline: none; }
 .top-bar { display: flex; justify-content: flex-end; width: min(960px, 100%); margin: 0 auto; padding: 8px 16px 0; }
 .console-row { gap: 24px; align-items: flex-end; justify-content: center; }
 .hint { color: var(--ink-quiet); }
-.crew-row { margin-bottom: 8px; }
-.crew-name { min-width: 56px; }
-.help-row { margin-top: 12px; }
 .countdown { font-size: 20px; font-weight: 800; }
 .countdown strong { font-size: 40px; }
 .banner { background: var(--warn); color: #000; padding: 8px 12px; border-radius: var(--radius); margin-bottom: 12px; font-weight: 700; }
 .storm-alert { background: var(--storm); color: #fff; }
-.crew-dose { font-size: 13px; color: var(--ink-quiet); }
 .source-footer { text-align: center; padding: 8px 16px; font-size: 13px; color: var(--ink-quiet); }
 .source-footer a { color: inherit; }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }

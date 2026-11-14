@@ -11,6 +11,7 @@ import {
 } from './ui/console/index.js';
 import { el } from './ui/console/util.js';
 import { jobCard } from './ui/jobInfo.js';
+import { createOutpostMap } from './ui/map/index.js';
 
 // Warning thresholds for gauges and lamps, derived from the rules so retuning keeps them meaningful.
 const LOW = { power: HEATER_COST, tank: DRINK_PER_SOL };
@@ -22,7 +23,7 @@ document.body.append(drawer.el);
 document.body.prepend(el('header', { class: 'top-bar' }, createMuteSwitch().el));
 
 let sky = null;
-let game = null; // { state, run, mode, placements, log, gauges, lamps, rescueTimer }
+let game = null; // { state, run, mode, placements, log, gauges, lamps, rescueTimer, tapeLines }
 
 async function loadSky() {
   const res = await fetch('./data/sky.json');
@@ -33,14 +34,22 @@ async function loadSky() {
 // Swap the screen and move focus to its heading so keyboard and screen-reader users land on it.
 function show(...nodes) {
   clearInterval(game?.rescueTimer);
+  drawer.close();
   app.replaceChildren(...nodes.filter(Boolean));
   app.querySelector('h1, h2')?.focus();
 }
 const heading = (tag, text) => el(tag, { tabindex: -1 }, text);
 const button = (text, onclick, cls) => el('button', { type: 'button', class: cls, onclick }, text);
 
+// Stop the old run's log and ticker tape queues; the line being typed still finishes (the kit has no abort).
+function stopGame() {
+  game?.log.clear();
+  if (game?.tapeLines) game.tapeLines.length = 0; // the tape's for...of loop ends when its array is emptied
+}
+
 // ---------- Title ----------
 function title() {
+  stopGame();
   const mission = createKnob({ label: 'Mission', options: [{ value: 'random', label: 'RANDOM WEEK' }, { value: 'sept2017', label: 'SEPT 2017' }] });
   const mode = createToggle({ label: 'Commander mode', onLabel: 'COMMANDER', offLabel: 'CADET' });
   const launch = createCoverButton({
@@ -58,6 +67,7 @@ function title() {
 function start({ mode, mission }) {
   const run = buildRun(sky, { mode, featured: mission === 'random' ? null : mission, seed: Date.now() >>> 0 });
   // The instruments live for the whole run: needles move and the log keeps every sol.
+  stopGame();
   game = {
     state: newGame(), run, mode, placements: {},
     log: createMissionLog(),
@@ -94,53 +104,29 @@ function updateInstruments(storming = false) {
   l.set('crew', s.crew.some((c) => c.home) ? 'storm' : s.crew.some((c) => c.dose >= NEAR_LIMIT) ? 'warn' : 'ok');
 }
 
-function jobHelp() {
-  return el('div', { class: 'row help-row' }, el('span', { class: 'label' }, 'Job help'),
-    ...Object.keys(JOBS).map((id) => button(`? ${JOBS[id].name}`, () => drawer.open(jobCard(id)))));
-}
-
-// Crew placement as plain buttons, mutating `placements` in place.
-// shortcut: this whole function will be replaced by the outpost map from src/ui/map/ (decision 0002).
-function placementControls(state, placements) {
-  const buttons = [];
-  const sync = () => buttons.forEach((b) => b.setAttribute('aria-pressed', String(placements[b.dataset.crew] === b.dataset.job)));
-  const pick = (crew, job) => {
-    // Taking a job someone else has bumps them to the Shelter.
-    for (const [other, j] of Object.entries(placements)) if (j === job && job !== 'shelter') placements[other] = 'shelter';
-    placements[crew] = job;
-    sync();
-  };
-  const rows = state.crew.filter((c) => !c.home).map((c) => el('div', { class: 'row crew-row', role: 'group', 'aria-label': `Job for ${c.name}` },
-    el('strong', { class: 'crew-name' }, c.name),
-    el('span', { class: 'crew-dose' }, `sunburn ${c.dose}/${LIMITS.dose}`),
-    ...Object.entries(JOBS).map(([id, j]) => {
-      const b = el('button', { type: 'button', 'data-crew': c.id, 'data-job': id, onclick: () => pick(c.id, id) }, j.name);
-      buttons.push(b);
-      return b;
-    })));
-  sync();
-  return el('div', { class: 'placement' },
-    el('p', { class: 'label' }, 'Place your crew (one per job; anyone left goes to the Shelter)'),
-    ...rows,
-    ...state.crew.filter((c) => c.home).map((c) => el('p', { class: 'crew-dose' }, `${c.name} went home.`)));
-}
-
 // ---------- Plan (morning + placement) ----------
 function plan() {
   const s = game.state;
   const sol = today();
-  const forecast = sol.forecast.map((f) => `A cloud of Sun material (CME) is coming, about ${f.inSols} sol${f.inSols > 1 ? 's' : ''} away.`).join(' ') || 'Clear skies forecast. (The Sun can still surprise you.)';
+  // Several CMEs can arrive on the same day; say each arrival day once.
+  const forecast = [...new Set(sol.forecast.map((f) => f.inSols))].map((n) => `A cloud of Sun material (CME) is coming, about ${n} sol${n > 1 ? 's' : ''} away.`).join(' ') || 'Clear skies forecast. (The Sun can still surprise you.)';
   game.placements = normalisePlacements(s, game.placements);
   const endSol = createCoverButton({
     label: 'END SOL', tone: 'storm', autoClose: 0,
     onPress: () => (needsRescue(sol.storm) ? rescue() : resolve([])),
+  });
+  // A new map per plan screen: it reads each astronaut's dose and home flag only once.
+  const map = createOutpostMap({
+    jobs: JOBS, crew: s.crew, placements: game.placements, doseLimit: LIMITS.dose,
+    onChange: (p) => { game.placements = normalisePlacements(s, p); },
+    onInfo: (id) => drawer.open(jobCard(id)),
   });
   show(
     sampleBanner(),
     el('section', { class: 'card' }, heading('h2', `Sol ${s.sol} of ${SOLS_PER_RUN}`), el('p', {}, forecast)),
     game.lamps.el,
     el('div', { class: 'gauges' }, ...Object.values(game.gauges).map((g) => g.el)),
-    el('section', { class: 'card' }, placementControls(s, game.placements), jobHelp()),
+    map.el,
     el('div', { class: 'row console-row' }, endSol.el),
     game.log.el,
   );
@@ -226,7 +212,9 @@ function resolve(rescued) {
 function debrief() {
   const s = game.state;
   const r = game.run;
-  const big = r.sols.filter((x) => x.storm && needsRescue(x.storm));
+  // A run can end early (win, or everyone home); only count the sols that were played (state.sol is the last one).
+  const played = r.sols.filter((x) => x.sol <= s.sol);
+  const big = played.filter((x) => x.storm && needsRescue(x.storm));
   const headline = s.result === 'win'
     ? `Mission complete! ${'★'.repeat(s.stars)}${'☆'.repeat(3 - s.stars)}`
     : s.result === 'home' ? 'The crew caught the next ride home.' : 'Time is up: the supply ship is here.';
@@ -249,10 +237,10 @@ function debrief() {
     game.log.el,
   );
   if (s.result === 'win') play('cheer');
-  tape.print([
+  tape.print(game.tapeLines = [
     { text: headline, strong: true },
     `Science: ${s.science}/${SCIENCE_GOAL}`,
-    `Your sky: ${r.start} to ${r.end}${r.sample ? ' (sample data)' : ', recorded by NASA'}`,
+    `Your sky: ${r.start} to ${played.at(-1).date}${r.sample ? ' (sample data)' : ', recorded by NASA'}`,
     ...(big.length
       ? [`${big.length} storm${big.length > 1 ? 's' : ''} reached the base:`,
         ...big.map((x) => (x.storm.kind === 'cme' ? `CME on ${x.date}` : `Class ${x.storm.cls} flare on ${x.date}`))]

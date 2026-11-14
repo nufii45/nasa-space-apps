@@ -17,7 +17,8 @@ export function createOutpostMap({ jobs, crew, placements = {}, onChange = () =>
   const active = crew.filter((c) => !c.home);
   const byId = new Map(crew.map((c) => [c.id, c]));
   // Mirrors normalisePlacements: active crew only, missing/unknown -> Shelter, first in crew order keeps a job.
-  function normalise(p = {}) {
+  function normalise(p) {
+    p ??= {};
     const out = {};
     const taken = new Set();
     for (const c of active) {
@@ -96,7 +97,11 @@ export function createOutpostMap({ jobs, crew, placements = {}, onChange = () =>
       t.setAttribute('aria-pressed', picked === c.id);
       t.setAttribute('aria-label', `${c.name}, sunburn ${c.dose}/${doseLimit}, at ${jobs[where].name}`);
       // Re-appending a node blurs it, so only move tokens that changed station.
-      if (t.parentNode !== slot) slot.append(t);
+      if (t.parentNode !== slot) {
+        const hadFocus = document.activeElement === t;
+        slot.append(t);
+        if (hadFocus) t.focus();
+      }
     }
     for (const [id, s] of stations) {
       const here = active.filter((c) => jobOf(c) === id).map((c) => c.name);
