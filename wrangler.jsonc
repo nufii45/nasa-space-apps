@@ -1,0 +1,6 @@
+{
+  // Cloudflare Workers static site: `npm run build` writes ./dist, `wrangler deploy` publishes it.
+  "name": "nasa-space-apps",
+  "compatibility_date": "2025-09-01",
+  "assets": { "directory": "./dist" }
+}
