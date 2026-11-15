@@ -79,7 +79,8 @@ and the wireframe board to match.
     the END SOL cover. Phone has one column, a swipeable crew carousel, sideways-scrolling
     tabs, a sticky END SOL bar and a bottom nav. Placing works as today: tap an astronaut, then
     a station; one per job; the Shelter takes everyone; unplaced crew rest in the Shelter. A
-    taken job says "Pick another station". Existing plan-screen tests still pass or are
+    busy job swaps: the newcomer takes it and the occupant goes to the Shelter (user decision
+    2026-11-15, decision 0012; the earlier "Pick another station" line is dropped). Existing plan-screen tests still pass or are
     updated to the new layout.
   - Owns: `src/main.js`, `src/styles.css`, `test/ui/game.test.js`.
   - Board: `Main.dc.html`, `PhonePlan.dc.html`.
