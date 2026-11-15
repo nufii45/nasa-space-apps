@@ -35,7 +35,7 @@ export function jobCard(id) {
     title: j.name,
     tabs: [
       { label: 'What it does', body: `${WHAT[id] ?? ''} ${WHERE[j.where] ?? ''}`.trim() },
-      { label: 'How much', body: el('ul', {}, ...numbers.map((t) => el('li', {}, t))) },
+      { label: 'Numbers', body: el('ul', {}, ...numbers.map((t) => el('li', {}, t))) },
     ],
     source: id === 'pump'
       ? { label: 'NASA Water Walls', url: 'https://www.nasa.gov/general/water-walls-highly-reliable-and-massively-redundant-life-support-architecture' }
