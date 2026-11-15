@@ -31,6 +31,7 @@ const makeSky = (events, extra = {}) => ({ sample: false, fetched: '2020-12-31',
 // ---------- Boot ----------
 let added = [];
 const realAdd = window.addEventListener;
+const WINDOW_SIZE = [window.innerWidth, window.innerHeight]; // jsdom's; tests that resize the window put it back
 const settle = (ms = 0) => vi.advanceTimersByTimeAsync(ms);
 
 beforeEach(() => {
@@ -53,6 +54,7 @@ afterEach(() => {
   for (const a of added) window.removeEventListener(...a);
   window.addEventListener = realAdd;
   delete window.matchMedia;
+  [window.innerWidth, window.innerHeight] = WINDOW_SIZE;
   vi.unstubAllGlobals();
   vi.useRealTimers();
 });
@@ -570,30 +572,37 @@ describe('plan screen', () => {
 
   // Fit (decision 0013): f = min(width / 1280, height / 800). From f 0.8 (1 on touch) the page zooms by min(f, 2.5);
   // three columns when the zoomed box (width / zoom) is 1280 px wide; the desktop stage when it fits beside the rail.
-  // jsdom keeps 5 decimals of style.zoom, hence closeTo(…, 4).
+  // .is-zoomed (the rule applies, so the plan keeps to the 1280 px canvas) also at zoom 1. A browser without CSS zoom
+  // keeps the unzoomed page. jsdom keeps 5 decimals of style.zoom, hence closeTo(…, 4).
   const fitted = () => {
     const root = document.documentElement;
-    return { zoom: Number(root.style.zoom), cssZoom: Number(root.style.getPropertyValue('--zoom')), wide: root.classList.contains('is-wide'), layout: stage().dataset.layout };
+    return {
+      zoom: Number(root.style.zoom), cssZoom: Number(root.style.getPropertyValue('--zoom')),
+      zoomed: root.classList.contains('is-zoomed'), wide: root.classList.contains('is-wide'), layout: stage().dataset.layout,
+    };
   };
   it.each([
-    [2560, 1313, false, 1313 / 800, true, 'desktop'],
-    [3840, 2160, false, 2.5, true, 'desktop'], // capped
-    [1920, 1080, false, 1080 / 800, true, 'desktop'],
-    [1440, 900, false, 1440 / 1280, true, 'desktop'],
-    [1366, 650, false, 650 / 800, true, 'desktop'],
-    [1280, 800, false, 1, true, 'desktop'],
-    [1024, 800, false, 0.8, true, 'desktop'], // exactly 0.8: zoomed
-    [1280, 600, false, 1, true, 'desktop'], // too short to zoom, still 1280 px wide
-    [1024, 572, false, 1, false, 'desktop'],
-    [768, 1024, false, 1, false, 'phone'],
-    [390, 844, false, 1, false, 'phone'],
-    [1366, 1024, true, 1366 / 1280, true, 'desktop'], // touch at f >= 1 zooms
-    [1180, 820, true, 1, false, 'desktop'], // touch below f 1 does not, so controls stay 44 px
-    [1024, 800, true, 1, false, 'desktop'],
-  ])('%i x %i (touch %s): zoom %d, three columns %s, the %s stage, with the callouts where that layout puts them', async (width, height, coarse, zoom, wide, layout) => {
+    [2560, 1313, false, true, 1313 / 800, true, 'desktop'],
+    [3840, 2160, false, true, 2.5, true, 'desktop'], // capped
+    [1920, 1080, false, true, 1080 / 800, true, 'desktop'],
+    [1440, 900, false, true, 1440 / 1280, true, 'desktop'],
+    [1366, 650, false, true, 650 / 800, true, 'desktop'],
+    [1280, 800, false, true, 1, true, 'desktop'],
+    [1024, 800, false, true, 0.8, true, 'desktop'], // exactly 0.8: zoomed
+    [1280, 600, false, false, 1, true, 'desktop'], // too short to zoom, still 1280 px wide
+    [1024, 572, false, false, 1, false, 'desktop'],
+    [768, 1024, false, false, 1, false, 'phone'],
+    [390, 844, false, false, 1, false, 'phone'],
+    [1366, 1024, true, true, 1366 / 1280, true, 'desktop'], // touch at f >= 1 zooms
+    [1180, 820, true, false, 1, false, 'desktop'], // touch below f 1 does not, so controls stay 44 px
+    [1024, 800, true, false, 1, false, 'desktop'],
+    [2560, 1313, false, false, 1, true, 'desktop', false], // no CSS zoom: the unzoomed page
+    [1100, 900, false, false, 1, false, 'desktop', false],
+  ])('%i x %i (touch %s): zoomed %s by %d, three columns %s, the %s stage, with the callouts where that layout puts them (CSS zoom %s)', async (width, height, coarse, zoomed, zoom, wide, layout, cssZoom = true) => {
+    vi.stubGlobal('CSS', { supports: (p, v) => cssZoom || !(p === 'zoom' && v === '1') });
     await boot(sky, { width, height, coarse });
     await launch();
-    expect(fitted()).toEqual({ zoom: expect.closeTo(zoom, 4), cssZoom: expect.closeTo(zoom, 4), wide, layout });
+    expect(fitted()).toEqual({ zoom: expect.closeTo(zoom, 4), cssZoom: expect.closeTo(zoom, 4), zoomed, wide, layout });
     expect(!!overlay().querySelector('.co')).toBe(layout === 'desktop');
     expect(!!app().querySelector('.plan-selected > .co')).toBe(layout === 'phone');
   });
@@ -604,14 +613,14 @@ describe('plan screen', () => {
     media.resize(1920, 1080);
     expect(Number(document.documentElement.style.zoom)).toBeCloseTo(1.35, 6);
     await launch();
-    expect(fitted()).toEqual({ zoom: expect.closeTo(1.35, 6), cssZoom: expect.closeTo(1.35, 6), wide: true, layout: 'desktop' });
+    expect(fitted()).toEqual({ zoom: expect.closeTo(1.35, 6), cssZoom: expect.closeTo(1.35, 6), zoomed: true, wide: true, layout: 'desktop' });
     media.resize(1024, 572);
-    expect(fitted()).toEqual({ zoom: 1, cssZoom: 1, wide: false, layout: 'desktop' });
+    expect(fitted()).toEqual({ zoom: 1, cssZoom: 1, zoomed: false, wide: false, layout: 'desktop' });
     media.resize(768, 1024); // a tablet turned to portrait
-    expect(fitted()).toEqual({ zoom: 1, cssZoom: 1, wide: false, layout: 'phone' });
+    expect(fitted()).toEqual({ zoom: 1, cssZoom: 1, zoomed: false, wide: false, layout: 'phone' });
     expect(app().querySelector('.plan-selected > .co')).not.toBeNull();
     media.resize(2560, 1313);
-    expect(fitted()).toEqual({ zoom: expect.closeTo(1313 / 800, 6), cssZoom: expect.closeTo(1313 / 800, 6), wide: true, layout: 'desktop' });
+    expect(fitted()).toEqual({ zoom: expect.closeTo(1313 / 800, 6), cssZoom: expect.closeTo(1313 / 800, 6), zoomed: true, wide: true, layout: 'desktop' });
     expect(overlay().querySelector('.co')).not.toBeNull();
   });
 
@@ -651,6 +660,9 @@ describe('plan screen', () => {
     expect(wide).toEqual(['.is-wide ']); // at the top level, outside any media query
     expect(css).toMatch(/^\.is-wide \.plan-rail \{ grid-row: auto; \}$/m);
     expect(css).toMatch(/^\.is-wide \.plan-side \{ grid-column: auto;/m);
+    // Zoomed, the plan is the 1280 px canvas (the stage keeps its drawn size); unzoomed, it may grow to 1600 px.
+    expect(css).toMatch(/^#app\.is-plan \{[^}]*max-width: 1600px;/m);
+    expect(css).toMatch(/^\.is-zoomed #app\.is-plan \{ max-width: 1280px; \}$/m);
     // vh lengths zoom with the page, so the full-window ones are divided back by the zoom.
     expect(css).toMatch(/^body \{[^}]*min-height: calc\(100vh \/ var\(--zoom, 1\)\)/m);
   });
@@ -756,8 +768,11 @@ describe('plan screen', () => {
   it('leaving the plan screen leaves no stage, timer or resize listener behind', async () => {
     await boot(sky, { reducedMotion: false });
     await launch();
-    const resizes = added.filter(([t]) => t === 'resize').map(([, f]) => f);
+    const all = added.filter(([t]) => t === 'resize');
+    const resizes = all.filter(([, , o]) => !o?.signal).map(([, f]) => f);
     expect(resizes).toHaveLength(2); // the page's fit, and the plan's stage layout
+    const staged = all.filter(([, , o]) => o?.signal); // the stages' own, dropped by their abort signal
+    expect(staged.length).toBeGreaterThan(0);
     const removed = vi.spyOn(window, 'removeEventListener');
     expect(vi.getTimerCount()).toBeGreaterThan(0); // precondition: the stage turns
     await pressCovered('END SOL');
@@ -766,6 +781,7 @@ describe('plan screen', () => {
     expect(document.querySelector('.st')).toBeNull();
     expect(vi.getTimerCount()).toBe(0);
     expect(removed.mock.calls.filter(([t]) => t === 'resize').map(([, f]) => f)).toEqual([resizes[1]]);
+    expect(staged.every(([, , o]) => o.signal.aborted)).toBe(true);
     removed.mockRestore();
     expect(media.listeners(/max-width/)).toBe(0); // and no width query left behind
   });

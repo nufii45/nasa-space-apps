@@ -4,15 +4,19 @@
 // createStage({ jobs, crew, placements, picked, selected, mode: 'plan'|'storm',
 //               layout: 'desktop'|'phone', onStation(id), onHelp(id) })
 //   -> { el, update(partial), hotspots(), overlay, destroy() }
-// hotspots() gives [{ id, x, y }] in the stage drawing's own px, the same space as `overlay`
-// (both sit in the zoomed and panned layer). el fires a bubbling 'stagechange' event whenever
-// that layer moves or the hotspots move: rotate, zoom, pan, layout.
+// hotspots() gives [{ id, x, y }] in `overlay` px: the drawing's own px after zoom and pan. The
+// overlay is not zoomed, so callout cards keep their size and place while the scene zooms under them.
+// The whole stage (scene and overlay) is scaled up to fill its container's width ("fit", never
+// below 1, capped by the window height). el fires a bubbling 'stagechange' event whenever the
+// hotspots move: rotate, zoom, pan, layout.
 import { el, clamp, reducedMotion } from '../console/util.js';
 import { scene, hotspotPoints, projector, STATIONS } from './geometry.js';
 import { createToolbar } from './toolbar.js';
 
 const COLORS = ['#7C6BD6', '#3F86C9', '#3E9B6A', '#C76B98', '#B8862B', '#5A6178'];
 const ZOOMS = [0.75, 1, 1.25, 1.5];
+const FIT_MAX = 1.6;
+const FIT_ROOM_Y = 120; // px of the window kept for the header when fitting by height; the crew strip may scroll
 const SPIN_MS = 15000; // one 90° view every 15 s = 1 turn per 60 s (Components board, Motion)
 const motionOff = () => reducedMotion() || document.documentElement.classList.contains('reduced-motion');
 
@@ -20,7 +24,8 @@ export function createStage(opts) {
   const s = { jobs: {}, crew: [], placements: {}, picked: null, selected: null, mode: 'plan', layout: 'desktop', onStation() {}, onHelp() {}, ...opts };
   let view = 0;
   let zoom = 1;
-  let pan = [0, 0];
+  let pan = [0, 0]; // in drawing px
+  let fit = 1;
   let spots = {}; // id -> [x, y] for the current view
   const ac = new AbortController();
   const on = (t, type, fn, o) => t.addEventListener(type, fn, { signal: ac.signal, ...o });
@@ -35,10 +40,11 @@ export function createStage(opts) {
   }));
   const spotsEl = el('div', { class: 'st-spots' }, [...buttons.values()]);
   const overlay = el('div', { class: 'st-overlay' });
-  const layer = el('div', { class: 'st-layer' }, svg, tags, spotsEl, overlay);
+  const layer = el('div', { class: 'st-layer' }, svg, tags, spotsEl);
+  const fitBox = el('div', { class: 'st-fit' }, layer, overlay);
   const status = el('span', { class: 'st-sr', role: 'status' });
   const toolbar = createToolbar({ onRotate: (d) => rotate(d, true), onZoom: stepZoom, signal: ac.signal });
-  const viewEl = el('div', { class: 'st-view' }, layer, toolbar.el);
+  const viewEl = el('div', { class: 'st-view' }, fitBox, toolbar.el);
   const root = el('div', { class: 'st', role: 'group', 'aria-label': 'Outpost' }, viewEl, status);
 
   function draw() {
@@ -60,8 +66,7 @@ export function createStage(opts) {
     const sc = scene(s.layout, view, { storm, running, people });
     spots = hotspotPoints(s.layout, view);
 
-    viewEl.style.width = `${sc.w}px`;
-    viewEl.style.height = `${sc.h}px`;
+    size(sc.w, sc.h);
     svg.setAttribute('width', sc.w);
     svg.setAttribute('height', sc.h);
     svg.setAttribute('viewBox', `0 0 ${sc.w} ${sc.h}`);
@@ -102,6 +107,28 @@ export function createStage(opts) {
     root.dataset.mode = storm ? 'storm' : 'plan';
     toolbar.el.hidden = phone; // the phone board has no toolbar: drag and pinch instead
   }
+
+  function size(w, h) {
+    viewEl.style.width = `${Math.round(w * fit)}px`;
+    viewEl.style.height = `${Math.round(h * fit)}px`;
+    Object.assign(fitBox.style, { width: `${w}px`, height: `${h}px`, transform: fit === 1 ? '' : `scale(${fit})` });
+  }
+
+  // Fill the container's width, but keep the plan screen's other rows on screen. jsdom and a
+  // detached stage measure 0, so they stay at 1.
+  function refit() {
+    const { w, h } = projector(s.layout, view).size;
+    const room = root.parentElement?.clientWidth || 0;
+    const byW = room / w;
+    const byH = (window.innerHeight - FIT_ROOM_Y) / h;
+    const next = room ? Math.round(clamp(Math.min(byW, byH), 1, FIT_MAX) * 100) / 100 : 1;
+    if (next === fit) return;
+    fit = next;
+    size(w, h);
+    changed();
+  }
+  const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(() => refit()) : null;
+  on(window, 'resize', refit);
 
   function apply() {
     const { w, h } = projector(s.layout, view).size;
@@ -160,7 +187,7 @@ export function createStage(opts) {
     if (!dragged && Math.hypot(dx, dy) < 5) return;
     if (!dragged) viewEl.setPointerCapture?.(e.pointerId);
     dragged = true;
-    pan = [start.pan[0] + dx, start.pan[1] + dy];
+    pan = [start.pan[0] + dx / fit, start.pan[1] + dy / fit];
     apply();
     changed();
   });
@@ -206,6 +233,8 @@ export function createStage(opts) {
 
   draw();
   apply();
+  // Measure once the caller has put el on the page.
+  const firstFit = requestAnimationFrame(() => { if (!ac.signal.aborted) { if (root.parentElement) ro?.observe(root.parentElement); refit(); } });
 
   return {
     el: root,
@@ -214,11 +243,16 @@ export function createStage(opts) {
       const layoutChanged = 'layout' in partial && partial.layout !== s.layout;
       Object.assign(s, partial);
       draw();
-      if (layoutChanged) { apply(); changed(); }
+      if (layoutChanged) { apply(); refit(); changed(); }
     },
-    hotspots: () => STATIONS.map((id) => ({ id, x: spots[id][0], y: spots[id][1] })),
+    hotspots: () => {
+      const { w, h } = projector(s.layout, view).size;
+      return STATIONS.map((id) => ({ id, x: w / 2 + (spots[id][0] - w / 2) * zoom + pan[0], y: h / 2 + (spots[id][1] - h / 2) * zoom + pan[1] }));
+    },
     destroy() {
       stopSpin();
+      cancelAnimationFrame(firstFit);
+      ro?.disconnect();
       ac.abort();
       root.remove();
     },
