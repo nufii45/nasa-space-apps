@@ -2,6 +2,8 @@
 .st { position: relative; display: inline-block; max-width: 100%; color: var(--od-ink, #18213D); font-family: var(--od-font-body, system-ui); }
 .st-view { position: relative; overflow: hidden; touch-action: none; user-select: none; cursor: grab; }
 .st-view:active { cursor: grabbing; }
+/* Phone: one finger pans the stage sideways and still scrolls the page up and down; two fingers pinch. */
+.st[data-layout="phone"] .st-view { touch-action: pan-y; }
 .st-layer { position: absolute; inset: 0; transform-origin: 50% 50%; }
 .st-svg { position: absolute; left: 0; top: 0; }
 .st-tags, .st-spots, .st-overlay { position: absolute; inset: 0; pointer-events: none; }
@@ -23,6 +25,7 @@
 
 /* Toolbar, bottom centre of the stage. */
 .st-controls { position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: auto; }
+.st-controls[hidden] { display: none; }
 .st-bar { display: flex; align-items: center; gap: 2px; padding: 3px 6px; background: var(--od-card, #F9F2E5); border: 1px solid var(--od-line, #CEC0AD); border-radius: 12px; box-shadow: 0 4px 12px rgba(24, 33, 61, .10); }
 .st-tool { min-width: 44px; height: 44px; padding: 0 10px; border: 0; border-radius: 10px; background: transparent; color: var(--od-ink, #18213D); cursor: pointer; display: flex; align-items: center; justify-content: center; }
 .st-tool[aria-disabled="true"] { opacity: .4; cursor: default; }

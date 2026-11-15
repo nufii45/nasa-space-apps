@@ -30,7 +30,7 @@ export function createStage(opts) {
   const tags = el('div', { class: 'st-tags', 'aria-hidden': 'true' });
   const buttons = new Map(STATIONS.map((id) => {
     const b = el('button', { type: 'button', class: 'st-hs', 'data-station': id, 'aria-keyshortcuts': '?' }, el('span', { class: 'st-dot' }));
-    on(b, 'click', () => s.onStation(id));
+    on(b, 'click', () => s.onStation?.(id));
     return [id, b];
   }));
   const spotsEl = el('div', { class: 'st-spots' }, [...buttons.values()]);
@@ -54,7 +54,8 @@ export function createStage(opts) {
       const n = station === 'shelter' ? shelterN++ : (count[station] = (count[station] ?? -1) + 1);
       return { station, n, color: COLORS[s.crew.indexOf(c) % COLORS.length], dashed: !at, picked: c.id === s.picked };
     });
-    const here = Object.fromEntries(STATIONS.map((id) => [id, active.filter((c) => stationOf(c) === id).map((c) => c.name)]));
+    // Crew with no or an unknown placement stand in the Shelter, so they count there (as on the map).
+    const here = Object.fromEntries(STATIONS.map((id) => [id, active.filter((c) => (stationOf(c) ?? 'shelter') === id).map((c) => c.name)]));
     const running = new Set(STATIONS.filter((id) => id !== 'shelter' && here[id].length));
     const sc = scene(s.layout, view, { storm, running, people });
     spots = hotspotPoints(s.layout, view);
@@ -86,14 +87,15 @@ export function createStage(opts) {
       const names = here[id];
       const busy = id !== 'shelter' && names.length > 0;
       const warn = storm && s.jobs[id]?.where === 'outside';
-      const target = !storm && !!pickedC && !busy;
+      const target = !!pickedC; // every station takes a picked astronaut; the caller decides who moves
       const sel = s.selected === id;
       b.style.left = `${x}px`;
       b.style.top = `${y}px`;
-      b.className = 'st-hs' + (sel ? ' is-sel' : '') + (target ? ' is-target' : '') + (warn ? ' is-storm' : '') + (busy && !target && !sel && !warn ? ' is-full' : '');
+      b.className = 'st-hs' + (sel ? ' is-sel' : '') + (target ? ' is-target' : '') + (warn ? ' is-storm' : '') + (busy && !pickedC && !sel && !warn ? ' is-full' : '');
       b.firstChild.textContent = warn ? '!' : '';
       if (sel) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current');
-      const who = names.length ? `${names.join(' and ')} ${names.length > 1 ? 'are' : 'is'} here` : 'nobody here';
+      const list = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0];
+      const who = names.length ? `${list} ${names.length > 1 ? 'are' : 'is'} here` : 'nobody here';
       b.setAttribute('aria-label', `${s.jobs[id]?.name ?? id}: ${who}${warn ? '. Outside, not safe in a storm' : ''}${pickedC ? `. Send ${pickedC.name} here` : ''}`);
     }
     root.dataset.layout = phone ? 'phone' : 'desktop';
@@ -140,13 +142,14 @@ export function createStage(opts) {
     start = { pt: pts[0], pan: [...pan], zoom, dist: pts[1] ? Math.hypot(pts[1][0] - pts[0][0], pts[1][1] - pts[0][1]) : 0 };
   };
   on(viewEl, 'pointerdown', (e) => {
+    dragged = false;
     if (e.target.closest('.st-controls')) return;
     pointers.set(e.pointerId, [e.clientX, e.clientY]);
-    dragged = false;
     begin();
   });
   on(viewEl, 'pointermove', (e) => {
     if (!pointers.has(e.pointerId)) return;
+    if (e.pointerType === 'mouse' && !e.buttons) return end(e); // the mouse was released outside: stop panning
     pointers.set(e.pointerId, [e.clientX, e.clientY]);
     const pts = [...pointers.values()];
     if (pts.length > 1 && start.dist) {
@@ -164,7 +167,9 @@ export function createStage(opts) {
   const end = (e) => { if (pointers.delete(e.pointerId) && pointers.size) begin(); };
   on(viewEl, 'pointerup', end);
   on(viewEl, 'pointercancel', end);
-  on(viewEl, 'click', (e) => { if (dragged) { e.stopPropagation(); e.preventDefault(); dragged = false; } }, { capture: true });
+  // Swallow only the pointer click that ends a drag; keyboard and assistive-tech clicks have detail 0.
+  on(viewEl, 'click', (e) => { if (dragged && e.detail !== 0) { e.stopPropagation(); e.preventDefault(); } dragged = false; }, { capture: true });
+  on(root, 'keydown', () => { dragged = false; });
 
   // Keyboard on hotspots: arrows jump to the nearest station that way, ? opens its help.
   // A focused hotspot outside the visible area is panned into view.
@@ -172,7 +177,7 @@ export function createStage(opts) {
   on(spotsEl, 'keydown', (e) => {
     const id = e.target.dataset?.station;
     if (!id) return;
-    if (e.key === '?') { e.preventDefault(); return s.onHelp(id); }
+    if (e.key === '?') { e.preventDefault(); return s.onHelp?.(id); }
     const d = DIRS[e.key];
     if (!d) return;
     e.preventDefault();

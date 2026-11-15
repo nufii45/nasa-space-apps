@@ -1,6 +1,9 @@
 // @vitest-environment jsdom
 // Isometric stage (src/ui/stage): driven through its public API, real buttons and key presses.
 import { describe, it, expect, afterEach, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createStage } from '../../src/ui/stage/index.js';
 
 const JOBS = {
@@ -34,6 +37,15 @@ const label = (root, id) => spot(root, id).getAttribute('aria-label');
 const tool = (root, name) => root.querySelector(`[role="toolbar"] [aria-label="${name}"]`);
 const key = (target, k) => target.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
 const zoomText = (root) => root.querySelector('.st-zoom').textContent;
+// jsdom has no layout; build pointer events from MouseEvent so pointerId and pointerType are set.
+function ptr(target, type, x, y, { pointerId = 1, pointerType = 'mouse', buttons = type === 'pointerup' || type === 'pointercancel' ? 0 : 1 } = {}) {
+  const e = new MouseEvent(type, { clientX: x, clientY: y, buttons, bubbles: true, cancelable: true });
+  Object.defineProperties(e, { pointerId: { value: pointerId }, pointerType: { value: pointerType } });
+  target.dispatchEvent(e);
+}
+const mouseClick = (b) => b.dispatchEvent(new MouseEvent('click', { detail: 1, bubbles: true, cancelable: true }));
+const keyClick = (b) => b.dispatchEvent(new MouseEvent('click', { detail: 0, bubbles: true, cancelable: true }));
+const css = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../../src/ui/stage/stage.css'), 'utf8');
 
 afterEach(() => {
   vi.useRealTimers();
@@ -99,6 +111,88 @@ describe('drawing and hotspots', () => {
     expect(spot(root, 'lab').textContent).toBe('');
   });
 
+  it('while someone is picked every station is a target, busy ones and the storm Shelter included', () => {
+    const { root, stage } = mount({ picked: 'ben' });
+    expect(spots(root).every((b) => b.classList.contains('is-target'))).toBe(true);
+    expect(root.querySelector('.st-hs.is-full')).toBeNull();
+    expect(label(root, 'solar')).toBe('Solar Field: Ana is here. Send Ben here');
+    stage.update({ mode: 'storm' });
+    expect(spot(root, 'shelter').classList.contains('is-target')).toBe(true);
+    expect(spot(root, 'solar').classList.contains('is-target')).toBe(true);
+    expect(label(root, 'shelter')).toBe('Shelter: Ben is here. Send Ben here');
+    stage.update({ mode: 'plan', picked: null });
+    expect(root.querySelector('.st-hs.is-target')).toBeNull();
+    expect(spot(root, 'solar').classList.contains('is-full')).toBe(true);
+  });
+
+  it('lists three or more names as "A, B and C"', () => {
+    const crew = CREW().map((c) => ({ ...c, home: false }));
+    const { root } = mount({ crew, placements: { ana: 'shelter', ben: 'shelter', cai: 'shelter' } });
+    expect(label(root, 'shelter')).toBe('Shelter: Ana, Ben and Cai are here');
+  });
+
+  it('counts crew with no or an unknown placement in the Shelter, where they are drawn', () => {
+    const crew = CREW().map((c) => ({ ...c, home: false }));
+    const { root } = mount({ crew, placements: { ana: 'moonbase' } });
+    expect(label(root, 'shelter')).toBe('Shelter: Ana, Ben and Cai are here');
+    expect([...root.querySelectorAll('.st-tag')].map((t) => t.textContent)).toEqual(['ANA ?', 'BEN ?', 'CAI ?']);
+  });
+
+  it('keeps focus on a hotspot through update()', () => {
+    const { root, stage } = mount();
+    spot(root, 'lab').focus();
+    stage.update({ placements: { ana: 'lab', ben: 'shelter' }, selected: 'lab', picked: 'ben' });
+    expect(document.activeElement).toBe(spot(root, 'lab'));
+  });
+
+  it('draws every outpost piece in flat tones with no gradients', () => {
+    const { root } = mount();
+    const svg = root.querySelector('svg.st-svg');
+    const fills = [...svg.querySelectorAll('path')].map((p) => p.getAttribute('fill'));
+    const n = (c) => fills.filter((f) => f === c).length;
+    expect(n('#EED7C0')).toBe(1); // ground plate top
+    expect(n('#F7F1E6')).toBe(2); // base floor and the porch
+    expect(n('#FDFBF6')).toBeGreaterThanOrEqual(1); // shelter dome (and astronaut suits)
+    expect(n('#F6F8FB')).toBe(1); // water-wall ring top
+    expect(n('#E6EEF7')).toBe(1); // tank top
+    expect(n('#DCE4F0')).toBe(4); // four solar panels
+    expect(n('#F4E8CF')).toBe(1); // rover body
+    expect(n('#E2B23F')).toBeGreaterThanOrEqual(1); // battery cells
+    const strokes = [...svg.querySelectorAll('path')].map((p) => p.getAttribute('stroke'));
+    expect(strokes.filter((s) => s === '#E2B23F')).toHaveLength(1); // power pipe
+    expect(strokes.filter((s) => s === '#6E9FD0')).toHaveLength(2); // water pipes
+    expect(svg.querySelector('linearGradient, radialGradient')).toBeNull();
+    expect(svg.innerHTML).not.toMatch(/url\(/);
+    expect(css).not.toMatch(/gradient/);
+  });
+
+  it('copes with edge cases: empty crew, everyone home, unnamed jobs, markup in names, no handlers', () => {
+    expect(() => mount({ crew: [] })).not.toThrow();
+    let { root } = mount({ crew: CREW().map((c) => ({ ...c, home: true })) });
+    expect(root.querySelectorAll('.st-tag')).toHaveLength(0);
+    expect(label(root, 'shelter')).toBe('Shelter: nobody here');
+    document.body.innerHTML = '';
+    ({ root } = mount({ jobs: { ...JOBS, lab: { where: 'inside' } }, crew: [{ id: 'x', name: '<b>Zed & Co</b>', dose: 0, home: false }], placements: { x: 'lab' } }));
+    expect(label(root, 'lab')).toBe('lab: <b>Zed & Co</b> is here');
+    expect(root.querySelector('.st-tag').textContent).toBe('<B>ZED & CO</B>');
+    expect(root.querySelector('b')).toBeNull();
+    document.body.innerHTML = '';
+    ({ root } = mount({ onStation: undefined, onHelp: undefined }));
+    const errors = []; // jsdom reports a throwing listener as a window error, not as a throw
+    const onError = (e) => { errors.push(e.message); e.preventDefault(); };
+    window.addEventListener('error', onError);
+    try {
+      mouseClick(spot(root, 'lab'));
+      key(spot(root, 'lab'), '?');
+    } finally { window.removeEventListener('error', onError); }
+    expect(errors).toEqual([]);
+  });
+
+  it('a CSS rule hides the toolbar when hidden and lets a phone page scroll over the stage', () => {
+    expect(css).toMatch(/\.st-controls\[hidden\]\s*\{\s*display:\s*none/);
+    expect(css).toMatch(/\.st\[data-layout="phone"\] \.st-view\s*\{\s*touch-action:\s*pan-y/);
+  });
+
   it('flow dots run only on pipes whose job is staffed', () => {
     const { root, stage } = mount();
     expect(root.querySelectorAll('.st-flow')).toHaveLength(2); // solar power line
@@ -146,16 +240,55 @@ describe('toolbar', () => {
     expect(changes()).toBe(5); // 100 -> 150 is 2 steps, 150 -> 75 is 3
   });
 
-  it('drag pans the layer and the drag is not a click', () => {
+  it('drag pans the layer and the click that ends the drag is not a station click', () => {
     const { root, calls, changes } = mount();
     const b = spot(root, 'lab');
-    const ev = (type, x, y) => b.dispatchEvent(new MouseEvent(type, { clientX: x, clientY: y, bubbles: true }));
-    ev('pointerdown', 100, 100); ev('pointermove', 140, 120); ev('pointerup', 140, 120); b.click();
+    ptr(b, 'pointerdown', 100, 100); ptr(b, 'pointermove', 140, 120); ptr(b, 'pointerup', 140, 120); mouseClick(b);
     expect(root.querySelector('.st-layer').style.transform).toContain('translate(40px, 20px)');
     expect(calls.station).toEqual([]);
     expect(changes()).toBe(1);
-    b.click();
+    ptr(b, 'pointerdown', 140, 120); ptr(b, 'pointerup', 140, 120); mouseClick(b);
     expect(calls.station).toEqual(['lab']);
+  });
+
+  it('a pan cut off by pointercancel does not swallow the next keyboard click or toolbar click', () => {
+    const { root, calls } = mount();
+    const b = spot(root, 'lab');
+    ptr(b, 'pointerdown', 100, 100, { pointerType: 'touch' }); ptr(b, 'pointermove', 140, 120, { pointerType: 'touch' }); ptr(b, 'pointercancel', 140, 120, { pointerType: 'touch' });
+    key(b, 'Enter'); keyClick(b);
+    expect(calls.station).toEqual(['lab']);
+    ptr(b, 'pointerdown', 100, 100, { pointerType: 'touch' }); ptr(b, 'pointermove', 140, 120, { pointerType: 'touch' }); ptr(b, 'pointercancel', 140, 120, { pointerType: 'touch' });
+    keyClick(b); // a screen reader click, with no key press first
+    expect(calls.station).toEqual(['lab', 'lab']);
+    ptr(b, 'pointerdown', 100, 100); ptr(b, 'pointermove', 140, 120); ptr(b, 'pointercancel', 140, 120);
+    tool(root, 'Zoom in').dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }));
+    mouseClick(tool(root, 'Zoom in'));
+    expect(zoomText(root)).toBe('125%');
+  });
+
+  it('two pointers pinch-zoom within the limits', () => {
+    const { root } = mount();
+    const v = root.querySelector('.st-view');
+    ptr(v, 'pointerdown', 100, 100, { pointerId: 1, pointerType: 'touch' });
+    ptr(v, 'pointerdown', 200, 100, { pointerId: 2, pointerType: 'touch' });
+    ptr(v, 'pointermove', 300, 100, { pointerId: 2, pointerType: 'touch' });
+    expect(zoomText(root)).toBe('150%');
+    ptr(v, 'pointermove', 110, 100, { pointerId: 2, pointerType: 'touch' });
+    expect(zoomText(root)).toBe('75%');
+  });
+
+  it('a mouse moving with no button held does not pan', () => {
+    const { root } = mount();
+    const v = root.querySelector('.st-view');
+    const layer = root.querySelector('.st-layer');
+    const before = layer.style.transform;
+    ptr(v, 'pointerdown', 100, 100, { buttons: 1 });
+    ptr(v, 'pointermove', 140, 120, { buttons: 0 }); // the pointerup was lost outside the window
+    ptr(v, 'pointermove', 180, 160, { buttons: 0 });
+    expect(layer.style.transform).toBe(before);
+    ptr(v, 'pointerdown', 100, 100, { buttons: 1 });
+    ptr(v, 'pointermove', 140, 120, { buttons: 1 });
+    expect(layer.style.transform).not.toBe(before); // a held button still pans
   });
 
   it('works from the keyboard: one tab stop, arrows move, Enter-equivalent click acts, info opens and Escape closes', () => {
@@ -182,6 +315,42 @@ describe('toolbar', () => {
     key(info, 'Escape');
     expect(panel.hidden).toBe(true);
     expect(info.getAttribute('aria-expanded')).toBe('false');
+  });
+});
+
+describe('keyboard between hotspots in every view', () => {
+  it('each arrow moves to a hotspot that way, or stays put when there is none', () => {
+    const { root, stage } = mount();
+    const DIRS = { ArrowRight: [1, 0], ArrowLeft: [-1, 0], ArrowDown: [0, 1], ArrowUp: [0, -1] };
+    for (let v = 0; v < 4; v++) {
+      const pos = Object.fromEntries(stage.hotspots().map((h) => [h.id, h]));
+      let moves = 0;
+      for (const id of Object.keys(pos)) {
+        for (const [k, [dx, dy]] of Object.entries(DIRS)) {
+          spot(root, id).focus();
+          key(spot(root, id), k);
+          const to = document.activeElement.dataset.station;
+          const ahead = Object.keys(pos).filter((o) => o !== id && (pos[o].x - pos[id].x) * dx + (pos[o].y - pos[id].y) * dy > 0);
+          if (ahead.length) { expect(ahead).toContain(to); moves++; } else expect(to).toBe(id);
+        }
+      }
+      expect(moves).toBeGreaterThan(12);
+      tool(root, 'Rotate right').click();
+    }
+  });
+});
+
+describe('phone layout', () => {
+  it('rotates through 4 views at phone size', () => {
+    const { stage } = mount({ layout: 'phone' });
+    const seen = new Set();
+    for (let i = 0; i < 4; i++) {
+      seen.add(JSON.stringify(stage.hotspots()));
+      for (const h of stage.hotspots()) { expect(h.x).toBeGreaterThan(0); expect(h.x).toBeLessThan(390); expect(h.y).toBeGreaterThan(0); expect(h.y).toBeLessThan(300); }
+      // The toolbar is hidden on phone (the idle spin turns it there); its button drives the same rotate.
+      stage.el.querySelector('[aria-label="Rotate right"]').click();
+    }
+    expect(seen.size).toBe(4);
   });
 });
 
@@ -234,10 +403,19 @@ describe('motion', () => {
     const mm = window.matchMedia;
     window.matchMedia = (q) => ({ matches: q.includes('reduce'), media: q });
     try {
-      const { changes } = mount();
+      const { root, changes } = mount();
       vi.advanceTimersByTime(60000);
       expect(changes()).toBe(0);
+      expect(root.querySelectorAll('.st-flow')).toHaveLength(0);
     } finally { window.matchMedia = mm; }
+  });
+
+  it('a key press stops the idle spin', () => {
+    vi.useFakeTimers();
+    const { root, changes } = mount();
+    key(root.querySelector('.st-view'), 'Shift');
+    vi.advanceTimersByTime(60000);
+    expect(changes()).toBe(0);
   });
 
   it('stops spinning mid-run when the setting turns on', () => {
@@ -261,5 +439,16 @@ describe('destroy', () => {
     expect(calls.station).toEqual([]);
     tool(root, 'Rotate right').click();
     expect(changes()).toBe(0);
+  });
+
+  it('survives 10 create/destroy cycles with no timers or nodes left', () => {
+    vi.useFakeTimers();
+    for (let i = 0; i < 10; i++) {
+      const { stage } = mount();
+      tool(stage.el, 'Rotate right').click(); // (no focus() here: jsdom's own focus code leaves timers)
+      stage.destroy();
+    }
+    expect(vi.getTimerCount()).toBe(0);
+    expect(document.body.children).toHaveLength(0);
   });
 });

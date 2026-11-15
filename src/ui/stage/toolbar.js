@@ -22,7 +22,7 @@ export function createToolbar({ onRotate, onZoom, signal }) {
     el('p', {}, el('strong', {}, 'Turn: '), 'the round arrows show the base from another side.'),
     el('p', {}, el('strong', {}, 'Zoom: '), 'minus and plus, from 75% to 150%.'),
     el('p', {}, el('strong', {}, 'Move: '), 'drag the picture.'),
-    el('p', {}, el('strong', {}, 'Keyboard: '), 'Tab to a station, Enter picks it, arrow keys jump between stations, ? opens its help.'));
+    el('p', {}, el('strong', {}, 'Keyboard: '), 'Tab to a station, Enter chooses it, arrow keys jump between stations, ? opens its help.'));
   const help = tool('How the stage works', 'M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M12 11v6M12 7.5v.5', () => show(info.hidden));
   help.setAttribute('aria-expanded', 'false');
   help.setAttribute('aria-controls', info.id);
