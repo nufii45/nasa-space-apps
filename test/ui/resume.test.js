@@ -44,6 +44,7 @@ beforeEach(() => {
   window.addEventListener = function (...a) { added.push(a); return realAdd.apply(this, a); };
   HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', ''); };
   HTMLDialogElement.prototype.close = function () { this.removeAttribute('open'); };
+  vi.stubGlobal('scrollTo', vi.fn()); // jsdom has no scrolling
   freshPage();
 });
 

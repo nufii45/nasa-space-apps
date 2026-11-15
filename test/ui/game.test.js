@@ -31,6 +31,7 @@ const makeSky = (events, extra = {}) => ({ sample: false, fetched: '2020-12-31',
 // ---------- Boot ----------
 let added = [];
 const realAdd = window.addEventListener;
+const WINDOW_SIZE = [window.innerWidth, window.innerHeight]; // jsdom's; tests that resize the window put it back
 const settle = (ms = 0) => vi.advanceTimersByTimeAsync(ms);
 
 beforeEach(() => {
@@ -46,40 +47,49 @@ beforeEach(() => {
   // jsdom 31 has <dialog> but no showModal()/close(); stub the browser behaviour.
   HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', ''); };
   HTMLDialogElement.prototype.close = function () { this.removeAttribute('open'); };
+  vi.stubGlobal('scrollTo', vi.fn()); // jsdom has no scrolling
 });
 
 afterEach(() => {
   for (const a of added) window.removeEventListener(...a);
   window.addEventListener = realAdd;
   delete window.matchMedia;
+  [window.innerWidth, window.innerHeight] = WINDOW_SIZE;
   vi.unstubAllGlobals();
   vi.useRealTimers();
 });
 
-// A matchMedia stand-in: the device's reduced-motion wish and the window width, read from (max|min-width: N px).
-// media.resize(width) changes the width and fires 'change' like a real resize; media.listeners(re) counts who
-// listens to the queries matching re.
+// A window stand-in: its size (innerWidth, innerHeight) and a matchMedia that answers the device's reduced-motion
+// wish, a coarse (touch) pointer and the width, read from (max|min-width: N px). media.resize(width, height) changes
+// the size and fires 'change' and the window's 'resize' like a real resize; media.listeners(re) counts who listens
+// to the queries matching re.
 let media;
-function stubMedia({ reduce, width }) {
+function stubMedia({ reduce, width, height, coarse }) {
   const listeners = new Map(); // query -> Set of handlers
   const px = (q, kind) => Number(new RegExp(`${kind}-width: (\\d+)px`).exec(q)?.[1] ?? NaN);
-  const matches = (q) => (/reduce/.test(q) ? reduce : /max-width/.test(q) ? width <= px(q, 'max') : /min-width/.test(q) ? width >= px(q, 'min') : false);
+  const matches = (q) => (/reduce/.test(q) ? reduce : /pointer: coarse/.test(q) ? coarse : /max-width/.test(q) ? width <= px(q, 'max') : /min-width/.test(q) ? width >= px(q, 'min') : false);
+  window.innerWidth = width;
+  window.innerHeight = height;
   window.matchMedia = (q) => ({
     get matches() { return matches(q); }, media: q,
     addEventListener: (t, f) => { if (!listeners.has(q)) listeners.set(q, new Set()); listeners.get(q).add(f); },
     removeEventListener: (t, f) => listeners.get(q)?.delete(f),
   });
   return {
-    resize(w) { width = w; for (const [q, fs] of listeners) for (const f of [...fs]) f({ matches: matches(q), media: q }); },
+    resize(w, h = height) {
+      width = w; height = h; window.innerWidth = w; window.innerHeight = h;
+      for (const [q, fs] of listeners) for (const f of [...fs]) f({ matches: matches(q), media: q });
+      window.dispatchEvent(new Event('resize'));
+    },
     listeners: (re) => [...listeners].filter(([q]) => re.test(q)).reduce((n, [, fs]) => n + fs.size, 0),
   };
 }
 
 // reducedMotion: the log and ticker tape print instantly (a real user setting); false types with timers.
-// width: the window's width in px (a phone is 390).
-async function boot(sky, { reducedMotion = true, width = 1280, fetchImpl } = {}) {
+// width, height: the window's size in px (a phone is 390 x 844); coarse: a touch screen.
+async function boot(sky, { reducedMotion = true, width = 1280, height = 800, coarse = false, fetchImpl } = {}) {
   vi.stubGlobal('fetch', vi.fn(fetchImpl ?? (async () => ({ ok: true, json: async () => structuredClone(sky) }))));
-  media = stubMedia({ reduce: reducedMotion, width });
+  media = stubMedia({ reduce: reducedMotion, width, height, coarse });
   await import('../../src/main.js');
   await settle();
 }
@@ -445,7 +455,7 @@ describe('plan screen', () => {
     place('ana', 'shelter');
     place('ben', 'shelter');
     expect(where()).toEqual(Object.fromEntries(Object.keys(PLAN).map((id) => [nameOfCrew(id), JOBS.shelter.name])));
-    expect(card('shelter').querySelector('.co-who').textContent).toBe('Ana, Ben and Cai resting here · room for everyone');
+    expect(card('shelter').querySelector('.co-who').textContent).toBe('Ana, Ben and Cai are here');
     pick('cai');
     pick('cai');
     expect(btn(/^Cai,/).getAttribute('aria-pressed')).toBe('false');
@@ -560,23 +570,101 @@ describe('plan screen', () => {
     expect(shownCards()).toHaveLength(Object.keys(JOBS).length);
   });
 
-  // The stage needs room for its 860 px desktop drawing beside the rail; narrower windows get its phone drawing.
-  it.each([[1280, 'desktop'], [1024, 'desktop'], [768, 'phone'], [390, 'phone']])('%i px wide: the %s stage, with the callouts where that layout puts them', async (width, layout) => {
-    await boot(sky, { width });
+  // Fit (decision 0013): f = min(width / 1280, height / 800). From f 0.8 (1 on touch) the page zooms by min(f, 2.5);
+  // three columns when the zoomed box (width / zoom) is 1280 px wide; the desktop stage when it fits beside the rail.
+  // .is-zoomed (the rule applies, so the plan keeps to the 1280 px canvas) also at zoom 1. A browser without CSS zoom
+  // keeps the unzoomed page. jsdom keeps 5 decimals of style.zoom, hence closeTo(…, 4).
+  const fitted = () => {
+    const root = document.documentElement;
+    return {
+      zoom: Number(root.style.zoom), cssZoom: Number(root.style.getPropertyValue('--zoom')),
+      zoomed: root.classList.contains('is-zoomed'), wide: root.classList.contains('is-wide'), layout: stage().dataset.layout,
+    };
+  };
+  it.each([
+    [2560, 1313, false, true, 1313 / 800, true, 'desktop'],
+    [3840, 2160, false, true, 2.5, true, 'desktop'], // capped
+    [1920, 1080, false, true, 1080 / 800, true, 'desktop'],
+    [1440, 900, false, true, 1440 / 1280, true, 'desktop'],
+    [1366, 650, false, true, 650 / 800, true, 'desktop'],
+    [1280, 800, false, true, 1, true, 'desktop'],
+    [1024, 800, false, true, 0.8, true, 'desktop'], // exactly 0.8: zoomed
+    [1280, 600, false, false, 1, true, 'desktop'], // too short to zoom, still 1280 px wide
+    [1024, 572, false, false, 1, false, 'desktop'],
+    [768, 1024, false, false, 1, false, 'phone'],
+    [390, 844, false, false, 1, false, 'phone'],
+    [1366, 1024, true, true, 1366 / 1280, true, 'desktop'], // touch at f >= 1 zooms
+    [1180, 820, true, false, 1, false, 'desktop'], // touch below f 1 does not, so controls stay 44 px
+    [1024, 800, true, false, 1, false, 'desktop'],
+    [2560, 1313, false, false, 1, true, 'desktop', false], // no CSS zoom: the unzoomed page
+    [1100, 900, false, false, 1, false, 'desktop', false],
+  ])('%i x %i (touch %s): zoomed %s by %d, three columns %s, the %s stage, with the callouts where that layout puts them (CSS zoom %s)', async (width, height, coarse, zoomed, zoom, wide, layout, cssZoom = true) => {
+    vi.stubGlobal('CSS', { supports: (p, v) => cssZoom || !(p === 'zoom' && v === '1') });
+    await boot(sky, { width, height, coarse });
     await launch();
-    expect(stage().dataset.layout).toBe(layout);
+    expect(fitted()).toEqual({ zoom: expect.closeTo(zoom, 4), cssZoom: expect.closeTo(zoom, 4), zoomed, wide, layout });
     expect(!!overlay().querySelector('.co')).toBe(layout === 'desktop');
     expect(!!app().querySelector('.plan-selected > .co')).toBe(layout === 'phone');
   });
 
-  it('the phone page layout (bottom nav, END SOL bar) is only below 700 px, and three columns only from 1280 px', () => {
+  it('the fit is recomputed on every resize, on every screen', async () => {
+    await boot(sky);
+    expect(Number(document.documentElement.style.zoom)).toBe(1); // title screen, 1280 x 800
+    media.resize(1920, 1080);
+    expect(Number(document.documentElement.style.zoom)).toBeCloseTo(1.35, 6);
+    await launch();
+    expect(fitted()).toEqual({ zoom: expect.closeTo(1.35, 6), cssZoom: expect.closeTo(1.35, 6), zoomed: true, wide: true, layout: 'desktop' });
+    media.resize(1024, 572);
+    expect(fitted()).toEqual({ zoom: 1, cssZoom: 1, zoomed: false, wide: false, layout: 'desktop' });
+    media.resize(768, 1024); // a tablet turned to portrait
+    expect(fitted()).toEqual({ zoom: 1, cssZoom: 1, zoomed: false, wide: false, layout: 'phone' });
+    expect(app().querySelector('.plan-selected > .co')).not.toBeNull();
+    media.resize(2560, 1313);
+    expect(fitted()).toEqual({ zoom: expect.closeTo(1313 / 800, 6), cssZoom: expect.closeTo(1313 / 800, 6), zoomed: true, wide: true, layout: 'desktop' });
+    expect(overlay().querySelector('.co')).not.toBeNull();
+  });
+
+  it('without matchMedia the fit still works, as for a mouse', async () => {
+    window.innerWidth = 1920; window.innerHeight = 1080;
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => structuredClone(sky) })));
+    await import('../../src/main.js');
+    await settle();
+    expect(Number(document.documentElement.style.zoom)).toBeCloseTo(1.35, 6);
+    expect(document.documentElement.classList.contains('is-wide')).toBe(true);
+  });
+
+  it('every screen change scrolls the page to the top, after focusing its heading', async () => {
+    await boot(sky);
+    let at = null;
+    scrollTo.mockImplementation(() => { at = document.activeElement; });
+    const tops = () => scrollTo.mock.calls.filter(([x, y]) => x === 0 && y === 0).length;
+    const n = tops();
+    await launch(); // title -> plan
+    expect(tops()).toBe(n + 1);
+    expect(at).toBe(app().querySelector('h1'));
+    await pressCovered('END SOL'); // plan -> sol result
+    expect(onCard()).toBe(true);
+    expect(tops()).toBe(n + 2);
+    await openCredits();
+    expect(tops()).toBe(n + 3);
+  });
+
+  it('the phone page layout (bottom nav, END SOL bar) is only below 700 px; three columns hang on the class main.js sets, not on a width query', () => {
     const css = read('src/styles.css');
     const media = [...css.matchAll(/@media \((max|min)-width: (\d+)px\) \{([\s\S]*?)\n\}/g)].map(([, kind, n, body]) => ({ kind, n: Number(n), body }));
     const phone = media.filter((m) => /\.plan-rail \{[^}]*position: fixed/.test(m.body) && /\.plan-end \{[^}]*position: fixed/.test(m.body));
     expect(phone.map((m) => [m.kind, m.n])).toEqual([['max', 699]]);
     expect([390 <= 699, 768 <= 699, 1024 <= 699]).toEqual([true, false, false]); // so only the 390 px phone gets it
-    const wide = media.filter((m) => /\.plan \{ grid-template-columns: 64px minmax\(\d+px, 1fr\) minmax\(\d+px, 332px\); \}/.test(m.body));
-    expect(wide.map((m) => [m.kind, m.n])).toEqual([['min', 1280]]);
+    expect(media.map((m) => [m.kind, m.n])).toEqual([['max', 699]]); // no other width query: they see the real window, not the zoomed box
+    const wide = [...css.matchAll(/^(.*)\.plan \{ grid-template-columns: 64px minmax\(\d+px, 1fr\) minmax\(\d+px, 332px\); \}/gm)].map((m) => m[1]);
+    expect(wide).toEqual(['.is-wide ']); // at the top level, outside any media query
+    expect(css).toMatch(/^\.is-wide \.plan-rail \{ grid-row: auto; \}$/m);
+    expect(css).toMatch(/^\.is-wide \.plan-side \{ grid-column: auto;/m);
+    // Zoomed, the plan is the 1280 px canvas (the stage keeps its drawn size); unzoomed, it may grow to 1600 px.
+    expect(css).toMatch(/^#app\.is-plan \{[^}]*max-width: 1600px;/m);
+    expect(css).toMatch(/^\.is-zoomed #app\.is-plan \{ max-width: 1280px; \}$/m);
+    // vh lengths zoom with the page, so the full-window ones are divided back by the zoom.
+    expect(css).toMatch(/^body \{[^}]*min-height: calc\(100vh \/ var\(--zoom, 1\)\)/m);
   });
 
   it('kit.html, which never runs main.js, still honours the device: the media rule stays next to the class rule', () => {
@@ -680,15 +768,22 @@ describe('plan screen', () => {
   it('leaving the plan screen leaves no stage, timer or resize listener behind', async () => {
     await boot(sky, { reducedMotion: false });
     await launch();
-    const WIDTH = /max-width/; // the help drawer listens to a min-width query for the whole page
-    expect(media.listeners(WIDTH)).toBe(1);
+    const all = added.filter(([t]) => t === 'resize');
+    const resizes = all.filter(([, , o]) => !o?.signal).map(([, f]) => f);
+    expect(resizes).toHaveLength(2); // the page's fit, and the plan's stage layout
+    const staged = all.filter(([, , o]) => o?.signal); // the stages' own, dropped by their abort signal
+    expect(staged.length).toBeGreaterThan(0);
+    const removed = vi.spyOn(window, 'removeEventListener');
     expect(vi.getTimerCount()).toBeGreaterThan(0); // precondition: the stage turns
     await pressCovered('END SOL');
     expect(onCard()).toBe(true);
     await settle(120_000); // the log finishes typing
     expect(document.querySelector('.st')).toBeNull();
     expect(vi.getTimerCount()).toBe(0);
-    expect(media.listeners(WIDTH)).toBe(0);
+    expect(removed.mock.calls.filter(([t]) => t === 'resize').map(([, f]) => f)).toEqual([resizes[1]]);
+    expect(staged.every(([, , o]) => o.signal.aborted)).toBe(true);
+    removed.mockRestore();
+    expect(media.listeners(/max-width/)).toBe(0); // and no width query left behind
   });
 });
 

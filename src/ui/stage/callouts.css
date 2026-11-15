@@ -10,9 +10,11 @@
 .co-line { stroke: var(--od-muted, #5A6178); stroke-width: 1.4; fill: none; }
 .co-anchor { fill: var(--od-card, #F9F2E5); stroke: var(--od-muted, #5A6178); stroke-width: 2; }
 
+/* Height budget: each card must fit its slot (132 px in the right column, 144 on the left) with two
+   lines of text, the "Selected" badge and three names, so spacing here is tight on purpose. */
 .co-card {
-  position: absolute; box-sizing: border-box; width: 196px; padding: 8px 8px 10px 10px;
-  display: flex; flex-direction: column; gap: 4px; pointer-events: auto; cursor: pointer;
+  position: absolute; box-sizing: border-box; width: 196px; padding: 6px 8px 8px;
+  display: flex; flex-direction: column; gap: 3px; pointer-events: auto; cursor: pointer;
   background: var(--od-card, #F9F2E5); border: 1px solid var(--od-line, #CEC0AD); border-radius: 12px;
   box-shadow: 0 4px 12px rgba(24, 33, 61, .10);
 }
@@ -29,21 +31,22 @@
   border: 1px solid var(--od-line, #CEC0AD); border-radius: 8px; background: var(--od-paper, #F6EDDD);
 }
 .co-ic svg, .co-toggle svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.co-title { font: 700 15px/1.1 var(--od-font-head, system-ui); letter-spacing: .06em; text-transform: uppercase; }
+.co-name { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; }
+.co-title { font: 700 14px/1.05 var(--od-font-head, system-ui); letter-spacing: .05em; text-transform: uppercase; }
 .co-help {
   width: 44px; height: 44px; flex: none; border: 1px solid var(--od-line, #CEC0AD); border-radius: 10px;
   background: var(--od-card-hi, #FFFDF8); font: 700 18px var(--od-font-head, system-ui);
 }
-.co-text { margin: 0; font-size: 13px; line-height: 1.35; }
-.co-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.co-text { margin: 0; font-size: 13px; line-height: 1.3; }
+/* Body font, not mono: "Ana, Ben and Cai are here" must fit one line. */
 .co-who {
-  padding: 2px 8px; border: 1px solid var(--od-line, #CEC0AD); border-radius: 999px;
-  background: var(--od-card-hi, #FFFDF8); font: 500 11px/1.5 var(--od-font-mono, ui-monospace, monospace);
+  align-self: flex-start; padding: 1px 7px; border: 1px solid var(--od-line, #CEC0AD); border-radius: 999px;
+  background: var(--od-card-hi, #FFFDF8); font: 500 13px/1.3 var(--od-font-body, system-ui);
 }
 .co-who.is-free { border-style: dashed; }
 .co-mark {
-  padding: 2px 8px; border-radius: 999px; background: var(--od-teal-text, #0E5F5E); color: var(--od-card, #F9F2E5);
-  font: 700 11px/1.5 var(--od-font-head, system-ui); letter-spacing: .06em; text-transform: uppercase;
+  padding: 0 6px; border-radius: 999px; background: var(--od-teal-text, #0E5F5E); color: var(--od-card, #F9F2E5);
+  font: 700 13px/1.25 var(--od-font-head, system-ui); letter-spacing: .05em; text-transform: uppercase;
 }
 
 /* The toggle may be moved out of .co (into the stage toolbar), so its own rules are not scoped to .co. */
@@ -51,7 +54,7 @@
   box-sizing: border-box; min-width: 44px; min-height: 44px; padding: 0 10px; pointer-events: auto; cursor: pointer;
   display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--od-line, #CEC0AD); border-radius: 10px;
   background: var(--od-card, #F9F2E5); color: var(--od-ink, #18213D);
-  font: 600 12px/1 var(--od-font-head, system-ui); letter-spacing: .06em; text-transform: uppercase;
+  font: 600 13px/1 var(--od-font-head, system-ui); letter-spacing: .06em; text-transform: uppercase;
 }
 .co-toggle[hidden] { display: none; }
 .co-toggle:focus-visible { outline: 3px solid var(--od-teal, #1AA3A1); outline-offset: 2px; }
