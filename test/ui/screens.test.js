@@ -6,6 +6,7 @@ import { resolve } from 'node:path';
 import { render as solResult } from '../../src/ui/screens/solResult.js';
 import { render as report } from '../../src/ui/screens/report.js';
 import { render as resume } from '../../src/ui/screens/resume.js';
+import { render as storm } from '../../src/ui/screens/storm.js';
 
 afterEach(() => { document.body.innerHTML = ''; });
 
@@ -237,7 +238,7 @@ describe('all views', () => {
     for (const view of [solResult(SOL, {}), report({ ...base, ...REPORT.win }, {}), resume({ sol: 1, missionLabel: 'x', modeLabel: 'y' }, {})]) {
       for (const b of buttons(view.el)) expect(b.getAttribute('type')).toBe('button');
     }
-    for (const f of ['solResult', 'report', 'resume']) {
+    for (const f of ['solResult', 'report', 'resume', 'storm']) {
       const src = readFileSync(resolve(import.meta.dirname, `../../src/ui/screens/${f}.js`), 'utf8');
       const imports = [...src.matchAll(/from\s*['"]([^'"]+)['"]/g)].map((m) => m[1]);
       expect(imports, f).toEqual(['../console/util.js']);
@@ -323,5 +324,160 @@ describe('fix cycle 1: edge cases', () => {
     expect(line(true)).toBe('Your sky: 2017-09-05 to 2017-09-14 (sample data)');
     expect(line(false)).toBe('Your sky: 2017-09-05 to 2017-09-14, recorded by NASA');
     expect(line(undefined)).toBe('Your sky: 2017-09-05 to 2017-09-14');
+  });
+});
+
+describe('Storm takeover (W11)', () => {
+  const ROWS = () => [
+    { id: 'ana', name: 'Ana', where: 'Solar Field', status: 'out' },
+    { id: 'ben', name: 'Ben', where: 'Rover trip', status: 'walk', walkLeft: 3 },
+    { id: 'cai', name: 'Cai', where: 'Shelter', status: 'safe' },
+  ];
+  const STORM = (over = {}) => ({
+    title: 'Big flash from the Sun!', classText: 'Real flare class X9.3, 6 Sep 2017.',
+    timed: true, left: 7, timesUp: false, caughtText: '', rows: ROWS(), ...over,
+  });
+  const row = (root, name) => [...root.querySelectorAll('.sc-row')].find((r) => r.querySelector('strong').textContent === name);
+  const ring = (root) => root.querySelector('[role="timer"]');
+  // Text a sighted player sees: leave out [hidden] parts (jsdom has no layout).
+  const shownText = (root) => {
+    const copy = root.cloneNode(true);
+    copy.querySelectorAll('[hidden]').forEach((n) => n.remove());
+    return text(copy);
+  };
+
+  it('heading is the kid-words title in an h2 with tabindex -1; the class is small text', () => {
+    const { el } = mount(storm(STORM(), {}));
+    const h = heading(el);
+    expect(h.tagName).toBe('H2');
+    expect(h.getAttribute('tabindex')).toBe('-1');
+    expect(text(h)).toBe('Big flash from the Sun!');
+    expect(text(el.querySelector('.sc-class'))).toContain('Real flare class X9.3, 6 Sep 2017.');
+  });
+
+  it('each row shows the astronaut, where they are and the status in words', () => {
+    const { el } = mount(storm(STORM(), {}));
+    expect(text(row(el, 'Ana'))).toBe('Ana Outside at the Solar Field Bring Ana inside');
+    expect(text(row(el, 'Ben'))).toBe('Ben Walking back… 3 seconds to go');
+    expect(text(row(el, 'Cai'))).toBe('Cai Safe in the Shelter');
+  });
+
+  it('walkLeft of 1 says "1 second to go"', () => {
+    const { el } = mount(storm(STORM({ rows: [{ id: 'ben', name: 'Ben', where: 'Rover trip', status: 'walk', walkLeft: 1 }] }), {}));
+    expect(text(row(el, 'Ben'))).toBe('Ben Walking back… 1 second to go');
+  });
+
+  it('only rows that are out have a Bring button, and it calls onBring(id)', () => {
+    const ids = [];
+    const { el } = mount(storm(STORM(), { onBring: (id) => ids.push(id) }));
+    expect(buttons(el).filter((b) => /^Bring/.test(text(b))).map(text)).toEqual(['Bring Ana inside']);
+    button(el, 'Bring Ana inside').click();
+    expect(ids).toEqual(['ana']);
+  });
+
+  it('Ready calls onReady', () => {
+    const { log, handlers } = calls('onReady');
+    const { el } = mount(storm(STORM(), handlers));
+    button(el, 'Ready').click();
+    expect(log).toEqual(['onReady']);
+  });
+
+  it('Commander: the ring shows left of total, "N seconds left", and the singular at 1', () => {
+    const view = mount(storm(STORM({ left: 7 }), {}));
+    expect(ring(view.el).hidden).toBe(false);
+    expect(text(ring(view.el))).toBe('7 seconds left');
+    expect(ring(view.el).getAttribute('aria-label')).toBe('7 seconds left');
+    expect(ring(view.el).getAttribute('aria-live')).toBe('off');
+    const dash = (v) => Number(v.el.querySelector('.sc-ring-arc').getAttribute('stroke-dasharray').split(' ')[0]);
+    expect(dash(view)).toBeCloseTo(2 * Math.PI * 52 * 0.7, 0);
+    view.update(STORM({ left: 1 }));
+    expect(text(ring(view.el))).toBe('1 second left');
+    expect(ring(view.el).getAttribute('aria-label')).toBe('1 second left');
+    view.update(STORM({ left: 4, total: 8 }));
+    expect(dash(view)).toBeCloseTo(2 * Math.PI * 52 * 0.5, 0);
+  });
+
+  it('the countdown is announced politely, not every second', () => {
+    const view = mount(storm(STORM({ left: 10 }), {}));
+    const live = view.el.querySelector('.sc-sr-only[aria-live="polite"]');
+    const heard = new Set([live.textContent]);
+    for (let left = 9; left >= 1; left--) { view.update(STORM({ left })); heard.add(live.textContent); }
+    expect([...heard]).toEqual(['10 seconds left.', '5 seconds left.']);
+  });
+
+  it('Cadet: no timer, and the finish button says Done and calls onReady', () => {
+    const { log, handlers } = calls('onReady');
+    const { el } = mount(storm(STORM({ timed: false, left: undefined }), handlers));
+    expect(ring(el).hidden).toBe(true);
+    expect(shownText(el)).not.toMatch(/seconds? left/);
+    expect(buttons(el).map(text)).not.toContain('Ready');
+    button(el, 'Done').click();
+    expect(log).toEqual(['onReady']);
+    expect(text(row(el, 'Ben'))).toBe('Ben Walking back…'); // no walk countdown without a timer
+  });
+
+  it("time's up: shows the text with caughtText and disables every button", () => {
+    const view = mount(storm(STORM(), {}));
+    expect(view.el.querySelector('.sc-timesup').hidden).toBe(true);
+    view.update(STORM({ left: 0, timesUp: true, caughtText: 'Ana was still outside and got extra radiation.' }));
+    const up = view.el.querySelector('.sc-timesup');
+    expect(up.hidden).toBe(false);
+    expect(up.getAttribute('role')).toBe('alert');
+    expect(text(up)).toBe("Time's up! Ana was still outside and got extra radiation.");
+    for (const b of buttons(view.el).filter((b) => b.textContent !== '?')) expect(b.disabled, text(b)).toBe(true);
+    expect(button(view.el, 'Bring Ana inside').disabled).toBe(true);
+    expect(button(view.el, 'Ready').disabled).toBe(true);
+  });
+
+  it('update() patches in place: focus stays on a Bring button and controls are the same nodes', () => {
+    const view = mount(storm(STORM({ rows: [...ROWS(), { id: 'dee', name: 'Dee', where: 'Rover trip', status: 'out' }] }), {}));
+    const bringDee = button(view.el, 'Bring Dee inside');
+    const ready = button(view.el, 'Ready');
+    const h = heading(view.el);
+    bringDee.focus();
+    for (const left of [6, 5, 4]) view.update(STORM({ left, rows: [...ROWS(), { id: 'dee', name: 'Dee', where: 'Rover trip', status: 'out' }] }));
+    expect(document.activeElement).toBe(bringDee);
+    expect(button(view.el, 'Bring Dee inside')).toBe(bringDee);
+    expect(button(view.el, 'Ready')).toBe(ready);
+    expect(heading(view.el)).toBe(h);
+  });
+
+  it('when the focused Bring button goes away, focus moves to the next Bring button, then Ready', () => {
+    const rows = (ana, dee) => [{ id: 'ana', name: 'Ana', where: 'Lab', status: ana }, { id: 'dee', name: 'Dee', where: 'Rover trip', status: dee }];
+    const view = mount(storm(STORM({ rows: rows('out', 'out') }), {}));
+    button(view.el, 'Bring Ana inside').focus();
+    view.update(STORM({ rows: rows('walk', 'out') }));
+    expect(document.activeElement).toBe(button(view.el, 'Bring Dee inside'));
+    view.update(STORM({ rows: rows('walk', 'safe') }));
+    expect(document.activeElement).toBe(button(view.el, 'Ready'));
+  });
+
+  it('nobody outside: says everyone is inside', () => {
+    const { el } = mount(storm(STORM({ rows: [] }), {}));
+    expect(text(el)).toContain('Everyone is already inside. Phew!');
+  });
+
+  it('the "?" button opens and closes a kid-words explainer', () => {
+    const { el } = mount(storm(STORM(), {}));
+    const q = el.querySelector('button[aria-label="What is a flare class?"]');
+    expect(q.textContent).toBe('?');
+    expect(q.getAttribute('aria-expanded')).toBe('false');
+    const box = document.getElementById(q.getAttribute('aria-controls'));
+    expect(box.hidden).toBe(true);
+    q.click();
+    expect(q.getAttribute('aria-expanded')).toBe('true');
+    expect(box.hidden).toBe(false);
+    expect(text(box)).toContain('C is small, M is medium, X is the biggest.');
+    expect(text(box)).not.toMatch(/sunburn/i);
+    q.click();
+    expect(box.hidden).toBe(true);
+  });
+
+  it('model text with < and & is shown as text', () => {
+    const NASTY = '<b>Ana</b> & <i>Ben</i>';
+    const { el } = mount(storm(STORM({ title: NASTY, classText: NASTY, timesUp: true, caughtText: NASTY, rows: [{ id: 'x', name: NASTY, where: NASTY, status: 'out' }] }), {}));
+    expect(el.querySelector('b, i')).toBeNull();
+    expect(text(heading(el))).toBe(NASTY);
+    expect(text(el)).toContain(`Outside at the ${NASTY}`);
   });
 });
