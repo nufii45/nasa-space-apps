@@ -1,0 +1,73 @@
+/* Wireframe theme: tokens from docs/wireframes/README.md and source/Components.dc.html.
+   Fonts are self-hosted (Latin subset, OFL licences in public/fonts/); no font CDN. */
+
+@font-face {
+  font-family: 'Barlow';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/barlow-latin-400-normal.woff2') format('woff2');
+}
+/* 600 is used for status words on the Storm board. */
+@font-face {
+  font-family: 'Barlow';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/barlow-latin-600-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Barlow Semi Condensed';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/barlow-semi-condensed-latin-700-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/jetbrains-mono-latin-500-normal.woff2') format('woff2');
+}
+
+:root {
+  --od-paper: #F6EDDD;
+  --od-grid: #EDE2CE;
+  --od-card: #F9F2E5;
+  --od-line: #CEC0AD;
+  --od-ink: #18213D;
+  --od-teal: #1AA3A1;       /* fills, rings, hotspots; not for text */
+  --od-teal-text: #0E5F5E;  /* teal text, 4.5:1 or better on cream */
+  --od-orange: #C0652D;     /* storms and warnings only */
+  --od-power: #E2B23F;
+  --od-water: #6E9FD0;
+  --od-ok: #3E9B6A;
+  --od-focus: #1AA3A1;      /* use as outline: 3px solid var(--od-focus); outline-offset: 3px */
+
+  /* Headings and buttons: weight 700, uppercase. Body: 400 at 16 px, never under 13 px. Numbers: 500. */
+  --od-font-head: 'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif;
+  --od-font-body: 'Barlow', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --od-font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  --od-space-1: 4px;
+  --od-space-2: 8px;
+  --od-space-3: 12px;
+  --od-space-4: 16px;
+  --od-space-5: 24px;
+  --od-space-6: 32px;
+
+  --od-radius-card: 12px;
+  --od-shadow-card: 0 4px 12px rgba(24, 33, 61, 0.1);
+}
+
+body {
+  background-color: var(--od-paper);
+  background-image:
+    linear-gradient(var(--od-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--od-grid) 1px, transparent 1px);
+  background-size: 32px 32px;
+  font-family: var(--od-font-body);
+  font-size: 16px;
+  font-weight: 400;
+}
