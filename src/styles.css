@@ -1,3 +1,4 @@
+@import './ui/screens/screens.css';
 /* Console look tokens, shared by the game and the console kit (src/ui/console/console.css); keep these names. */
 :root {
   --console: #f6eddd;      /* cream, from the Learn Arduino inspiration */

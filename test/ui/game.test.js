@@ -7,7 +7,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { newGame, step, needsRescue, normalisePlacements } from '../../src/sim/sim.js';
 import { buildRun } from '../../src/sim/sky.js';
-import { JOBS, LIMITS, RESCUE_SECONDS, RESCUE_TIME_UP_MS, SCIENCE_GOAL, SOLS_PER_RUN } from '../../src/sim/constants.js';
+import { JOBS, LIMITS, RESCUE_SECONDS, RESCUE_TIME_UP_MS, SCIENCE_GOAL, SOLS_PER_RUN, THIRSTY_SOLS_TO_GO_HOME } from '../../src/sim/constants.js';
 
 const ROOT = resolve(import.meta.dirname, '../..'); // jsdom env: import.meta.url is not a file: URL
 const read = (p) => readFileSync(join(ROOT, p), 'utf8');
@@ -84,12 +84,28 @@ const gauges = () => Object.fromEntries(Object.entries(GAUGES).map(([k, label]) 
   return [k, g && Number(g.getAttribute('aria-valuenow'))];
 }));
 const logLines = () => [...app().querySelectorAll('section[aria-label="Mission log"] .oc-log-line')].map((l) => l.textContent.replace('▌', ''));
-const tapeLines = () => [...app().querySelectorAll('[role="log"][aria-label="Mission report"] > *')].map((l) => l.textContent);
+const receipt = () => [...app().querySelectorAll('[role="group"][aria-label="Mission receipt"] :is(p, li)')].map((l) => l.textContent);
+const reason = () => app().querySelector('.sc-reason')?.textContent;
 const drawer = () => document.querySelector('dialog');
 const onRescue = () => has(/^(Done|Ready)$/, app());
 const rescueNames = () => allButtons(app()).map(nameOf).filter((n) => /^Bring .+ inside$/.test(n)).map((n) => n.slice(6, -7));
 const timer = () => app().querySelector('[role="timer"]');
 const soundSwitch = () => btn('Sound');
+const onReport = () => app().querySelector('.sc-kicker')?.textContent === 'Mission report';
+const onCard = () => /^Sol \d+ done$/.test(heading() ?? ''); // the Sol result card after a sol
+async function nextSol() {
+  btn('NEXT SOL →').click();
+  await settle();
+}
+// Sol result card: { '+5 power': its why text } for each change line (not the radiation lines).
+const whys = () => Object.fromEntries([...app().querySelectorAll('.sc-line:not(.sc-dose)')].map((l) => {
+  const badge = l.querySelector('.sc-badge').textContent;
+  return [badge, l.textContent.slice(badge.length).trim()];
+}));
+// The card shows net changes and the sim's log gross ones, so a why must never quote an amount.
+function expectWhysWithoutAmounts() {
+  for (const [line, why] of Object.entries(whys())) expect(why, line).not.toMatch(/[\d+−]/);
+}
 // Map tokens: "Ana, radiation 12/100, at Lab" or "..., went home".
 function crewOnMap() {
   const out = {};
@@ -159,22 +175,27 @@ function expectLog(exp, wholeLog) {
     expect(shown.slice(-exp.solLines.length)).toEqual(exp.solLines); // and ends with this sol's lines
   }
 }
+const HEADLINES = { win: 'Mission complete!', home: 'The crew had to go home', time: "Time's up: the supply ship is here" };
 function expectDebrief(exp, { story }) {
   const s = exp.state;
   const r = exp.run;
   expect(s.over).toBe(true);
-  expect(heading()).toBe('Mission report');
-  const tape = tapeLines();
-  expect(tape[0]).toMatch(s.result === 'win' ? `${'★'.repeat(s.stars)}${'☆'.repeat(3 - s.stars)}` : s.result === 'home' ? /home/ : /Time is up/);
-  if (s.result !== 'win') expect(tape[0]).not.toMatch(/★/);
-  expect(tape).toContain(`Science: ${s.science}/${SCIENCE_GOAL}`);
+  expect(onReport()).toBe(true);
+  expect(heading()).toBe(HEADLINES[s.result]);
+  const stars = app().querySelector('.sc-stars');
+  if (s.result === 'win') expect(stars.textContent).toBe(`${'★'.repeat(s.stars)}${'☆'.repeat(3 - s.stars)}`);
+  else expect(stars).toBeNull();
+  expect(reason()).not.toBe('');
+  const lines = receipt();
+  expect(lines).toContain(`Science: ${s.science}/${SCIENCE_GOAL}`);
   const played = r.sols.filter((x) => x.sol <= s.sol);
-  expect(tape.some((l) => l.startsWith(`Your sky: ${r.start} to ${played.at(-1).date}`))).toBe(true);
-  for (const x of played.filter((x) => needsRescue(x.storm))) expect(tape.some((l) => l.includes(x.date))).toBe(true);
+  expect(lines).toContain(`Your sky: ${r.start} to ${played.at(-1).date}${r.sample ? ' (sample data)' : ', recorded by NASA'}`);
+  for (const x of played.filter((x) => needsRescue(x.storm))) expect(lines.some((l) => l.endsWith(`· ${x.date}`))).toBe(true);
   const text = app().textContent;
   for (const x of r.sols.filter((x) => x.sol > s.sol)) expect(text).not.toContain(x.date);
-  expect(tape.some((l) => /^Tip: /.test(l))).toBe(true);
-  expect(has(/^Try again$/, app()) && has(/^Change mission$/, app()) && has(/^Title$/, app())).toBe(true);
+  expect(lines.some((l) => /^Tip: /.test(l))).toBe(true);
+  expect(allButtons(app()).map(nameOf)).toEqual(['Try again', 'Change mission', 'Title']);
+  expect(app().querySelector('section[aria-label="Mission log"]')).not.toBeNull(); // the log stays on the report
   const link = [...app().querySelectorAll('a')].find((a) => a.textContent === 'Read the NASA story');
   if (story) expect(link?.href).toMatch(/nasa\.gov/);
   else expect(link).toBeUndefined();
@@ -200,6 +221,11 @@ async function playSol(exp, placements, { commander }) {
     }
   }
   advance(exp, placements, rescued);
+  expect(onCard()).toBe(!exp.state.over); // a card after every sol, except the one that ends the run
+  if (onCard()) {
+    expectWhysWithoutAmounts();
+    await nextSol();
+  }
 }
 
 // =====================================================================================
@@ -288,6 +314,7 @@ describe('plan screen', () => {
     place('ana', 'lab');
     expect(crewOnMap().Ana.at).toBe(JOBS.lab.name);
     await pressCovered('END SOL');
+    await nextSol();
     advance(exp, { ana: 'lab', ben: 'shelter', cai: 'shelter' }, []);
     expect(exp.solLines.some((l) => l.includes('Ana') && l.includes(JOBS.lab.name))).toBe(true); // guard: placement mattered
     expectPlan(exp);
@@ -304,7 +331,7 @@ describe('plan screen', () => {
 describe('after END SOL', () => {
   const sky = makeSky([cme(2, 0), flare(1, 'M1.0', false)]);
 
-  it('gauges and log follow the sim, the log keeps earlier sols, placements carry over, no results screen', async () => {
+  it('gauges and log follow the sim, the log keeps earlier sols, placements carry over after the card', async () => {
     await boot(sky);
     await launch();
     const exp = model(runFor(sky));
@@ -314,12 +341,143 @@ describe('after END SOL', () => {
     for (let i = 0; i < 3; i++) {
       await pressCovered('END SOL');
       if (onRescue()) { btn('Done').click(); await settle(); }
+      await nextSol();
       advance(exp, p, []);
-      expectPlan(exp); // straight back to the plan screen, whole log so far
+      expectPlan(exp); // back to the plan screen, whole log so far
       expect(app().querySelector('section[aria-label="Mission log"]')).toBe(log); // one log for the run
       expect(crewOnMap()).toMatchObject({ Ana: { at: JOBS[NEAR].name }, Ben: { at: JOBS.lab.name }, Cai: { at: JOBS[INSIDE].name } });
     }
     expect(exp.state.sol).toBe(4);
+  });
+});
+
+describe('sol result card', () => {
+  // Sol 1: a particle M flare (Cadet, rescue screen). Sol 2: calm.
+  const sky = makeSky([flare(0, 'M1.0')]);
+  const p = { ana: NEAR, ben: 'lab', cai: INSIDE };
+  const KEYS = { power: 'power', tank: 'water', wall: 'shield', science: 'science' };
+  // Expected card lines from the sim's states before and after: only what changed, minus sign U+2212.
+  const expected = (before, after) => ({
+    changes: Object.keys(KEYS).filter((k) => after[k] !== before[k])
+      .map((k) => `${after[k] > before[k] ? '+' : '−'}${Math.abs(after[k] - before[k])} ${KEYS[k]}`),
+    doses: after.crew.map((c, i) => [c.name, c.dose - before.crew[i].dose]).filter(([, d]) => d > 0).map(([n, d]) => `${n} +${d} radiation`),
+  });
+  const cardLines = () => ({
+    changes: [...app().querySelectorAll('.sc-line:not(.sc-dose) .sc-badge')].map((b) => b.textContent),
+    doses: [...app().querySelectorAll('.sc-dose')].map((d) => /^\S+ \S+ radiation/.exec(d.textContent.replace(/\s+/g, ' '))[0]),
+  });
+  async function firstSol() {
+    await boot(sky);
+    await launch();
+    const exp = model(runFor(sky));
+    place('ana', NEAR); place('ben', 'lab'); place('cai', INSIDE);
+    await pressCovered('END SOL');
+    btn('Done').click(); // nobody brought in: Ana takes the outside dose
+    await settle();
+    const before = exp.state;
+    advance(exp, p, []);
+    return { exp, before };
+  }
+
+  it('after a sol (and its rescue) lists only what changed and each radiation rise; NEXT SOL is the only button', async () => {
+    const { exp, before } = await firstSol();
+    expect(heading()).toBe('Sol 1 done');
+    expect(document.activeElement).toBe(app().querySelector('h2')); // focus lands on the heading
+    expect(app().textContent).toContain(`Real sky: ${exp.run.sols[0].date}`);
+    const want = expected(before, exp.state);
+    expect(want.changes.length).toBeGreaterThan(0); // guards: something changed, and something did not
+    expect(want.changes.length).toBeLessThan(4);
+    expect(want.doses).toContain(`Ana +${exp.state.crew[0].dose} radiation`);
+    expect(cardLines()).toEqual(want);
+    expect(app().querySelector('.sc-dose').textContent).toContain(`0 → ${exp.state.crew[0].dose}/${LIMITS.dose}`);
+    expect(allButtons(app()).map(nameOf)).toEqual(['NEXT SOL →']);
+    await nextSol();
+    expectPlan(exp);
+  });
+
+  it('each why agrees with its line, also when a job ran but its gauge went the other way', async () => {
+    // The card's sentence for each gauge and direction (walls and science never go down).
+    const WHY = {
+      power: { up: 'The Solar Field made more power than the base used.', down: 'The base used power.' },
+      water: { up: 'The Recycler made more water than the base used.', down: 'The base used water.' },
+      shield: { up: 'Water was pumped into the shelter walls.' },
+      science: { up: 'The crew did science.' },
+    };
+    const sky = makeSky([]);
+    await boot(sky);
+    await launch();
+    const exp = model(runFor(sky));
+    const ran = (job) => exp.solLines.some((l) => l.includes(JOBS[job].name));
+    // The cap threw part of a job's gain away (so "used more than it made" could be false), and the gauge still fell.
+    const clipped = (k, job, b, a) => ran(job) && b[k] + JOBS[job].effect[k] > LIMITS[k] && a[k] < b[k];
+    // Each sol: its jobs, and a precondition from the sim that makes it the case under test.
+    const sols = [
+      [{ ana: NEAR, ben: 'lab', cai: INSIDE }, (b, a) => clipped('power', NEAR, b, a)], // from START: power falls though the Solar Field made as much as was used
+      [{ ana: NEAR, ben: 'pump', cai: INSIDE }, (b, a) => ran(INSIDE) && a.tank < b.tank && a.wall > b.wall], // water falls although the Recycler ran
+      [{ ana: NEAR, ben: 'lab', cai: INSIDE }, (b, a) => ran(INSIDE) && a.tank > b.tank], // an ordinary Recycler sol
+      [{ ana: NEAR, ben: 'lab', cai: INSIDE }, (b, a) => ran(INSIDE) && a.tank > b.tank],
+      [{ ana: NEAR, ben: 'pump', cai: INSIDE }, (b, a) => b.tank === 8 && b.wall === 4 && clipped('tank', INSIDE, b, a)], // tank 8, wall 4: made 4, used 4, still fell
+    ];
+    const KEY = { power: 'power', tank: 'water', wall: 'shield', science: 'science' };
+    for (const [p, isCase] of sols) {
+      for (const [id, job] of Object.entries(p)) place(id, job);
+      const b = exp.state;
+      await pressCovered('END SOL');
+      advance(exp, p, []);
+      expect(isCase(b, exp.state), `precondition for ${JSON.stringify(p)}`).toBe(true);
+      const want = Object.fromEntries(Object.entries(KEY).filter(([k]) => exp.state[k] !== b[k]).map(([k, word]) => {
+        const d = exp.state[k] - b[k];
+        return [`${d > 0 ? '+' : '−'}${Math.abs(d)} ${word}`, WHY[word][d > 0 ? 'up' : 'down']];
+      }));
+      expect(whys()).toEqual(want);
+      for (const why of Object.values(whys())) if (/^The base/.test(why)) expect(why).not.toMatch(/ than /); // no comparison a cap can break
+      expectWhysWithoutAmounts();
+      await nextSol();
+    }
+  });
+
+  it('an astronaut already home gets no radiation line', async () => {
+    // A particle M flare every day; Ana stays outside and is never brought in, so she goes home first.
+    const msky = makeSky(Array.from({ length: SOLS_PER_RUN }, (_, i) => flare(i, 'M1.0')));
+    await boot(msky);
+    await launch();
+    const exp = model(runFor(msky));
+    const q = { ana: NEAR, ben: 'shelter', cai: INSIDE };
+    place('ana', NEAR); place('cai', INSIDE);
+    let checked = 0;
+    while (true) {
+      const home = exp.state.crew.filter((c) => c.home).map((c) => c.name);
+      const placed = normalisePlacements(exp.state, q);
+      await pressCovered('END SOL');
+      btn('Done').click(); // a rescue every sol; nobody is brought in
+      await settle();
+      advance(exp, placed, []);
+      if (exp.state.over) break;
+      const names = cardLines().doses.map((d) => d.split(' ')[0]);
+      expect(names).toEqual(exp.state.crew.filter((c) => !home.includes(c.name)).map((c) => c.name)); // all still here, nobody home
+      if (home.length) checked += 1;
+      await nextSol();
+    }
+    expect(checked).toBeGreaterThan(0); // precondition: a card was shown after Ana went home
+  });
+
+  it('Enter on the card goes to the next plan', async () => {
+    const { exp } = await firstSol();
+    document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+    await settle();
+    expectPlan(exp);
+  });
+
+  it('a double click or a double Enter on NEXT SOL never skips a sol', async () => {
+    const { exp } = await firstSol();
+    const next = btn('NEXT SOL →');
+    next.click();
+    next.click();
+    await settle();
+    expectPlan(exp);
+    for (let i = 0; i < 2; i++) document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+    await settle();
+    expectPlan(exp); // still the plan for sol 2: the Enter landed on the plan heading
   });
 });
 
@@ -331,7 +489,7 @@ describe('rescue', () => {
     await launch();
     const run = runFor(sky);
     const seen = [];
-    while (heading() !== 'Mission report') {
+    while (!onReport()) {
       const sol = Number(/^Sol (\d+)/.exec(heading())[1]);
       await pressCovered('END SOL');
       seen.push([sol, onRescue()]);
@@ -340,6 +498,7 @@ describe('rescue', () => {
         btn('Done').click();
         await settle();
       }
+      if (onCard()) await nextSol();
     }
     expect(seen).toEqual(seen.map(([sol]) => [sol, needsRescue(run.sols[sol - 1].storm)]));
     expect(seen.length).toBeGreaterThanOrEqual(6); // covered both kinds of sol
@@ -368,6 +527,7 @@ describe('rescue', () => {
     expect(has(/^Bring Ana inside$/)).toBe(false);
     btn('Done').click();
     await settle();
+    await nextSol();
     advance(exp, crewAt, ['ana']);
     expect(exp.solLines.some((l) => /^Ana .*\(shelter\)$/.test(l)) && exp.solLines.some((l) => /^Ben .*\(outside\)$/.test(l))).toBe(true);
     expectPlan(exp);
@@ -383,6 +543,7 @@ describe('rescue', () => {
     expect(app().textContent).not.toContain('Walking back');
     btn('Done').click();
     await settle();
+    await nextSol();
     advance(exp, crewAt, ['ben']);
     expectPlan(exp);
   });
@@ -410,6 +571,7 @@ describe('rescue', () => {
     expect(timer().textContent).toBe("Time's up! Ana was still outside."); // said on screen before moving on
     expect(btn('Ready').disabled).toBe(true);
     await settle(RESCUE_TIME_UP_MS);
+    await nextSol();
     advance(exp, crewAt, ['ben']); // Ana was left outside
     expect(app().querySelector('.plan-last-sol').textContent).toContain('Ana got caught outside');
     expectPlan(exp);
@@ -424,6 +586,7 @@ describe('rescue', () => {
     btn('Bring Ben inside').click();
     expect(app().textContent).toContain('Walking back...');
     await settle(1000 + RESCUE_TIME_UP_MS);
+    await nextSol();
     advance(exp, crewAt, ['ana']);
     expectPlan(exp);
   });
@@ -435,6 +598,7 @@ describe('rescue', () => {
     btn('Bring Ben inside').click(); // still walking
     btn('Ready').click();
     await settle();
+    await nextSol();
     advance(exp, crewAt, ['ana']);
     expectPlan(exp);
     await settle(RESCUE_SECONDS * 2000); // a countdown still running would resolve the sol again
@@ -468,6 +632,7 @@ describe('help cards', () => {
     await launch();
     btn('What is Lab?').click();
     await pressCovered('END SOL');
+    await nextSol();
     expect(heading()).toBe(`Sol 2 of ${SOLS_PER_RUN}`);
     expect(drawer().hasAttribute('open')).toBe(false);
     btn('What is Lab?').click();
@@ -533,6 +698,7 @@ describe('debrief', () => {
       await pressCovered('END SOL');
       if (onRescue()) { btn('Done').click(); await settle(); }
       advance(exp, p, []);
+      if (!exp.state.over) await nextSol();
     }
     return exp;
   }
@@ -561,17 +727,15 @@ describe('debrief', () => {
     expect(heading()).toBe('Outpost Dial');
   });
 
-  it('"Try again" leaves no timers from the old game (log and ticker tape mid-print)', async () => {
+  it('"Try again" leaves no timers from the old game (log mid-print)', async () => {
     await boot(stormy, { reducedMotion: false });
     await launch();
     const old = await playToEnd();
-    expect(heading()).toBe('Mission report');
-    // Preconditions: the old log has seconds of typing left, and the tape has most lines still to print.
+    expect(onReport()).toBe(true);
+    // Precondition: the old log has seconds of typing left.
     expect(old.lines.join('').length - logLines().join('').length).toBeGreaterThan(400); // > 5.6 s at 14 ms/char
-    expect(tapeLines().length).toBeLessThan(3);
     btn('Try again').click();
-    // 2 s: the new run's one line (~0.7 s) and any in-flight character or tape line finish; an old
-    // log backlog or the old tape (5+ lines x 380 ms) would still be ticking.
+    // 2 s: the new run's one line (~0.7 s) and any in-flight character finish; an old log backlog would still be ticking.
     await settle(2000);
     expect(heading()).toBe(`Sol 1 of ${SOLS_PER_RUN}`);
     expect(logLines()).toEqual([`Mission start. Your sky begins on ${day(0)}.`]);
@@ -579,7 +743,56 @@ describe('debrief', () => {
     const html = app().innerHTML;
     await settle(120_000);
     expect(app().innerHTML).toBe(html);
-    expect(document.querySelector('[role="log"][aria-label="Mission report"]')).toBeNull();
+    expect(onReport()).toBe(false);
+  });
+});
+
+describe('report endings: headline and reason', () => {
+  // Played by clicks and replayed through the sim; schedule(sol) gives every astronaut's job for that sol.
+  async function playRun(sky, schedule) {
+    await boot(sky);
+    await launch();
+    const exp = model(runFor(sky));
+    while (!exp.state.over) {
+      const p = normalisePlacements(exp.state, schedule(exp.state.sol));
+      for (const [id, job] of Object.entries(p)) place(id, job);
+      await playSol(exp, p, { commander: false });
+    }
+    expectDebrief(exp, { story: false });
+    return exp.state;
+  }
+  const calm = makeSky([]);
+
+  it('win: "Mission complete!" with stars, and a well-done line', async () => {
+    const s = await playRun(calm, (sol) => ({ ana: NEAR, ben: FAR, cai: sol % 3 ? 'lab' : INSIDE }));
+    expect(s.result).toBe('win');
+    expect(heading()).toBe('Mission complete!');
+    expect(app().querySelector('.sc-stars').getAttribute('aria-label')).toBe(`${s.stars} of 3 stars`);
+    expect(reason()).toBe(`Well done! You got ${s.science} science and the whole crew stayed safe.`);
+  });
+
+  it('home, thirst: says the water ran out, with the number of sols from the rules', async () => {
+    const s = await playRun(calm, () => ({}));
+    expect([s.result, s.thirstyStreak]).toEqual(['home', THIRSTY_SOLS_TO_GO_HOME]);
+    expect(heading()).toBe('The crew had to go home');
+    expect(reason()).toBe(`The water ran out ${THIRSTY_SOLS_TO_GO_HOME} sols in a row.`);
+  });
+
+  it('home, radiation: names who got too much radiation', async () => {
+    const stormy = makeSky(Array.from({ length: SOLS_PER_RUN }, (_, i) => flare(i, 'X5.0')));
+    const s = await playRun(stormy, () => ({ ana: NEAR, ben: FAR }));
+    expect(s.result).toBe('home');
+    expect(s.thirstyStreak).toBeLessThan(THIRSTY_SOLS_TO_GO_HOME); // precondition: radiation, not thirst
+    expect(heading()).toBe('The crew had to go home');
+    expect(reason()).toBe('Ana, Ben and Cai got too much radiation.');
+  });
+
+  it('time: "Time\'s up" and how much science was missing', async () => {
+    const s = await playRun(calm, () => ({ ana: NEAR, ben: 'lab', cai: INSIDE }));
+    expect(s.result).toBe('time');
+    expect(s.science).toBeGreaterThan(0);
+    expect(heading()).toBe("Time's up: the supply ship is here");
+    expect(reason()).toBe(`You needed ${SCIENCE_GOAL - s.science} more science.`);
   });
 });
 
@@ -589,9 +802,10 @@ describe('mission report: Try again and Change mission keep the mission and mode
   const sky = makeSky([...xWeek(0), ...xWeek(30)], { featured: { sept2017: { start: day(30), seed: 1 } } });
   async function toReport() {
     place('ana', NEAR); place('ben', FAR);
-    while (heading() !== 'Mission report') {
+    while (!onReport()) {
       await pressCovered('END SOL');
       if (onRescue()) { btn(/^(Done|Ready)$/).click(); await settle(); }
+      if (onCard()) await nextSol();
     }
   }
   const knob = () => app().querySelector('[role="slider"][aria-label="Mission"]').getAttribute('aria-valuetext');
@@ -610,6 +824,25 @@ describe('mission report: Try again and Change mission keep the mission and mode
     await pressCovered('END SOL');
     expect(onRescue()).toBe(true);
     expect(timer() !== null).toBe(commander); // Commander keeps its countdown
+  });
+
+  it('Random week: Try again reseeds from the clock and gives a new week', async () => {
+    const wide = makeSky([], { range: [day(0), day(60)] }); // calm: nobody placed, the water runs out and the run ends
+    await boot(wide);
+    await launch();
+    const first = runFor(wide).start;
+    expect(logLines()[0]).toBe(`Mission start. Your sky begins on ${first}.`);
+    while (!onReport()) {
+      await pressCovered('END SOL');
+      if (onCard()) await nextSol();
+    }
+    const later = NOW + 7 * 86_400_000;
+    vi.setSystemTime(later);
+    const second = buildRun(wide, { mode: 'cadet', featured: null, seed: later >>> 0 }).start;
+    expect(second).not.toBe(first); // precondition: the new seed picks another week
+    btn('Try again').click();
+    await settle();
+    expect(logLines()).toEqual([`Mission start. Your sky begins on ${second}.`]);
   });
 
   it('Change mission returns to the title with the last mission and mode set; Title resets them', async () => {
@@ -664,7 +897,7 @@ describe('credits', () => {
 });
 
 describe('mute switch', () => {
-  it('is on title, plan, rescue, debrief and credits, and toggles sound', async () => {
+  it('is on title, plan, rescue, sol result, debrief and credits, and toggles sound', async () => {
     const sky = makeSky(Array.from({ length: SOLS_PER_RUN }, (_, i) => flare(i, 'X5.0')));
     await boot(sky);
     const seen = [];
@@ -678,14 +911,18 @@ describe('mute switch', () => {
     check('rescue');
     btn('Done').click();
     await settle();
-    while (heading() !== 'Mission report') {
+    expect(onCard()).toBe(true);
+    check('sol result');
+    await nextSol();
+    while (!onReport()) {
       await pressCovered('END SOL');
       if (onRescue()) { btn('Done').click(); await settle(); }
+      if (onCard()) await nextSol();
     }
     check('debrief');
     await openCredits();
     check('credits');
-    expect(seen).toEqual(['title', 'plan', 'rescue', 'debrief', 'credits']);
+    expect(seen).toEqual(['title', 'plan', 'rescue', 'sol result', 'debrief', 'credits']);
     expect(soundSwitch().getAttribute('aria-checked')).toBe('true');
     soundSwitch().click();
     expect(soundSwitch().getAttribute('aria-checked')).toBe('false');
@@ -701,6 +938,12 @@ describe('sky data', () => {
     expect(document.querySelector('.source-footer').firstChild.textContent).toMatch(/sample/i);
     await launch();
     expect(app().querySelector('.banner')?.textContent).toMatch(/^SAMPLE DATA/);
+    while (!onReport()) {
+      await pressCovered('END SOL');
+      if (onCard()) await nextSol();
+    }
+    expect(app().querySelector('.banner')?.textContent).toMatch(/^SAMPLE DATA/); // and on the report
+    expect(receipt().find((l) => l.startsWith('Your sky:'))).toMatch(/\(sample data\)$/);
   });
 
   it('sample: false shows neither', async () => {

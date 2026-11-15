@@ -1,18 +1,21 @@
-// Screen controller: title -> (plan -> [rescue]) x up to 10 sols -> debrief, plus #credits.
+// Screen controller: title -> (plan -> [rescue] -> sol result) x up to 10 sols -> report, plus #credits.
 // Rules live in src/sim/; this file only calls them and draws the result with the console kit.
 import { newGame, step, needsRescue, normalisePlacements } from './sim/sim.js';
 import { buildRun } from './sim/sky.js';
 import {
   JOBS, LIMITS, RESCUE_SECONDS, RESCUE_TIME_UP_MS, SCIENCE_GOAL, SOLS_PER_RUN, HEATER_COST, DRINK_PER_SOL, CME_DOSE,
-  THIRSTY_SOLS_TO_GO_HOME,
+  THIRSTY_SOLS_TO_GO_HOME, CREW,
 } from './sim/constants.js';
 import {
   createKnob, createToggle, createCoverButton, createGauge, createLamps,
-  createMissionLog, createInfoDrawer, createTickerTape, createMuteSwitch, play,
+  createMissionLog, createInfoDrawer, createMuteSwitch, play,
 } from './ui/console/index.js';
 import { el } from './ui/console/util.js';
 import { jobCard } from './ui/jobInfo.js';
 import { createOutpostMap } from './ui/map/index.js';
+import { render as solResultView } from './ui/screens/solResult.js';
+import { render as reportView } from './ui/screens/report.js';
+import { render as resumeView } from './ui/screens/resume.js';
 
 // Warning thresholds for gauges and lamps, derived from the rules so retuning keeps them meaningful.
 const LOW = { power: HEATER_COST, tank: DRINK_PER_SOL };
@@ -24,7 +27,7 @@ document.body.append(drawer.el);
 document.body.prepend(el('header', { class: 'top-bar' }, createMuteSwitch().el));
 
 let sky = null;
-let game = null; // { state, run, mode, mission, placements, log, gauges, lamps, rescueTimer, tapeLines }
+let game = null; // { state, run, mode, mission, placements, log, gauges, lamps, rescueTimer }
 
 // The run is saved after each sol so a refresh can resume it. Storage can throw (private mode, full,
 // blocked); the game must play on without it. Pass null to clear.
@@ -33,6 +36,26 @@ function save(data) {
   try {
     if (data) localStorage.setItem(SAVE_KEY, JSON.stringify(data)); else localStorage.removeItem(SAVE_KEY);
   } catch { /* storage blocked */ }
+}
+const MISSIONS = { random: 'Random week', sept2017: 'Sept 2017' };
+const MODES = { cadet: 'Cadet', commander: 'Commander' };
+// The save is untrusted input: anything broken, old or from another version is cleared, never half-loaded.
+function loadSave() {
+  try {
+    const d = JSON.parse(localStorage.getItem(SAVE_KEY));
+    const s = d?.state;
+    const ok = d?.v === 1 && Object.hasOwn(MODES, d.mode) && Object.hasOwn(MISSIONS, d.mission) && s && !s.over
+      && ['sol', 'power', 'tank', 'wall', 'science', 'thirstyStreak', 'coldSols', 'thirstySols'].every((k) => Number.isFinite(s[k]))
+      && Array.isArray(s.crew) && s.crew.length === CREW.length
+      && s.crew.every((c, i) => c?.id === CREW[i].id && typeof c.name === 'string' && Number.isFinite(c.dose))
+      && typeof d.run?.start === 'string' && Array.isArray(d.run.sols) && d.run.sols.length === SOLS_PER_RUN
+      && d.run.sols.every((x, i) => x?.sol === i + 1 && typeof x.date === 'string' && typeof x.storm === 'object'
+        && Array.isArray(x.forecast) && x.forecast.every((f) => Number.isFinite(f?.inSols)))
+      && Number.isInteger(s.sol) && s.sol >= 1 && s.sol <= SOLS_PER_RUN;
+    if (ok) return d;
+  } catch { /* storage blocked, or not JSON */ }
+  save(null);
+  return null;
 }
 
 async function loadSky() {
@@ -51,17 +74,16 @@ function show(...nodes) {
 const heading = (tag, text) => el(tag, { tabindex: -1 }, text);
 const button = (text, onclick, cls) => el('button', { type: 'button', class: cls, onclick }, text);
 
-// Stop the old run's log and ticker tape queues; the line being typed still finishes (the kit has no abort).
+// Stop the old run's log queue; the line being typed still finishes (the kit has no abort).
 function stopGame() {
   game?.log.clear();
-  if (game?.tapeLines) game.tapeLines.length = 0; // the tape's for...of loop ends when its array is emptied
 }
 
 // ---------- Title ----------
 // last: { mode, mission } from "Change mission", so the knob and switch keep the previous choice.
 function title(last = {}) {
   stopGame();
-  const mission = createKnob({ label: 'Mission', value: last.mission, options: [{ value: 'random', label: 'RANDOM WEEK' }, { value: 'sept2017', label: 'SEPT 2017' }] });
+  const mission = createKnob({ label: 'Mission', value: last.mission, options: Object.entries(MISSIONS).map(([value, label]) => ({ value, label: label.toUpperCase() })) });
   const mode = createToggle({ label: 'Commander mode', on: last.mode === 'commander', onLabel: 'COMMANDER', offLabel: 'CADET' });
   const launch = createCoverButton({
     label: 'LAUNCH',
@@ -75,13 +97,16 @@ function title(last = {}) {
   ));
 }
 
-function start({ mode, mission }) {
-  const run = buildRun(sky, { mode, featured: mission === 'random' ? null : mission, seed: Date.now() >>> 0 });
+// A new run, or with a save { state, run, placements } the run it holds (its placements are normalised again in plan()).
+function start({ mode, mission, state, run, placements }) {
+  if (!run) {
+    run = buildRun(sky, { mode, featured: mission === 'random' ? null : mission, seed: Date.now() >>> 0 });
+    save(null);
+  }
   // The instruments live for the whole run: needles move and the log keeps every sol.
   stopGame();
-  save(null);
   game = {
-    state: newGame(), run, mode, mission, placements: {},
+    state: state ?? newGame(), run, mode, mission, placements: { ...placements },
     log: createMissionLog({ max: 300 }), // the kit keeps 40 lines by default; a full run logs more and must keep every sol
     gauges: {
       power: createGauge({ label: 'Power', icon: '⚡', max: LIMITS.power, low: LOW.power }),
@@ -96,8 +121,20 @@ function start({ mode, mission }) {
       { id: 'crew', label: 'Crew', icon: '👩‍🚀' },
     ] }),
   };
-  game.log.append(`Mission start. Your sky begins on ${run.start}.`, 'info');
+  game.log.append(state ? `Mission resumed on sol ${state.sol}. Your sky began on ${run.start}.` : `Mission start. Your sky begins on ${run.start}.`, 'info');
   plan();
+}
+
+// ---------- Resume (after a refresh mid-run) ----------
+function resumePrompt(saved) {
+  show(resumeView(
+    { sol: saved.state.sol, totalSols: SOLS_PER_RUN, missionLabel: MISSIONS[saved.mission], modeLabel: MODES[saved.mode] },
+    {
+      // A save the checks missed must not leave a dead Resume button: drop it and start fresh.
+      onResume: () => { try { start(saved); } catch { save(null); title(); } },
+      onStartOver: () => { save(null); title(); },
+    },
+  ).el);
 }
 
 // ---------- Shared pieces ----------
@@ -254,7 +291,8 @@ function rescue() {
 // ---------- Resolve ----------
 function resolve(rescued) {
   const sol = today();
-  const { state, log } = step(game.state, game.placements, sol, rescued);
+  const before = game.state;
+  const { state, log } = step(before, game.placements, sol, rescued);
   const earned = state.science - game.state.science;
   const wentHome = state.crew.filter((c, i) => c.home && !game.state.crew[i].home).map((c) => c.name);
   game.lastSummary = `Last sol: ${earned ? `+${earned} science` : 'no science'}${sol.storm ? ' · a storm passed' : ''}${wentHome.length ? ` · ${wentHome.join(' and ')} went home` : ''}.${game.rescueNote ? ` ${game.rescueNote}` : ''}`;
@@ -264,56 +302,72 @@ function resolve(rescued) {
   game.state = state;
   if (state.over) return debrief();
   save({ v: 1, state, run: game.run, mode: game.mode, mission: game.mission, placements: game.placements });
-  plan();
+  solResult(before, sol);
+}
+
+// ---------- Sol result ----------
+// Each gauge's word on the card, and a why for each direction. The card shows net changes and step()'s log
+// gives gross amounts, so a why never quotes a number: it is a fixed sentence true whenever its line shows.
+// A rise can only come from a job, and the caps only throw gain away, so "made more than used" holds. A fall
+// can be the cap clipping a gain, so the down sentences make no comparison (cold and thirsty sols included).
+// Empty when that direction cannot happen (walls and science never go down).
+const CHANGES = {
+  power: { word: 'power', up: 'The Solar Field made more power than the base used.', down: 'The base used power.' },
+  tank: { word: 'water', up: 'The Recycler made more water than the base used.', down: 'The base used water.' },
+  wall: { word: 'shield', up: 'Water was pumped into the shelter walls.', down: '' },
+  science: { word: 'science', up: 'The crew did science.', down: '' },
+};
+// Only what changed, read from the states before and after step(); the rules are never re-run here.
+function solResult(before, sol) {
+  const after = game.state;
+  const changes = Object.entries(CHANGES).filter(([k]) => after[k] !== before[k]).map(([k, c]) => {
+    const d = after[k] - before[k];
+    const dir = d > 0 ? 'up' : 'down';
+    return { text: `${d > 0 ? '+' : '−'}${Math.abs(d)} ${c.word}`, why: c[dir], dir };
+  });
+  const doses = after.crew.map((c, i) => ({ name: c.name, before: before.crew[i].dose, after: c.dose, limit: LIMITS.dose }))
+    .filter((d) => d.after > d.before);
+  let moved = false; // a double click or a second Enter must not skip the next plan
+  const next = () => { if (!moved) { moved = true; plan(); } };
+  show(sampleBanner(), solResultView({ sol: before.sol, date: sol.date, changes, doses, isLast: false }, { onNext: next }).el);
 }
 
 // ---------- Debrief ----------
+const andList = (names) => (names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0]);
+
 function debrief() {
+  save(null);
   const s = game.state;
   const r = game.run;
   // A run can end early (win, or everyone home); only count the sols that were played (state.sol is the last one).
   const played = r.sols.filter((x) => x.sol <= s.sol);
-  const big = played.filter((x) => x.storm && needsRescue(x.storm));
   // Say plainly why the run ended; a loss should never read like a win.
-  const thirstEnd = s.thirstyStreak >= THIRSTY_SOLS_TO_GO_HOME;
-  const headline = s.result === 'win'
-    ? `Mission complete! ${'★'.repeat(s.stars)}${'☆'.repeat(3 - s.stars)}`
+  const reason = s.result === 'win'
+    ? `Well done! You got ${s.science} science${s.crew.every((c) => !c.home) ? ' and the whole crew stayed safe' : ''}.`
     : s.result === 'home'
-      ? (thirstEnd ? 'Mission over: the water ran out, so the crew had to go home.' : 'Mission over: everyone got too much radiation and had to go home.')
-      : `Time is up: the supply ship is here. You needed ${SCIENCE_GOAL - s.science} more science.`;
-  const tip = s.thirstySols ? 'Tip: keep someone on the Recycler before the drinking water gets low.'
-    : s.coldSols ? 'Tip: the Solar Field keeps the heaters on. No power, no science.'
-    : s.crew.some((c) => c.home) ? 'Tip: take turns going outside so nobody gets too much radiation.'
-    : 'Tip: pump water into the walls when a CME is in the forecast.';
-  save(null);
-  const tape = createTickerTape();
+      ? (s.thirstyStreak >= THIRSTY_SOLS_TO_GO_HOME
+        ? `The water ran out ${THIRSTY_SOLS_TO_GO_HOME} sols in a row.`
+        : `${andList(s.crew.filter((c) => c.home).map((c) => c.name))} got too much radiation.`)
+      : `You needed ${SCIENCE_GOAL - s.science} more science.`;
+  const tip = s.thirstySols ? 'Keep someone on the Recycler before the drinking water gets low.'
+    : s.coldSols ? 'The Solar Field keeps the heaters on. No power, no science.'
+    : s.crew.some((c) => c.home) ? 'Take turns going outside so nobody gets too much radiation.'
+    : 'Pump water into the walls when a CME is in the forecast.';
   const { mode, mission } = game;
-  show(
-    sampleBanner(),
-    el('section', { class: 'card' },
-      heading('h2', 'Mission report'),
-      tape.el,
-      r.start === sky.featured?.sept2017?.start
-        ? el('p', {}, 'In September 2017 a big solar storm hit Mars. Curiosity, NASA\'s robot car on Mars, measured more than twice as much radiation as ever before. MAVEN, a NASA spacecraft that flies around Mars, saw the whole sky glow with aurora (colourful lights, like the northern lights on Earth). ',
-          el('a', { href: 'https://www.jpl.nasa.gov/news/large-solar-storm-sparks-global-aurora-and-doubles-radiation-levels-on-the-martian-surface/', target: '_blank', rel: 'noopener' }, 'Read the NASA story'))
-        : null),
-    el('p', { class: 'row' },
-      button('Try again', () => start({ mode, mission }), 'primary'),
-      button('Change mission', () => title({ mode, mission })),
-      button('Title', () => title())),
-    game.log.el,
-  );
+  const view = reportView({
+    ending: s.result, stars: s.stars, reason, science: s.science, scienceGoal: SCIENCE_GOAL,
+    sky: { start: r.start, end: played.at(-1).date, sample: !!r.sample },
+    storms: played.filter((x) => needsRescue(x.storm)).map((x) => ({
+      label: x.storm.kind === 'cme' ? 'Storm cloud (CME)' : `Sun flash (flare class ${x.storm.cls})`, date: x.date,
+    })),
+    tip, sept2017: r.start === sky.featured?.sept2017?.start,
+  }, {
+    onTryAgain: () => start({ mode, mission }),
+    onChangeMission: () => title({ mode, mission }),
+    onTitle: () => title(),
+  });
+  show(sampleBanner(), view.el, game.log.el);
   if (s.result === 'win') play('cheer');
-  tape.print(game.tapeLines = [
-    { text: headline, strong: true },
-    `Science: ${s.science}/${SCIENCE_GOAL}`,
-    `Your sky: ${r.start} to ${played.at(-1).date}${r.sample ? ' (sample data)' : ', recorded by NASA'}`,
-    ...(big.length
-      ? [`${big.length} storm${big.length > 1 ? 's' : ''} reached the base:`,
-        ...big.map((x) => (x.storm.kind === 'cme' ? `Storm cloud (CME) on ${x.date}` : `Sun flash (flare class ${x.storm.cls}) on ${x.date}`))]
-      : ['The Sun was quiet that week.']),
-    tip,
-  ]);
 }
 
 // ---------- Credits ----------
@@ -335,5 +389,7 @@ function credits() {
 window.addEventListener('hashchange', () => { if (location.hash === '#credits') credits(); });
 
 loadSky().then(() => {
-  if (location.hash === '#credits') credits(); else title();
+  if (location.hash === '#credits') return credits();
+  const saved = loadSave();
+  if (saved) resumePrompt(saved); else title();
 }).catch(() => show(el('section', { class: 'card' }, heading('h2', 'Could not load the storm data.'), el('p', {}, 'Please reload the page.'))));
