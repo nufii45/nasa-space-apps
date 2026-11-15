@@ -39,7 +39,7 @@ export function render(model, { onLaunch } = {}) {
         el('p', { class: 'sc-tagline' }, 'Run a base on Mars for 10 sols.'),
         el('p', { class: 'sc-quiet' }, 'A sol is a Mars day. Real solar storms, recorded by NASA, are coming.')),
       el('div', { class: 'sc-controls' },
-        el('div', { class: 'sc-ctl' }, mission.el, missionHint),
+        el('div', { class: 'sc-ctl sc-ctl-knob' }, mission.el, missionHint),
         el('div', { class: 'sc-ctl' }, rank.el, rankHint),
         el('div', { class: 'sc-ctl' }, launch.el, el('p', { class: 'sc-ctl-hint' }, 'Tap once to lift the cover, then press.')))),
     el('p', { class: 'sc-foot' }, 'Storm data: NASA DONKI (archived, real dates)'));

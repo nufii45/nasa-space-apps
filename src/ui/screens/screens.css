@@ -167,6 +167,8 @@
 .sc-tagline { font-size: 17px; }
 .sc-controls { display: flex; justify-content: space-around; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
 .sc-ctl { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.sc-ctl, .sc-ctl > * { max-width: 100%; }
+.sc-title .oc-knob-svg { max-width: 100%; height: auto; }
 .sc-ctl-hint { max-width: 170px; text-align: center; font-size: 13px; color: var(--sc-quiet); }
 /* The kit's own rings are 4 px amber; on this screen every control gets the 3 px teal ring instead. */
 .sc-title :is(button, [tabindex]:not([tabindex='-1'])):focus-visible { outline: 3px solid var(--sc-teal); outline-offset: 3px; box-shadow: none; }
@@ -192,6 +194,8 @@
   .sc-screen.sc-title-card { margin: 0 16px; padding: 18px 14px; gap: 18px; }
   .sc-title-head h1.sc-h { font-size: 34px; }
   .sc-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); justify-items: center; gap: 16px 8px; }
+  /* The kit knob draws 288 px wide: give it its own full-width row so it never covers the switch. */
+  .sc-controls .sc-ctl-knob { grid-column: 1 / -1; }
 }
 
 /* Motion off: the OS setting, or the game's own switch (class on <html>). */

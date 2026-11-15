@@ -17,7 +17,7 @@ export function render(model, { onBring, onReady } = {}) {
   const heading = el('h2', { id, class: 'sc-h sc-storm-title', tabindex: -1 });
   const classText = el('span', {});
   const help = el('button', {
-    type: 'button', class: 'sc-help', 'aria-label': 'What is a flare class?', 'aria-expanded': 'false', 'aria-controls': explainId,
+    type: 'button', class: 'sc-help', 'aria-label': 'What does this mean?', 'aria-expanded': 'false', 'aria-controls': explainId,
     onclick: () => {
       const open = help.getAttribute('aria-expanded') !== 'true';
       help.setAttribute('aria-expanded', open);
@@ -25,10 +25,12 @@ export function render(model, { onBring, onReady } = {}) {
     },
   }, '?');
   const classLine = el('p', { class: 'sc-class' }, classText, help);
+  // The model has no storm kind, so one explainer covers both flares and CMEs.
   const explain = el('div', { id: explainId, class: 'sc-explain', hidden: true },
     el('p', {}, 'A flare is a flash from the Sun.'),
     el('p', {}, 'Scientists give each flare a letter for its size. C is small, M is medium, X is the biggest.'),
-    el('p', {}, 'The number says how big inside that letter. X9 is bigger than X2.'));
+    el('p', {}, 'A CME is a huge cloud of Sun material.'),
+    el('p', {}, 'Both bring radiation, so the crew must get inside.'));
 
   // Countdown ring: the number changes every second but is not live; `spoken` is, and changes only every 5 seconds.
   const arc = el('svg:circle', { cx: 60, cy: 60, r: RING_R, fill: 'none', 'stroke-width': 10, 'stroke-linecap': 'round', transform: 'rotate(-90 60 60)', class: 'sc-ring-arc' });
@@ -77,11 +79,15 @@ export function render(model, { onBring, onReady } = {}) {
   }
 
   // Removing a focused control would drop focus to <body>: hand it to the next Bring button, else the finish button.
+  // `focused` is what had focus when the row pass began (a reorder may already have blurred it).
+  let focused = null;
   function removeKeepingFocus(node) {
     if (!node.parentNode) return;
-    const had = node.contains(document.activeElement);
+    const had = node.contains(document.activeElement) || (focused && node.contains(focused));
     node.remove();
-    if (had) ([...list.querySelectorAll('.sc-bring')].find((b) => !b.disabled) ?? (ready.disabled ? heading : ready)).focus();
+    if (!had) return;
+    focused = [...list.querySelectorAll('.sc-bring')].find((b) => !b.disabled) ?? (ready.disabled ? heading : ready);
+    focused.focus();
   }
 
   const setText = (node, text) => { if (node.textContent !== text) node.textContent = text; };
@@ -101,7 +107,7 @@ export function render(model, { onBring, onReady } = {}) {
     setText(leftNum, String(left));
     setText(leftWord, `${left === 1 ? 'second' : 'seconds'} left`);
     ring.setAttribute('aria-label', `${seconds(left)} left`);
-    arc.setAttribute('stroke-dasharray', `${(RING_LEN * Math.min(1, left / total)).toFixed(1)} 999`);
+    arc.setAttribute('stroke-dasharray', `${(RING_LEN * (total > 0 ? Math.min(1, left / total) : 0)).toFixed(1)} 999`);
     ring.classList.toggle('is-low', left <= 3);
     if (timed && !over && (left % 5 === 0 || !spoken.textContent)) setText(spoken, `${seconds(left)} left.`);
     if (!timed) setText(spoken, '');
@@ -109,10 +115,19 @@ export function render(model, { onBring, onReady } = {}) {
     timesUp.hidden = !over;
     setText(timesUpText, over ? (m.caughtText ?? '') : '');
 
+    // Disabling the focused button drops focus to <body> in real browsers, so hand it to the heading first.
+    // The "?" stays enabled at time's up (approved exception), so focus on it is left alone.
+    const active = document.activeElement;
+    if (over && card.contains(active) && active !== help && active !== heading) heading.focus();
+    ready.disabled = over; // before rows: removeKeepingFocus reads it
+
+    focused = document.activeElement;
     const ids = new Set((m.rows ?? []).map((r) => r.id));
     for (const [rid, row] of rows) if (!ids.has(rid)) { removeKeepingFocus(row.el); rows.delete(rid); }
-    for (const r of m.rows ?? []) {
+    (m.rows ?? []).forEach((r, i) => {
       const row = rowFor(r);
+      // Follow the model's order by moving existing nodes; only out-of-place rows move.
+      if (list.children[i] !== row.el) list.insertBefore(row.el, list.children[i] ?? null);
       setText(row.name, r.name);
       setText(row.status, statusWords(r));
       row.status.className = `sc-st sc-st-${r.status}`;
@@ -121,11 +136,13 @@ export function render(model, { onBring, onReady } = {}) {
       row.btn.disabled = over;
       if (r.status !== 'out') removeKeepingFocus(row.btn);
       else if (!row.btn.parentNode) row.el.append(row.btn);
-    }
+    });
+    // Moving a node blurs it in browsers: give focus back if a reorder took it away.
+    if (focused?.isConnected && focused !== document.activeElement && card.contains(focused)) focused.focus();
+    focused = null;
     nobody.hidden = rows.size > 0;
 
     setText(ready, timed ? 'Ready' : 'Done');
-    ready.disabled = over;
     setText(note, over ? 'Moving on…' : timed ? 'Ready ends the countdown early.' : 'Cadet mode: no timer. Take your time.');
   }
   update(model);

@@ -425,9 +425,70 @@ describe('Storm takeover (W11)', () => {
     expect(up.hidden).toBe(false);
     expect(up.getAttribute('role')).toBe('alert');
     expect(text(up)).toBe("Time's up! Ana was still outside and got extra radiation.");
+    // The "?" explainer stays usable at time's up (approved exception): it changes nothing in the game.
     for (const b of buttons(view.el).filter((b) => b.textContent !== '?')) expect(b.disabled, text(b)).toBe(true);
+    expect(button(view.el, '?').disabled).toBe(false);
     expect(button(view.el, 'Bring Ana inside').disabled).toBe(true);
     expect(button(view.el, 'Ready').disabled).toBe(true);
+  });
+
+  it("time's up while a Bring button has focus (row stays out): focus goes to the heading", () => {
+    const view = mount(storm(STORM(), {}));
+    button(view.el, 'Bring Ana inside').focus();
+    view.update(STORM({ left: 0, timesUp: true, caughtText: 'Ana was still outside.' }));
+    expect(document.activeElement).toBe(heading(view.el));
+  });
+
+  it("time's up while a Bring button has focus (row leaves out in the same update): focus goes to the heading", () => {
+    const view = mount(storm(STORM(), {}));
+    button(view.el, 'Bring Ana inside').focus();
+    view.update(STORM({ left: 0, timesUp: true, rows: ROWS().map((r) => ({ ...r, status: 'safe' })) }));
+    expect(document.activeElement).toBe(heading(view.el));
+    expect(document.activeElement.disabled).toBeUndefined();
+  });
+
+  it("time's up while Ready has focus: focus goes to the heading; focus on \"?\" stays", () => {
+    const view = mount(storm(STORM(), {}));
+    button(view.el, 'Ready').focus();
+    view.update(STORM({ left: 0, timesUp: true }));
+    expect(document.activeElement).toBe(heading(view.el));
+    const other = mount(storm(STORM(), {}));
+    button(other.el, '?').focus();
+    other.update(STORM({ left: 0, timesUp: true }));
+    expect(document.activeElement).toBe(button(other.el, '?'));
+  });
+
+  it('rows follow the model order after update(), as the same nodes, keeping focus', () => {
+    const r = (id, name) => ({ id, name, where: 'Lab', status: 'out' });
+    const names = (root) => [...root.querySelectorAll('.sc-row strong')].map((n) => n.textContent);
+    const view = mount(storm(STORM({ rows: [r('a', 'A'), r('b', 'B'), r('c', 'C')] }), {}));
+    const nodes = [...view.el.querySelectorAll('.sc-row')];
+    const bringA = button(view.el, 'Bring A inside');
+    bringA.focus();
+    view.update(STORM({ rows: [r('c', 'C'), r('a', 'A'), r('b', 'B')] }));
+    expect(names(view.el)).toEqual(['C', 'A', 'B']);
+    expect([...view.el.querySelectorAll('.sc-row')]).toEqual([nodes[2], nodes[0], nodes[1]]);
+    expect(document.activeElement).toBe(bringA);
+    // A new row lands where the model puts it, not at the end.
+    view.update(STORM({ rows: [r('c', 'C'), r('d', 'D'), r('a', 'A'), r('b', 'B')] }));
+    expect(names(view.el)).toEqual(['C', 'D', 'A', 'B']);
+    expect(document.activeElement).toBe(bringA);
+  });
+
+  it('total 0 and left 0 without time\'s up: no NaN, buttons still work', () => {
+    const view = mount(storm(STORM({ total: 0 }), {}));
+    expect(view.el.querySelector('.sc-ring-arc').getAttribute('stroke-dasharray')).toBe('0.0 999');
+    view.update(STORM({ left: 0 }));
+    expect(text(ring(view.el))).toBe('0 seconds left');
+    expect(view.el.querySelector('.sc-timesup').hidden).toBe(true);
+    expect(button(view.el, 'Bring Ana inside').disabled).toBe(false);
+    expect(button(view.el, 'Ready').disabled).toBe(false);
+    expect(view.el.innerHTML).not.toContain('NaN');
+  });
+
+  it('every button can be clicked with no handlers given', () => {
+    const { el } = mount(storm(STORM(), undefined));
+    for (const b of buttons(el)) expect(() => b.click(), text(b)).not.toThrow();
   });
 
   it('update() patches in place: focus stays on a Bring button and controls are the same nodes', () => {
@@ -460,7 +521,7 @@ describe('Storm takeover (W11)', () => {
 
   it('the "?" button opens and closes a kid-words explainer', () => {
     const { el } = mount(storm(STORM(), {}));
-    const q = el.querySelector('button[aria-label="What is a flare class?"]');
+    const q = el.querySelector('button[aria-label="What does this mean?"]');
     expect(q.textContent).toBe('?');
     expect(q.getAttribute('aria-expanded')).toBe('false');
     const box = document.getElementById(q.getAttribute('aria-controls'));
@@ -468,7 +529,11 @@ describe('Storm takeover (W11)', () => {
     q.click();
     expect(q.getAttribute('aria-expanded')).toBe('true');
     expect(box.hidden).toBe(false);
+    // No storm kind in the model, so the explainer covers a flare (a flash) and a CME (a cloud).
+    expect(text(box)).toContain('A flare is a flash from the Sun.');
     expect(text(box)).toContain('C is small, M is medium, X is the biggest.');
+    expect(text(box)).toContain('A CME is a huge cloud of Sun material.');
+    expect(text(box)).toMatch(/radiation/);
     expect(text(box)).not.toMatch(/sunburn/i);
     q.click();
     expect(box.hidden).toBe(true);
@@ -563,6 +628,33 @@ describe('Title (W13)', () => {
     expect(knob(el).getAttribute('aria-valuetext')).toBe('RANDOM WEEK');
     expect(rankSwitch(el).getAttribute('aria-checked')).toBe('false');
     expect(banner(el).hidden).toBe(true); // only sample === true shows it
+  });
+
+  it.each([
+    ['random', 'commander', 'RANDOM WEEK', 'true'],
+    ['sept2017', 'cadet', 'SEPT 2017', 'false'],
+  ])('mission %s + mode %s: controls set, and LAUNCH sends them back', (mission, mode, knobText, checked) => {
+    const got = [];
+    const { el } = mount(title({ mission, mode }, { onLaunch: (c) => got.push(c) }));
+    expect(knob(el).getAttribute('aria-valuetext')).toBe(knobText);
+    expect(rankSwitch(el).getAttribute('aria-checked')).toBe(checked);
+    launch(el);
+    expect(got).toEqual([{ mission, mode }]);
+  });
+
+  it('every button can be clicked with no handlers given', () => {
+    const { el } = mount(title({ mission: 'random', mode: 'cadet' }, undefined));
+    expect(() => launch(el)).not.toThrow();
+    for (const b of buttons(el)) expect(() => b.click()).not.toThrow();
+  });
+
+  it('at 390 px the knob gets its own full-width row and can never draw wider than it', () => {
+    const { el } = mount(title({ mission: 'random', mode: 'cadet' }, {}));
+    expect(knob(el).closest('.sc-ctl').classList.contains('sc-ctl-knob')).toBe(true);
+    const css = readFileSync(resolve(import.meta.dirname, '../../src/ui/screens/screens.css'), 'utf8');
+    const phone = css.slice(css.indexOf('@media (max-width: 720px)'));
+    expect(phone).toMatch(/\.sc-controls \.sc-ctl-knob \{ grid-column: 1 \/ -1; \}/);
+    expect(css).toMatch(/\.sc-title \.oc-knob-svg \{ max-width: 100%; height: auto; \}/);
   });
 
   it('imports only the console kit, nothing from src/sim', () => {
