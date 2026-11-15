@@ -7,27 +7,48 @@ import {
   THIRSTY_SOLS_TO_GO_HOME, CREW,
 } from './sim/constants.js';
 import {
-  createCoverButton, createGauge, createLamps, createMissionLog, createInfoDrawer, createMuteSwitch, play,
+  createCoverButton, createGauge, createLamps, createMissionLog, createInfoDrawer, createMuteSwitch, createToggle, play,
 } from './ui/console/index.js';
-import { el } from './ui/console/util.js';
+import { el, nextId, reducedMotion } from './ui/console/util.js';
 import { jobCard } from './ui/jobInfo.js';
-import { createOutpostMap } from './ui/map/index.js';
 import { render as solResultView } from './ui/screens/solResult.js';
 import { render as reportView } from './ui/screens/report.js';
 import { render as resumeView } from './ui/screens/resume.js';
 import { render as titleView } from './ui/screens/title.js';
 import { render as stormView } from './ui/screens/storm.js';
 import { createStage } from './ui/stage/index.js';
+import { createCallouts } from './ui/stage/callouts.js';
 
 // Warning thresholds for gauges and lamps, derived from the rules so retuning keeps them meaningful.
 const LOW = { power: HEATER_COST, tank: DRINK_PER_SOL };
 const NEAR_LIMIT = LIMITS.dose - CME_DOSE; // one more CME caught outside would send them home
+const SHELTER = Object.keys(JOBS).find((id) => JOBS[id].where === 'shelter');
 
 const app = document.getElementById('app');
 const drawer = createInfoDrawer();
 document.body.append(drawer.el);
-// The title view has its own Sound switch, so title() takes this one off the page.
-const topBar = el('header', { class: 'top-bar' }, createMuteSwitch().el);
+// Reduced motion (W14): on by default when the device asks for it. It sets a class on <html> that the stage
+// and the styles read; the player's choice is remembered when storage works.
+const MOTION_KEY = 'outpost-dial.reduced-motion';
+function savedMotion() {
+  try {
+    const v = localStorage.getItem(MOTION_KEY);
+    if (v === '1' || v === '0') return v === '1';
+  } catch { /* storage blocked */ }
+  return reducedMotion();
+}
+const motion = createToggle({
+  label: 'Reduced motion', on: savedMotion(),
+  onChange(on) {
+    document.documentElement.classList.toggle('reduced-motion', on);
+    try { localStorage.setItem(MOTION_KEY, on ? '1' : '0'); } catch { /* storage blocked: it lasts this visit */ }
+  },
+});
+document.documentElement.classList.toggle('reduced-motion', motion.get());
+// One Sound switch per screen: the title view has its own, so title() takes the top bar off the page,
+// and the plan screen moves these switches into its rail.
+const sound = createMuteSwitch();
+const topBar = el('header', { class: 'top-bar' }, sound.el, motion.el);
 
 let sky = null;
 let game = null; // { state, run, mode, mission, placements, log, gauges, lamps, lastSummary, rescueNote }
@@ -74,15 +95,22 @@ function show(...nodes) {
   leave?.();
   leave = null;
   drawer.close();
+  topBar.append(sound.el, motion.el);
   if (!topBar.isConnected) document.body.prepend(topBar);
+  app.className = '';
   app.replaceChildren(...nodes.filter(Boolean));
   app.querySelector('h1, h2')?.focus();
 }
+// Backdrop stages switch at 700 px, like the help drawer (src/ui/console/infoDrawer.js).
+const PHONE_QUERY = '(max-width: 699px)';
+// The plan screen's stage needs its 860 px desktop drawing, the 64 px rail, the column's 2 x 12 px padding
+// and room for a 16 px classic scrollbar; any narrower and it draws its phone layout, so it never scrolls sideways.
+const PLAN_STAGE_MIN = 860 + 64 + 2 * 12 + 16;
+const PLAN_NARROW_QUERY = `(max-width: ${PLAN_STAGE_MIN - 1}px)`;
+const layoutFor = (q) => (window.matchMedia?.(q)?.matches ? 'phone' : 'desktop');
 // The stage behind the title and storm screens is a picture: never focusable, never read out.
 function backdropStage(opts) {
-  // Same 700 px switch as the help drawer (src/ui/console/infoDrawer.js).
-  const layout = window.matchMedia?.('(max-width: 699px)')?.matches ? 'phone' : 'desktop';
-  const stage = createStage({ jobs: JOBS, layout, ...opts });
+  const stage = createStage({ jobs: JOBS, layout: layoutFor(PHONE_QUERY), ...opts });
   stage.el.setAttribute('inert', '');
   stage.el.setAttribute('aria-hidden', 'true');
   return stage;
@@ -127,6 +155,7 @@ function start({ mode, mission, state, run, placements }) {
       wall: createGauge({ label: 'Wall water', displayLabel: 'Shield', icon: '🛡', max: LIMITS.wall }),
       science: createGauge({ label: 'Science', icon: '🔬', max: SCIENCE_GOAL }),
     },
+    stageStill: false, // the player touched the stage this run, so it no longer turns by itself
     lamps: createLamps({ lamps: [
       { id: 'power', label: 'Power', icon: '⚡' },
       { id: 'water', label: 'Drinking water', icon: '💧' },
@@ -134,6 +163,7 @@ function start({ mode, mission, state, run, placements }) {
       { id: 'crew', label: 'Crew', icon: '👩‍🚀' },
     ] }),
   };
+  game.gauges.science.el.classList.add('is-goal'); // the plan screen marks the goal at the end of its bar
   game.log.append(state ? `Mission resumed on sol ${state.sol}. Your sky began on ${run.start}.` : `Mission start. Your sky begins on ${run.start}.`, 'info');
   plan();
 }
@@ -158,7 +188,10 @@ const today = () => game.run.sols[game.state.sol - 1];
 
 function updateInstruments() {
   const s = game.state;
-  for (const [k, g] of Object.entries(game.gauges)) g.set(s[k]);
+  for (const [k, g] of Object.entries(game.gauges)) {
+    g.set(s[k]);
+    g.el.style.setProperty('--fill', g.get() / Number(g.el.getAttribute('aria-valuemax'))); // the plan screen's bar
+  }
   const l = game.lamps;
   l.set('power', s.power <= LOW.power ? 'warn' : 'ok');
   l.set('water', s.tank <= LOW.tank ? 'warn' : 'ok');
@@ -167,44 +200,220 @@ function updateInstruments() {
 }
 
 // ---------- Plan (morning + placement) ----------
+// Callout words and icons (24 px paths) from Scene.dc.html; station names come from JOBS.
+const CALLOUTS = {
+  recycler: { text: 'Cleans water so the crew can drink it again.', icon: 'M4 12a8 8 0 0 1 14-5l2-2v6h-6l2-2a5 5 0 0 0-9 3M20 12a8 8 0 0 1-14 5l-2 2v-6h6l-2 2a5 5 0 0 0 9-3' },
+  shelter: { text: 'Safest place in a storm. Rest here.', icon: 'M12 3l8 3v6c0 5-4 8-8 9-4-1-8-4-8-9V6z' },
+  lab: { text: 'Do experiments to earn science.', icon: 'M9 3h6M10 3v6l-5 10a1 1 0 0 0 1 2h12a1 1 0 0 0 1-2l-5-10V3' },
+  pump: { text: 'Moves water into the Shelter walls to block storms.', icon: 'M12 3c4 5 6 8 6 11a6 6 0 0 1-12 0c0-3 2-6 6-11z' },
+  solar: { text: 'Makes power from sunlight.', icon: 'M8 12a4 4 0 1 0 8 0a4 4 0 1 0-8 0M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1' },
+  rover: { text: 'Drive far to study rocks. Lots of science, but far from home.', icon: 'M4 14h16l-2-5H8zM4 17a3 3 0 1 0 6 0a3 3 0 1 0-6 0M14 17a3 3 0 1 0 6 0a3 3 0 1 0-6 0' },
+};
+const STATIONS = Object.entries(CALLOUTS).map(([id, c]) => ({ id, title: JOBS[id].name, ...c }));
+// The same colours, in crew order, as the astronauts on the stage (src/ui/stage/index.js).
+const CREW_COLORS = ['#7C6BD6', '#3F86C9', '#3E9B6A', '#C76B98', '#B8862B', '#5A6178'];
+// Rail and Sun report icons from Main.dc.html.
+const ICONS = {
+  home: 'M3 11l9-7 9 7v9h-6v-6H9v6H3z',
+  book: 'M3 5c3-1 6-1 9 1 3-2 6-2 9-1v14c-3-1-6-1-9 1-3-2-6-2-9-1zM12 6v14',
+  info: 'M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M12 11v6M12 7.5v.5',
+  sun: 'M8 12a4 4 0 1 0 8 0a4 4 0 1 0-8 0M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1',
+};
+const icon = (d, size = 22) => el('svg:svg', { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': 1.8, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true', focusable: 'false' }, el('svg:path', { d }));
+const navButton = (label, d, onclick, attrs = {}) => el('button', { type: 'button', class: 'plan-nav', onclick, ...attrs }, icon(d), el('span', { class: 'plan-nav-text' }, label));
+const howToPlay = () => ({
+  title: 'How to play',
+  tabs: [{ label: 'Steps', body: el('ol', {}, ...[
+    'Tap an astronaut, then tap a station to give them a job.',
+    'One astronaut per job. If someone already has that job, they go to rest in the Shelter.',
+    'The Shelter has room for everyone. Anyone without a job rests there.',
+    'Read the Sun report. When a storm is coming, fill the Shelter walls with water.',
+    'Lift the cover, then press END SOL to finish the Mars day.',
+    `Earn ${SCIENCE_GOAL} science in ${SOLS_PER_RUN} sols, and keep your crew safe.`,
+  ].map((t) => el('li', {}, t))) }],
+});
+
 function plan() {
   const s = game.state;
   const sol = today();
-  // Several CMEs can arrive on the same day; say each arrival day once.
-  const forecast = [...new Set(sol.forecast.map((f) => f.inSols))].map((n) => `A cloud of Sun material (CME) is coming, about ${n} sol${n > 1 ? 's' : ''} away.`).join(' ') || 'Clear skies forecast. (The Sun can still surprise you.)';
+  const n = s.sol;
+  const active = s.crew.filter((c) => !c.home);
   game.placements = normalisePlacements(s, game.placements);
+  let picked = null; // crew id
+  let selected = null; // station id
+  let shown; // the station the Station tab shows
+  let tab = 0;
+  let layout = layoutFor(PLAN_NARROW_QUERY);
+  let ended = false; // a double press on END SOL must resolve the sol once
+
+  const help = (id) => drawer.open(jobCard(id));
+  const who = () => Object.fromEntries(Object.keys(JOBS).map((id) => [id, active.filter((c) => game.placements[c.id] === id).map((c) => c.name)]));
+  const stage = createStage({ jobs: JOBS, crew: s.crew, placements: game.placements, picked, selected, mode: 'plan', layout, onStation: tap, onHelp: help });
+  // The stage stops turning on any input; once touched in a run, it stays still on the next sols too.
+  for (const t of ['pointerdown', 'keydown', 'wheel', 'focusin']) stage.el.addEventListener(t, () => { game.stageStill = true; });
+  // shortcut: the stage contract has no stop(), so send one of the inputs it stops on; use a stop() if it gets one.
+  if (game.stageStill) stage.el.dispatchEvent(new Event('wheel'));
+  const callouts = createCallouts({ stage, stations: STATIONS, who: who(), selected, picked, layout, onSelect: tap, onHelp: help });
+  const selectedSlot = el('div', { class: 'plan-selected' }); // phone: the selected station's card, under the stage
+  if (layout === 'phone') selectedSlot.append(callouts.el);
+  const hint = el('p', { class: 'plan-hint', role: 'status' });
+
+  // Tap an astronaut, then a station. The stage and callouts only draw; the placing happens here.
+  function pick(c) {
+    if (c.home) return draw(`${c.name} went home and can't work.`);
+    picked = picked === c.id ? null : c.id;
+    play('click');
+    draw();
+  }
+  function tap(id) {
+    selected = id;
+    tab = 0;
+    drawTabs();
+    const c = active.find((x) => x.id === picked);
+    if (!c) return draw();
+    picked = null;
+    if (game.placements[c.id] === id) return draw(`${c.name} stays at the ${JOBS[id].name}.`);
+    // Decision 0012: the newcomer takes a busy job and whoever had it goes to the Shelter.
+    const bumped = id === SHELTER ? [] : active.filter((x) => x !== c && game.placements[x.id] === id);
+    game.placements = normalisePlacements(s, { ...game.placements, ...Object.fromEntries(bumped.map((x) => [x.id, SHELTER])), [c.id]: id });
+    play('clack');
+    draw(`${c.name} is at the ${JOBS[id].name}.${bumped.map((x) => ` ${x.name} went to the ${JOBS[SHELTER].name}.`).join('')}`);
+  }
+
+  const cards = s.crew.map((c, i) => {
+    const status = el('span', { class: 'plan-crew-status' });
+    const b = el('button', { type: 'button', class: `plan-crew-card${c.home ? ' is-home' : ''}`, 'aria-disabled': c.home && 'true', onclick: () => pick(c) },
+      el('svg:svg', { class: 'plan-helmet', width: 46, height: 46, viewBox: '0 0 46 46', 'aria-hidden': 'true', focusable: 'false' },
+        el('svg:circle', { cx: 23, cy: 23, r: 20, fill: c.home ? '#C9C3B6' : CREW_COLORS[i % CREW_COLORS.length], stroke: 'currentColor', 'stroke-width': 2 }),
+        el('svg:ellipse', { cx: 26, cy: 22, rx: 11, ry: 8, fill: 'currentColor' })),
+      el('span', { class: 'plan-crew-text' },
+        el('span', { class: 'plan-crew-top' }, el('span', { class: 'plan-crew-name' }, c.name), el('span', { class: 'plan-mono' }, `radiation ${c.dose}/${LIMITS.dose}`)),
+        el('span', { class: 'plan-meter', 'aria-hidden': 'true' }, el('span', { style: `width: ${Math.min(100, (100 * c.dose) / LIMITS.dose)}%` })),
+        status));
+    return { c, b, status };
+  });
+
+  // Right panel tabs: what the selected station does, and the run's mission log.
+  const stationPanel = el('div', { class: 'plan-panel', role: 'tabpanel' });
+  const logPanel = el('div', { class: 'plan-panel', role: 'tabpanel' }, game.log.el);
+  const panels = [stationPanel, logPanel];
+  const tabs = ['Station', 'Mission log'].map((label, i) => {
+    const id = nextId('plan-tab');
+    panels[i].id = nextId('plan-panel');
+    panels[i].setAttribute('aria-labelledby', id);
+    return el('button', { type: 'button', role: 'tab', id, class: 'plan-tab', 'aria-controls': panels[i].id, onclick: () => { tab = i; drawTabs(); } }, label);
+  });
+  // One Tab stop for the tabs; the arrow keys, Home and End move between them (States.dc.html panel F).
+  function drawTabs() {
+    tabs.forEach((b, i) => { b.setAttribute('aria-selected', String(i === tab)); b.tabIndex = i === tab ? 0 : -1; });
+    panels.forEach((p, i) => { p.hidden = i !== tab; });
+  }
+  function tabKeys(e) {
+    const next = { ArrowRight: tab + 1, ArrowLeft: tab - 1, Home: 0, End: tabs.length - 1 }[e.key];
+    if (next === undefined) return;
+    e.preventDefault();
+    tab = (next + tabs.length) % tabs.length;
+    drawTabs();
+    tabs[tab].focus();
+  }
+  function drawStation() {
+    shown = selected;
+    if (!selected) return stationPanel.replaceChildren(el('p', { class: 'plan-quiet' }, 'Tap a station to see what it does.'));
+    const card = jobCard(selected);
+    stationPanel.replaceChildren(
+      el('div', { class: 'plan-station-head' }, el('h2', {}, card.title), el('span', { class: 'plan-cap' }, JOBS[selected].where === 'outside' ? 'Outside' : 'Inside')),
+      el('p', {}, card.tabs[0].body),
+      card.tabs[1].body,
+      button('? Open help card', () => help(shown), 'plan-help'));
+  }
+
+  function draw(msg) {
+    const p = active.find((c) => c.id === picked);
+    stage.update({ placements: game.placements, picked, selected });
+    callouts.update({ who: who(), picked, selected });
+    for (const { c, b, status } of cards) {
+      const at = JOBS[game.placements[c.id]]?.name;
+      b.classList.toggle('is-picked', c.id === picked);
+      if (!c.home) b.setAttribute('aria-pressed', String(c.id === picked));
+      b.setAttribute('aria-label', `${c.name}, radiation ${c.dose}/${LIMITS.dose}, ${c.home ? 'went home' : `at ${at}`}`);
+      status.textContent = c.home ? "Went home to Earth. Safe, but can't work."
+        : c.id === picked ? 'Picked! Now tap a station.'
+          : game.placements[c.id] === SHELTER ? `Resting in the ${JOBS[SHELTER].name}` : `At the ${at}`;
+    }
+    if (selected !== shown) drawStation();
+    hint.textContent = msg || (!active.length ? 'Everyone went home.'
+      : p ? `Now tap a station for ${p.name}. Tap ${p.name} again to cancel.` : 'Tap an astronaut, then tap a station.');
+  }
+
   const endSol = createCoverButton({
     label: 'END SOL', tone: 'go', coverText: 'END SOL', autoClose: 0,
-    onPress: () => (needsRescue(sol.storm) ? rescue() : resolve([])),
+    onPress: () => {
+      if (ended) return;
+      ended = true;
+      if (needsRescue(sol.storm)) rescue(); else resolve([]);
+    },
   });
-  // A new map per plan screen: it reads each astronaut's dose and home flag only once.
-  const map = createOutpostMap({
-    jobs: JOBS, crew: s.crew, placements: game.placements, doseLimit: LIMITS.dose,
-    onChange: (p) => { game.placements = normalisePlacements(s, p); },
-    onInfo: (id) => drawer.open(jobCard(id)),
-  });
+  // Several CMEs can arrive on the same day; say each arrival day once.
+  const forecast = [...new Set(sol.forecast.map((f) => f.inSols))].map((k) => `A cloud of Sun material (CME) is coming, about ${k} sol${k > 1 ? 's' : ''} away.`).join(' ') || 'Clear skies forecast. (The Sun can still surprise you.)';
+  const soundSlot = el('span');
+  const motionSlot = el('span');
+
+  drawTabs();
+  draw();
   show(
     sampleBanner(),
-    el('section', { class: 'card plan-screen' },
-      heading('h2', `Sol ${s.sol} of ${SOLS_PER_RUN}`),
-      el('div', { class: 'plan-weather' }, el('strong', {}, 'Sun report'), el('span', {}, forecast)),
-      game.run.start === sky.featured?.sept2017?.start
-        ? el('p', { class: 'plan-storm-tip' }, 'Big flares give no warning. Fill the shelter walls early and take turns outside.')
-        : null,
-      game.lastSummary ? el('p', { class: 'plan-last-sol', role: 'status' }, game.lastSummary) : null,
-      waterWarning(s),
-      el('p', { class: 'plan-steps' }, 'Choose jobs for your crew'),
-      el('div', { class: 'gauges' }, ...Object.values(game.gauges).map((g) => g.el)),
-      map.el,
-      el('div', { class: 'plan-action' },
-        el('p', {}, el('strong', {}, 'Ready?'), ' Lift the cover, then press END SOL.'),
-        endSol.el),
-      el('details', { class: 'plan-console' },
-        el('summary', {}, 'Mission console and full log'),
-        game.lamps.el,
-        game.log.el)),
+    el('div', { class: 'plan' },
+      el('nav', { class: 'plan-rail', 'aria-label': 'Main menu' },
+        navButton('Home', ICONS.home, () => app.querySelector('h1')?.focus(), { 'aria-current': 'page' }),
+        navButton('How to play', ICONS.book, () => drawer.open(howToPlay())),
+        soundSlot, motionSlot,
+        navButton('Credits', ICONS.info, () => { location.hash = '#credits'; })),
+      el('div', { class: 'plan-main' },
+        el('header', { class: 'plan-head' },
+          el('div', {}, heading('h1', `Sol ${n} of ${SOLS_PER_RUN}`),
+            el('p', { class: 'plan-quiet' }, `A sol is a Mars day. Your sky: ${game.run.sample ? 'sample data' : 'real NASA dates'}, ${sol.date}.`)),
+          el('ol', { class: 'plan-sols', 'aria-label': `Sol progress: ${n - 1} done, today is sol ${n}, ${SOLS_PER_RUN - n} to go` },
+            ...Array.from({ length: SOLS_PER_RUN }, (_, i) => i + 1).map((k) =>
+              el('li', { class: k < n ? 'is-done' : k === n ? 'is-today' : 'is-next', 'aria-hidden': 'true' }, k < n ? '✓' : String(k))))),
+        // A Tab stop of its own, so keyboard users read the forecast before choosing jobs (panel F).
+        el('section', { class: 'plan-card plan-sun', 'aria-label': 'Sun report', tabindex: 0 }, icon(ICONS.sun, 28),
+          el('div', {},
+            el('p', {}, el('strong', {}, 'Sun report'), ' ', forecast),
+            game.run.start === sky.featured?.sept2017?.start
+              ? el('p', { class: 'plan-storm-tip' }, 'Sept 2017 tip: big flares give no warning. Fill the shelter walls early and take turns going outside.')
+              : null)),
+        game.lastSummary ? el('p', { class: 'plan-last-sol', role: 'status' }, game.lastSummary) : null,
+        waterWarning(s),
+        el('div', { class: 'plan-stage' }, stage.el, callouts.toggle),
+        selectedSlot,
+        el('section', { class: 'plan-crew', 'aria-label': 'Your crew' },
+          el('p', { class: 'plan-cap' }, 'Your crew'), hint,
+          el('div', { class: 'plan-crew-row' }, ...cards.map((x) => x.b)))),
+      el('aside', { class: 'plan-side', 'aria-label': 'Status and station' },
+        el('section', { class: 'plan-card plan-status', 'aria-label': 'Status' },
+          el('p', { class: 'plan-cap' }, 'Status'), game.lamps.el,
+          el('div', { class: 'plan-gauges' }, ...Object.values(game.gauges).map((g) => g.el))),
+        el('section', { class: 'plan-card plan-tabs' },
+          el('div', { class: 'plan-tablist', role: 'tablist', 'aria-label': 'Panel', onkeydown: tabKeys }, ...tabs), ...panels),
+        el('section', { class: 'plan-end', 'aria-label': 'End the sol' },
+          endSol.el, el('p', { class: 'plan-quiet' }, 'Lift the cover, then press END SOL.')))),
   );
+  soundSlot.replaceWith(sound.el);
+  motionSlot.replaceWith(motion.el);
+  topBar.remove();
+  app.className = 'is-plan';
   updateInstruments();
+
+  // The stage layout swaps live; the phone card goes back under the stage in the same task as the update.
+  const mq = window.matchMedia?.(PLAN_NARROW_QUERY);
+  const relayout = () => {
+    layout = layoutFor(PLAN_NARROW_QUERY);
+    stage.update({ layout });
+    callouts.update({ layout });
+    if (layout === 'phone') selectedSlot.append(callouts.el);
+  };
+  mq?.addEventListener?.('change', relayout);
+  leave = () => { stage.destroy(); mq?.removeEventListener?.('change', relayout); };
 }
 
 // Thirst ends the whole run, so warn before it happens, not after.
@@ -221,6 +430,7 @@ function waterWarning(s) {
 
 // ---------- Rescue ----------
 function rescue() {
+  game.rescueNote = null; // a storm left for the credits and played again must not keep the old note
   const s = game.state;
   const sol = today();
   const outside = s.crew.filter((c) => !c.home && JOBS[game.placements[c.id]]?.where === 'outside');
@@ -380,7 +590,8 @@ function credits() {
       <li>Water as both life support and shielding: <a href="https://www.nasa.gov/general/water-walls-highly-reliable-and-massively-redundant-life-support-architecture" target="_blank" rel="noopener">NASA Water Walls</a>.</li>
     </ul>`;
   card.querySelector('.fetched').textContent = sky?.fetched ? `fetched ${sky.fetched}` : '(sample placeholder)';
-  card.append(el('p', {}, button('Back', () => { location.hash = ''; title(); })));
+  // Back to the plan for the same sol while a run is going (its placements kept), else to the title.
+  card.append(el('p', {}, button('Back', () => { location.hash = ''; if (game && !game.state.over) plan(); else title(); })));
   show(card);
 }
 

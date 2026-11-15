@@ -102,7 +102,7 @@ async function launch({ mission = 'RANDOM WEEK', commander = false } = {}) {
 const nameOfCrew = (id) => newGame().crew.find((c) => c.id === id).name;
 function place(id, job) {
   btn(new RegExp(`^${nameOfCrew(id)},`)).click();
-  btn(new RegExp(`^${esc(JOBS[job].name)}:`)).click();
+  btn(new RegExp(`^${esc(JOBS[job].name)}: .*Send ${esc(nameOfCrew(id))} here$`)).click(); // its hotspot on the stage
 }
 // Play END SOL (bringing nobody in on a rescue) until the report.
 async function playToReport() {
@@ -118,7 +118,7 @@ const GAUGES = { power: 'Power', tank: 'Water tank', wall: 'Wall water', science
 const MAX = { power: LIMITS.power, tank: LIMITS.tank, wall: LIMITS.wall, science: SCIENCE_GOAL };
 const gauges = () => Object.fromEntries(Object.entries(GAUGES).map(([k, label]) => [k, Number(app().querySelector(`[role="meter"][aria-label="${label}"]`).getAttribute('aria-valuenow'))]));
 const expGauges = (s) => Object.fromEntries(Object.keys(GAUGES).map((k) => [k, Math.min(Math.max(s[k], 0), MAX[k])]));
-// Map tokens: "Ana, radiation 12/100, at Lab".
+// Crew cards: "Ana, radiation 12/100, at Lab".
 function crewOnMap() {
   const out = {};
   for (const n of appButtons()) {
