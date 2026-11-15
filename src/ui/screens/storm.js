@@ -78,7 +78,7 @@ export function render(model, { onBring, onReady } = {}) {
     return row;
   }
 
-  // Removing a focused control would drop focus to <body>: hand it to the next Bring button, else the finish button.
+  // Removing a focused control would drop focus to <body>: hand it to the first remaining Bring button, else the finish button.
   // `focused` is what had focus when the row pass began (a reorder may already have blurred it).
   let focused = null;
   function removeKeepingFocus(node) {

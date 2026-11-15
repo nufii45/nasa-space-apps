@@ -458,21 +458,51 @@ describe('Storm takeover (W11)', () => {
     expect(document.activeElement).toBe(button(other.el, '?'));
   });
 
-  it('rows follow the model order after update(), as the same nodes, keeping focus', () => {
-    const r = (id, name) => ({ id, name, where: 'Lab', status: 'out' });
-    const names = (root) => [...root.querySelectorAll('.sc-row strong')].map((n) => n.textContent);
+  // Browsers blur an element when its node is moved; jsdom keeps focus. Make the row list behave like a browser
+  // so the view's focus restore is really exercised.
+  const blurOnMove = (root) => {
+    const list = root.querySelector('.sc-rows');
+    const insertBefore = list.insertBefore.bind(list);
+    list.insertBefore = (node, ref) => {
+      if (node.contains(document.activeElement)) document.activeElement.blur();
+      return insertBefore(node, ref);
+    };
+  };
+  const r = (id, name, status = 'out') => ({ id, name, where: 'Lab', status });
+  const names = (root) => [...root.querySelectorAll('.sc-row strong')].map((n) => n.textContent);
+
+  it('the browser stand-in really blurs a moved node', () => {
+    const view = mount(storm(STORM({ rows: [r('a', 'A'), r('c', 'C')] }), {}));
+    blurOnMove(view.el);
+    const list = view.el.querySelector('.sc-rows');
+    button(view.el, 'Bring C inside').focus();
+    list.insertBefore(list.lastElementChild, list.firstElementChild);
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it('rows follow the model order after update(), as the same nodes; the moved row keeps focus', () => {
     const view = mount(storm(STORM({ rows: [r('a', 'A'), r('b', 'B'), r('c', 'C')] }), {}));
+    blurOnMove(view.el);
     const nodes = [...view.el.querySelectorAll('.sc-row')];
-    const bringA = button(view.el, 'Bring A inside');
-    bringA.focus();
-    view.update(STORM({ rows: [r('c', 'C'), r('a', 'A'), r('b', 'B')] }));
+    const bringC = button(view.el, 'Bring C inside');
+    bringC.focus();
+    view.update(STORM({ rows: [r('c', 'C'), r('a', 'A'), r('b', 'B')] })); // only C moves
     expect(names(view.el)).toEqual(['C', 'A', 'B']);
     expect([...view.el.querySelectorAll('.sc-row')]).toEqual([nodes[2], nodes[0], nodes[1]]);
-    expect(document.activeElement).toBe(bringA);
-    // A new row lands where the model puts it, not at the end.
+    expect(document.activeElement).toBe(bringC);
+    // A new row lands where the model puts it, not at the end; moving A and B around it keeps focus on C.
     view.update(STORM({ rows: [r('c', 'C'), r('d', 'D'), r('a', 'A'), r('b', 'B')] }));
     expect(names(view.el)).toEqual(['C', 'D', 'A', 'B']);
-    expect(document.activeElement).toBe(bringA);
+    expect(document.activeElement).toBe(bringC);
+  });
+
+  it('the focused row moves and leaves "out" in one update: focus goes to the first remaining Bring button', () => {
+    const view = mount(storm(STORM({ rows: [r('a', 'A'), r('b', 'B'), r('c', 'C')] }), {}));
+    blurOnMove(view.el);
+    button(view.el, 'Bring C inside').focus();
+    view.update(STORM({ rows: [r('c', 'C', 'walk'), r('a', 'A'), r('b', 'B')] }));
+    expect(names(view.el)).toEqual(['C', 'A', 'B']);
+    expect(document.activeElement).toBe(button(view.el, 'Bring A inside'));
   });
 
   it('total 0 and left 0 without time\'s up: no NaN, buttons still work', () => {
@@ -504,7 +534,7 @@ describe('Storm takeover (W11)', () => {
     expect(heading(view.el)).toBe(h);
   });
 
-  it('when the focused Bring button goes away, focus moves to the next Bring button, then Ready', () => {
+  it('when the focused Bring button goes away, focus moves to the first remaining Bring button, then Ready', () => {
     const rows = (ana, dee) => [{ id: 'ana', name: 'Ana', where: 'Lab', status: ana }, { id: 'dee', name: 'Dee', where: 'Rover trip', status: dee }];
     const view = mount(storm(STORM({ rows: rows('out', 'out') }), {}));
     button(view.el, 'Bring Ana inside').focus();
