@@ -308,10 +308,12 @@ function resolve(rescued) {
 // ---------- Sol result ----------
 // Each gauge's word on the card, and a why for each direction. The card shows net changes and step()'s log
 // gives gross amounts, so a why never quotes a number: it is a fixed sentence true whenever its line shows.
+// A rise can only come from a job, and the caps only throw gain away, so "made more than used" holds. A fall
+// can be the cap clipping a gain, so the down sentences make no comparison (cold and thirsty sols included).
 // Empty when that direction cannot happen (walls and science never go down).
 const CHANGES = {
-  power: { word: 'power', up: 'The Solar Field made more power than the base used.', down: 'The base used more power than it made.' },
-  tank: { word: 'water', up: 'The Recycler made more water than the base used.', down: 'The base used more water than it made.' },
+  power: { word: 'power', up: 'The Solar Field made more power than the base used.', down: 'The base used up power.' },
+  tank: { word: 'water', up: 'The Recycler made more water than the base used.', down: 'The base used up water.' },
   wall: { word: 'shield', up: 'Water was pumped into the shelter walls.', down: '' },
   science: { word: 'science', up: 'The crew did science.', down: '' },
 };

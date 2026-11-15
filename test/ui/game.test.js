@@ -398,8 +398,8 @@ describe('sol result card', () => {
   it('each why agrees with its line, also when a job ran but its gauge went the other way', async () => {
     // The card's sentence for each gauge and direction (walls and science never go down).
     const WHY = {
-      power: { up: 'The Solar Field made more power than the base used.', down: 'The base used more power than it made.' },
-      water: { up: 'The Recycler made more water than the base used.', down: 'The base used more water than it made.' },
+      power: { up: 'The Solar Field made more power than the base used.', down: 'The base used up power.' },
+      water: { up: 'The Recycler made more water than the base used.', down: 'The base used up water.' },
       shield: { up: 'Water was pumped into the shelter walls.' },
       science: { up: 'The crew did science.' },
     };
@@ -408,11 +408,15 @@ describe('sol result card', () => {
     await launch();
     const exp = model(runFor(sky));
     const ran = (job) => exp.solLines.some((l) => l.includes(JOBS[job].name));
+    // The cap threw part of a job's gain away (so "used more than it made" could be false), and the gauge still fell.
+    const clipped = (k, job, b, a) => ran(job) && b[k] + JOBS[job].effect[k] > LIMITS[k] && a[k] < b[k];
     // Each sol: its jobs, and a precondition from the sim that makes it the case under test.
     const sols = [
-      [{ ana: NEAR, ben: 'lab', cai: INSIDE }, (b, a) => ran(NEAR) && a.power < b.power], // power falls although the Solar Field ran
+      [{ ana: NEAR, ben: 'lab', cai: INSIDE }, (b, a) => clipped('power', NEAR, b, a)], // from START: power falls though the Solar Field made as much as was used
       [{ ana: NEAR, ben: 'pump', cai: INSIDE }, (b, a) => ran(INSIDE) && a.tank < b.tank && a.wall > b.wall], // water falls although the Recycler ran
       [{ ana: NEAR, ben: 'lab', cai: INSIDE }, (b, a) => ran(INSIDE) && a.tank > b.tank], // an ordinary Recycler sol
+      [{ ana: NEAR, ben: 'lab', cai: INSIDE }, (b, a) => ran(INSIDE) && a.tank > b.tank],
+      [{ ana: NEAR, ben: 'pump', cai: INSIDE }, (b, a) => b.tank === 8 && b.wall === 4 && clipped('tank', INSIDE, b, a)], // tank 8, wall 4: made 4, used 4, still fell
     ];
     const KEY = { power: 'power', tank: 'water', wall: 'shield', science: 'science' };
     for (const [p, isCase] of sols) {
@@ -426,6 +430,7 @@ describe('sol result card', () => {
         return [`${d > 0 ? '+' : '−'}${Math.abs(d)} ${word}`, WHY[word][d > 0 ? 'up' : 'down']];
       }));
       expect(whys()).toEqual(want);
+      for (const why of Object.values(whys())) if (/^The base/.test(why)) expect(why).not.toMatch(/ than /); // no comparison a cap can break
       expectWhysWithoutAmounts();
       await nextSol();
     }

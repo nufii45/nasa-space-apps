@@ -255,6 +255,32 @@ describe('resume after a refresh', () => {
     expect(report).toEqual(unbroken.report);
   });
 
+  it('a crew name with markup in the save stays plain text on the plan, the Sol result card and the report', async () => {
+    const NAME = '<img src=x onerror=1>';
+    const state = newGame();
+    state.crew[0].name = NAME;
+    // Doses so that Ben and Cai go home after one sol, and the renamed astronaut the sol after: card, then report.
+    state.crew.forEach((c, i) => { c.dose = i ? LIMITS.dose - 1 : LIMITS.dose - 2; });
+    const run = buildRun(makeSky([]), { mode: 'cadet', featured: null, seed: 1 });
+    localStorage.setItem(KEY, JSON.stringify({ v: 1, state, run, mode: 'cadet', mission: 'random', placements: {} }));
+    await boot(makeSky([]));
+    btn('Resume').click();
+    await settle();
+    const noMarkup = () => expect(document.querySelector('img, [onerror]')).toBeNull();
+    expect(heading()).toBe(`Sol 1 of ${SOLS_PER_RUN}`);
+    expect(appButtons().some((n) => n.startsWith(`${NAME}, radiation`))).toBe(true);
+    noMarkup();
+    await pressCovered('END SOL');
+    expect(onCard()).toBe(true);
+    expect(text(app().querySelector('.sc-dose'))).toMatch(new RegExp(`^${esc(NAME)} \\+1 radiation`));
+    noMarkup();
+    await nextSol();
+    await pressCovered('END SOL');
+    expect(onReport()).toBe(true);
+    expect(app().querySelector('.sc-reason').textContent).toBe(`${NAME}, Ben and Cai got too much radiation.`);
+    noMarkup();
+  });
+
   it('saved placements are normalised again, never trusted', async () => {
     const save = await saveAtSol4();
     localStorage.setItem(KEY, JSON.stringify({ ...save, placements: { ana: 'lab', ben: 'lab', cai: 'no-such-job' } }));
