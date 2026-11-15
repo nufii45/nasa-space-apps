@@ -64,6 +64,7 @@ function btn(re) {
   return found[0];
 }
 const heading = () => app().querySelector('h1, h2')?.textContent;
+const onReport = () => app().querySelector('.sc-kicker')?.textContent === 'Mission report';
 const onCard = () => /^Sol \d+ done$/.test(heading() ?? ''); // the Sol result card after a sol
 async function pressCovered(label) {
   btn(`Lift the safety cover over ${label}`).click();
@@ -99,9 +100,9 @@ describe('saving the run', () => {
     await pressCovered('LAUNCH');
     place('ana', NEAR); place('ben', FAR);
     let sols = 0;
-    while (heading() !== 'Mission report') {
+    while (!onReport()) {
       await pressCovered('END SOL');
-      if (heading() !== 'Mission report' && !onCard()) { btn('Done').click(); await settle(); } // rescue screen
+      if (!onReport() && !onCard()) { btn('Done').click(); await settle(); } // rescue screen
       if (onCard()) { sols += 1; expect(saved().state.sol).toBe(sols + 1); btn('NEXT SOL →').click(); await settle(); }
     }
     expect(sols).toBeGreaterThan(0); // precondition: a save existed before the report

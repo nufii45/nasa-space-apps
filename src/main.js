@@ -1,4 +1,4 @@
-// Screen controller: title -> (plan -> [rescue]) x up to 10 sols -> debrief, plus #credits.
+// Screen controller: title -> (plan -> [rescue] -> sol result) x up to 10 sols -> report, plus #credits.
 // Rules live in src/sim/; this file only calls them and draws the result with the console kit.
 import { newGame, step, needsRescue, normalisePlacements } from './sim/sim.js';
 import { buildRun } from './sim/sky.js';
@@ -8,12 +8,13 @@ import {
 } from './sim/constants.js';
 import {
   createKnob, createToggle, createCoverButton, createGauge, createLamps,
-  createMissionLog, createInfoDrawer, createTickerTape, createMuteSwitch, play,
+  createMissionLog, createInfoDrawer, createMuteSwitch, play,
 } from './ui/console/index.js';
 import { el } from './ui/console/util.js';
 import { jobCard } from './ui/jobInfo.js';
 import { createOutpostMap } from './ui/map/index.js';
 import { render as solResultView } from './ui/screens/solResult.js';
+import { render as reportView } from './ui/screens/report.js';
 
 // Warning thresholds for gauges and lamps, derived from the rules so retuning keeps them meaningful.
 const LOW = { power: HEATER_COST, tank: DRINK_PER_SOL };
@@ -25,7 +26,7 @@ document.body.append(drawer.el);
 document.body.prepend(el('header', { class: 'top-bar' }, createMuteSwitch().el));
 
 let sky = null;
-let game = null; // { state, run, mode, mission, placements, log, gauges, lamps, rescueTimer, tapeLines }
+let game = null; // { state, run, mode, mission, placements, log, gauges, lamps, rescueTimer }
 
 // The run is saved after each sol so a refresh can resume it. Storage can throw (private mode, full,
 // blocked); the game must play on without it. Pass null to clear.
@@ -52,10 +53,9 @@ function show(...nodes) {
 const heading = (tag, text) => el(tag, { tabindex: -1 }, text);
 const button = (text, onclick, cls) => el('button', { type: 'button', class: cls, onclick }, text);
 
-// Stop the old run's log and ticker tape queues; the line being typed still finishes (the kit has no abort).
+// Stop the old run's log queue; the line being typed still finishes (the kit has no abort).
 function stopGame() {
   game?.log.clear();
-  if (game?.tapeLines) game.tapeLines.length = 0; // the tape's for...of loop ends when its array is emptied
 }
 
 // ---------- Title ----------
@@ -294,52 +294,41 @@ function solResult(before, sol, log) {
 }
 
 // ---------- Debrief ----------
+const andList = (names) => (names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0]);
+
 function debrief() {
+  save(null);
   const s = game.state;
   const r = game.run;
   // A run can end early (win, or everyone home); only count the sols that were played (state.sol is the last one).
   const played = r.sols.filter((x) => x.sol <= s.sol);
-  const big = played.filter((x) => x.storm && needsRescue(x.storm));
   // Say plainly why the run ended; a loss should never read like a win.
-  const thirstEnd = s.thirstyStreak >= THIRSTY_SOLS_TO_GO_HOME;
-  const headline = s.result === 'win'
-    ? `Mission complete! ${'★'.repeat(s.stars)}${'☆'.repeat(3 - s.stars)}`
+  const reason = s.result === 'win'
+    ? `Well done! You got ${s.science} science${s.crew.every((c) => !c.home) ? ' and the whole crew stayed safe' : ''}.`
     : s.result === 'home'
-      ? (thirstEnd ? 'Mission over: the water ran out, so the crew had to go home.' : 'Mission over: everyone got too much radiation and had to go home.')
-      : `Time is up: the supply ship is here. You needed ${SCIENCE_GOAL - s.science} more science.`;
-  const tip = s.thirstySols ? 'Tip: keep someone on the Recycler before the drinking water gets low.'
-    : s.coldSols ? 'Tip: the Solar Field keeps the heaters on. No power, no science.'
-    : s.crew.some((c) => c.home) ? 'Tip: take turns going outside so nobody gets too much radiation.'
-    : 'Tip: pump water into the walls when a CME is in the forecast.';
-  save(null);
-  const tape = createTickerTape();
+      ? (s.thirstyStreak >= THIRSTY_SOLS_TO_GO_HOME
+        ? `The water ran out ${THIRSTY_SOLS_TO_GO_HOME} sols in a row.`
+        : `${andList(s.crew.filter((c) => c.home).map((c) => c.name))} got too much radiation.`)
+      : `You needed ${SCIENCE_GOAL - s.science} more science.`;
+  const tip = s.thirstySols ? 'Keep someone on the Recycler before the drinking water gets low.'
+    : s.coldSols ? 'The Solar Field keeps the heaters on. No power, no science.'
+    : s.crew.some((c) => c.home) ? 'Take turns going outside so nobody gets too much radiation.'
+    : 'Pump water into the walls when a CME is in the forecast.';
   const { mode, mission } = game;
-  show(
-    sampleBanner(),
-    el('section', { class: 'card' },
-      heading('h2', 'Mission report'),
-      tape.el,
-      r.start === sky.featured?.sept2017?.start
-        ? el('p', {}, 'In September 2017 a big solar storm hit Mars. Curiosity, NASA\'s robot car on Mars, measured more than twice as much radiation as ever before. MAVEN, a NASA spacecraft that flies around Mars, saw the whole sky glow with aurora (colourful lights, like the northern lights on Earth). ',
-          el('a', { href: 'https://www.jpl.nasa.gov/news/large-solar-storm-sparks-global-aurora-and-doubles-radiation-levels-on-the-martian-surface/', target: '_blank', rel: 'noopener' }, 'Read the NASA story'))
-        : null),
-    el('p', { class: 'row' },
-      button('Try again', () => start({ mode, mission }), 'primary'),
-      button('Change mission', () => title({ mode, mission })),
-      button('Title', () => title())),
-    game.log.el,
-  );
+  const view = reportView({
+    ending: s.result, stars: s.stars, reason, science: s.science, scienceGoal: SCIENCE_GOAL,
+    sky: { start: r.start, end: played.at(-1).date, sample: !!r.sample },
+    storms: played.filter((x) => needsRescue(x.storm)).map((x) => ({
+      label: x.storm.kind === 'cme' ? 'Storm cloud (CME)' : `Sun flash (flare class ${x.storm.cls})`, date: x.date,
+    })),
+    tip, sept2017: r.start === sky.featured?.sept2017?.start,
+  }, {
+    onTryAgain: () => start({ mode, mission }),
+    onChangeMission: () => title({ mode, mission }),
+    onTitle: () => title(),
+  });
+  show(sampleBanner(), view.el, game.log.el);
   if (s.result === 'win') play('cheer');
-  tape.print(game.tapeLines = [
-    { text: headline, strong: true },
-    `Science: ${s.science}/${SCIENCE_GOAL}`,
-    `Your sky: ${r.start} to ${played.at(-1).date}${r.sample ? ' (sample data)' : ', recorded by NASA'}`,
-    ...(big.length
-      ? [`${big.length} storm${big.length > 1 ? 's' : ''} reached the base:`,
-        ...big.map((x) => (x.storm.kind === 'cme' ? `Storm cloud (CME) on ${x.date}` : `Sun flash (flare class ${x.storm.cls}) on ${x.date}`))]
-      : ['The Sun was quiet that week.']),
-    tip,
-  ]);
 }
 
 // ---------- Credits ----------
