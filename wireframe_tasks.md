@@ -26,52 +26,18 @@ and the wireframe board to match.
 
 ## Decisions needed from the user before starting
 
-- [ ] **D1. Help tab name.** The wireframes say "Numbers". The live game says "How much" (changed
+- [x] **D1. Help tab name.** The wireframes say "Numbers". The live game says "How much" (changed
   tonight after the Grok test). Pick one. (numbers)
-- [ ] **D2. Storm lamp word.** The wireframes say COMING (storm forecast) and ALERT (storm now).
+- [x] **D2. Storm lamp word.** The wireframes say COMING (storm forecast) and ALERT (storm now).
   The live game says WATCH OUT. Pick one. (watch out)
-- [ ] **D3. Isometric SVG, not WebGL** (record as a proposed decision in Obsidian). Reason: same
+- [x] **D3. Isometric SVG, not WebGL** (record as a proposed decision in Obsidian). Reason: same
   look as the reference, works on school Chromebooks, no new dependency, every hotspot stays a
   real button. (approved)
-- [ ] **D4. Fonts.** Barlow, Barlow Semi Condensed and JetBrains Mono need either a Google Fonts
+- [x] **D4. Fonts.** Barlow, Barlow Semi Condensed and JetBrains Mono need either a Google Fonts
   link (a network request on every load) or self-hosted files in `public/fonts/` (no
   dependency, about 200 KB). Recommended: self-host. (approved)
 
 ## Tier 1: small, safe, existing UI (OK before the freeze)
-
-- [ ] **W1. Try again keeps the mission and rank.**
-  Today "Try again" always starts a random week, even after the Sept 2017 mission.
-  - Acceptance: Try again restarts with the same mission and mode. A new "Change mission"
-    button returns to the title with the previous choices still set. A UI test covers both.
-  - Owns: `src/main.js`, `test/ui/game.test.js`.
-  - Board: `Report.dc.html` (buttons row).
-
-- [ ] **W2. Sol result card between sols.**
-  After END SOL (and after a rescue), show a short card of what changed, then the next plan.
-  - Acceptance: lists only the changes, each with a word: "+5 power", "−2 water", "+6 science",
-    and one line for each astronaut whose radiation went up ("Ana +20 radiation", with the meter
-    before → after). NEXT SOL is the only button; Enter works; focus lands on the heading. The
-    last sol goes straight to the report. Update the tests that expect the plan screen right
-    after a sol.
-  - Owns: `src/main.js`, `src/styles.css`, `test/ui/game.test.js`.
-  - Board: `SolResult.dc.html`, `SolResultPhone.dc.html`.
-
-- [ ] **W3. Three clearly different endings.**
-  - Acceptance: win (teal), crew went home (orange) and out of time (navy) each get their own
-    colour and picture. The reason is the big line under the headline. For a crew going home,
-    say why: "The water ran out 2 sols in a row" or "Ana got too much radiation". A UI test
-    checks the headline and reason text for each ending.
-  - Owns: `src/main.js`, `src/styles.css`, `test/ui/game.test.js`.
-  - Board: `Report.dc.html`, `ReportHome.dc.html`, `ReportTime.dc.html`.
-
-- [ ] **W4. Resume after a refresh.**
-  - Acceptance: after each sol, save the run in `localStorage` (state, run window, mode, mission,
-    placements). On load, if a run is saved, show "Resume your mission? Sol 4 of 10 · Sept 2017 ·
-    Commander" with Resume and Start over. Finishing a run clears the save. The game still
-    starts normally if storage throws. Tests cover saving, resuming, starting over and blocked
-    storage.
-  - Owns: `src/main.js`, `test/ui/game.test.js` (or a new `test/ui/resume.test.js`).
-  - Board: `States.dc.html` panel D, `StatesPhone.dc.html`.
 
 ## Tier 2: the 3D console (after the submission)
 
@@ -118,7 +84,8 @@ and the wireframe board to match.
   - Owns: `src/main.js`, `src/styles.css`, `test/ui/game.test.js`.
   - Board: `Main.dc.html`, `PhonePlan.dc.html`.
 
-- [ ] **W10. Flat map fallback.**
+- [ ] **W10. Flat map fallback.** CUT by the user on 2026-11-15 (the flat map uses SVG too, so
+  "when SVG fails" cannot trigger; see decision 0010). Do not build.
   - Acceptance: the current `src/ui/map/` stays as the fallback when SVG fails or the player
     turns 3D off, with the notice "Simple map: your device can't show the 3D view." Both paths
     are covered by tests.
@@ -173,3 +140,41 @@ and the wireframe board to match.
 ## Done
 
 (Move tasks here with the date and commit when finished.)
+
+- [x] **W1. Try again keeps the mission and rank.**
+  Today "Try again" always starts a random week, even after the Sept 2017 mission.
+  - Acceptance: Try again restarts with the same mission and mode. A new "Change mission"
+    button returns to the title with the previous choices still set. A UI test covers both.
+  - Owns: `src/main.js`, `test/ui/game.test.js`.
+  - Board: `Report.dc.html` (buttons row).
+  - Done 2026-11-15, merged into `feat/wireframes` at `7cb153e` (reviewer APPROVE, QA PASS).
+
+- [x] **W2. Sol result card between sols.**
+  After END SOL (and after a rescue), show a short card of what changed, then the next plan.
+  - Acceptance: lists only the changes, each with a word: "+5 power", "−2 water", "+6 science",
+    and one line for each astronaut whose radiation went up ("Ana +20 radiation", with the meter
+    before → after). NEXT SOL is the only button; Enter works; focus lands on the heading. The
+    last sol goes straight to the report. Update the tests that expect the plan screen right
+    after a sol.
+  - Owns: `src/main.js`, `src/styles.css`, `test/ui/game.test.js`.
+  - Board: `SolResult.dc.html`, `SolResultPhone.dc.html`.
+  - Done 2026-11-15, merged into `feat/wireframes` at `846eb48` (reviewer APPROVE, QA PASS).
+
+- [x] **W3. Three clearly different endings.**
+  - Acceptance: win (teal), crew went home (orange) and out of time (navy) each get their own
+    colour and picture. The reason is the big line under the headline. For a crew going home,
+    say why: "The water ran out 2 sols in a row" or "Ana got too much radiation". A UI test
+    checks the headline and reason text for each ending.
+  - Owns: `src/main.js`, `src/styles.css`, `test/ui/game.test.js`.
+  - Board: `Report.dc.html`, `ReportHome.dc.html`, `ReportTime.dc.html`.
+  - Done 2026-11-15, merged into `feat/wireframes` at `846eb48` (reviewer APPROVE, QA PASS).
+
+- [x] **W4. Resume after a refresh.**
+  - Acceptance: after each sol, save the run in `localStorage` (state, run window, mode, mission,
+    placements). On load, if a run is saved, show "Resume your mission? Sol 4 of 10 · Sept 2017 ·
+    Commander" with Resume and Start over. Finishing a run clears the save. The game still
+    starts normally if storage throws. Tests cover saving, resuming, starting over and blocked
+    storage.
+  - Owns: `src/main.js`, `test/ui/game.test.js` (or a new `test/ui/resume.test.js`).
+  - Board: `States.dc.html` panel D, `StatesPhone.dc.html`.
+  - Done 2026-11-15, merged into `feat/wireframes` at `846eb48` (reviewer APPROVE, QA PASS).
