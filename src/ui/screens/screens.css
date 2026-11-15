@@ -1,5 +1,5 @@
 /* Screen views (src/ui/screens): Sol result, report, resume, storm, title. Tokens from docs/wireframes/README.md. */
-.sc-screen, .sc-storm {
+.sc-screen, .sc-storm, .sc-title {
   --sc-paper: #F6EDDD;
   --sc-card: #F9F2E5;
   --sc-line: #CEC0AD;
@@ -144,6 +144,34 @@
 .sc-storm-actions .sc-quiet { font-size: 13px; }
 .sc-btn.sc-ready { min-height: 56px; padding: 0 32px; font-size: 20px; letter-spacing: 0.1em; }
 
+/* Title (W13): paper with a grid, the turning stage behind, the console card in front. */
+.sc-title {
+  position: relative; box-sizing: border-box; min-height: 100vh; overflow: hidden; padding: 72px 16px 56px;
+  background-color: var(--sc-paper, #F6EDDD);
+  background-image: linear-gradient(#EDE2CE 1px, transparent 1px), linear-gradient(90deg, #EDE2CE 1px, transparent 1px);
+  background-size: 32px 32px; color: #18213D; font-family: Barlow, system-ui, sans-serif;
+}
+.sc-backdrop { position: absolute; inset: 0; z-index: 0; opacity: 0.5; pointer-events: none; }
+.sc-title-bar { position: absolute; top: 12px; left: 16px; right: 16px; z-index: 2; display: flex; align-items: flex-start; gap: 8px; }
+.sc-sample {
+  margin: 0; max-width: 220px; padding: 8px 12px; border-radius: 10px; background: #C0652D; color: #FFFFFF;
+  font: 700 12px 'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif; letter-spacing: 0.08em;
+}
+.sc-sample[hidden] { display: none; }
+.sc-sound { margin-left: auto; }
+.sc-screen.sc-title-card { position: relative; z-index: 1; max-width: 640px; margin: 0 auto; padding: 28px 32px; gap: 22px; }
+.sc-title-head { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
+.sc-logo { width: 56px; height: 56px; border-radius: 16px; background: var(--sc-ink); display: flex; align-items: center; justify-content: center; }
+.sc-title-head h1.sc-h { font-size: 48px; line-height: 1; letter-spacing: 0.08em; }
+.sc-screen h1[tabindex='-1']:focus { outline: none; }
+.sc-tagline { font-size: 17px; }
+.sc-controls { display: flex; justify-content: space-around; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.sc-ctl { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.sc-ctl-hint { max-width: 170px; text-align: center; font-size: 13px; color: var(--sc-quiet); }
+/* The kit's own rings are 4 px amber; on this screen every control gets the 3 px teal ring instead. */
+.sc-title :is(button, [tabindex]:not([tabindex='-1'])):focus-visible { outline: 3px solid var(--sc-teal); outline-offset: 3px; box-shadow: none; }
+.sc-foot { position: absolute; left: 0; right: 0; bottom: 18px; z-index: 1; margin: 0; text-align: center; font-size: 13px; color: #4A5270; }
+
 /* Phone (390 px) */
 @media (max-width: 720px) {
   .sc-screen { margin: 12px; width: auto; padding: 18px 16px; }
@@ -160,12 +188,16 @@
   .sc-ring { width: 96px; height: 96px; }
   .sc-ring-num { font-size: 32px; }
   .sc-btn.sc-bring { margin-left: 0; }
+  .sc-title { padding: 120px 0 56px; }
+  .sc-screen.sc-title-card { margin: 0 16px; padding: 18px 14px; gap: 18px; }
+  .sc-title-head h1.sc-h { font-size: 34px; }
+  .sc-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); justify-items: center; gap: 16px 8px; }
 }
 
 /* Motion off: the OS setting, or the game's own switch (class on <html>). */
 @media (prefers-reduced-motion: reduce) {
-  .sc-screen *, .sc-screen, .sc-storm * { transition: none !important; animation: none !important; }
+  .sc-screen *, .sc-screen, .sc-storm *, .sc-title * { transition: none !important; animation: none !important; }
   .sc-btn:active { transform: none; }
 }
-.reduced-motion :is(.sc-screen, .sc-screen *, .sc-storm *) { transition: none !important; animation: none !important; }
+.reduced-motion :is(.sc-screen, .sc-screen *, .sc-storm *, .sc-title *) { transition: none !important; animation: none !important; }
 .reduced-motion .sc-btn:active { transform: none; }

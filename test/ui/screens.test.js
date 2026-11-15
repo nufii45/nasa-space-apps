@@ -7,6 +7,7 @@ import { render as solResult } from '../../src/ui/screens/solResult.js';
 import { render as report } from '../../src/ui/screens/report.js';
 import { render as resume } from '../../src/ui/screens/resume.js';
 import { render as storm } from '../../src/ui/screens/storm.js';
+import { render as title } from '../../src/ui/screens/title.js';
 
 afterEach(() => { document.body.innerHTML = ''; });
 
@@ -479,5 +480,94 @@ describe('Storm takeover (W11)', () => {
     expect(el.querySelector('b, i')).toBeNull();
     expect(text(heading(el))).toBe(NASTY);
     expect(text(el)).toContain(`Outside at the ${NASTY}`);
+  });
+});
+
+describe('Title (W13)', () => {
+  const knob = (root) => root.querySelector('[role="slider"][aria-label="Mission"]');
+  const rankSwitch = (root) => root.querySelector('[role="switch"][aria-label="Commander mode"]');
+  const launch = (root) => {
+    root.querySelector('button[aria-label="Lift the safety cover over LAUNCH"]').click();
+    root.querySelector('.oc-big-button').click();
+  };
+  const banner = (root) => root.querySelector('.sc-sample');
+
+  it('logo, h1 with tabindex -1, the tagline and the archived-data footer (never "live")', () => {
+    const { el } = mount(title({ mission: 'random', mode: 'cadet', sample: false }, {}));
+    const h = heading(el);
+    expect(h.tagName).toBe('H1');
+    expect(h.getAttribute('tabindex')).toBe('-1');
+    expect(text(h)).toBe('Outpost Dial');
+    expect(el.querySelector('.sc-logo svg')).not.toBeNull();
+    expect(text(el.querySelector('.sc-tagline'))).toBe('Run a base on Mars for 10 sols.');
+    expect(text(el.querySelector('.sc-foot'))).toBe('Storm data: NASA DONKI (archived, real dates)');
+    expect(text(el)).not.toMatch(/\blive\b/i);
+  });
+
+  it('the Sound switch is there', () => {
+    const { el } = mount(title({ mission: 'random', mode: 'cadet' }, {}));
+    expect(el.querySelector('[role="switch"][aria-label="Sound"]')).not.toBeNull();
+  });
+
+  it('the SAMPLE DATA banner shows only when sample is true', () => {
+    const view = mount(title({ mission: 'random', mode: 'cadet', sample: true }, {}));
+    expect(banner(view.el).hidden).toBe(false);
+    expect(text(banner(view.el))).toMatch(/^SAMPLE DATA/);
+    view.update({ mission: 'random', mode: 'cadet', sample: false });
+    expect(banner(view.el).hidden).toBe(true);
+    expect(mount(title({ mission: 'random', mode: 'cadet' }, {})).el.querySelector('.sc-sample').hidden).toBe(true);
+  });
+
+  it('knob and switch are set from the model, and update() sets them again', () => {
+    const view = mount(title({ mission: 'sept2017', mode: 'commander' }, {}));
+    expect(knob(view.el).getAttribute('aria-valuetext')).toBe('SEPT 2017');
+    expect(rankSwitch(view.el).getAttribute('aria-checked')).toBe('true');
+    expect(text(view.el)).toContain('A real giant storm from September 2017.');
+    expect(text(view.el)).toContain('Ages 10 to 12. Race a storm countdown.');
+    const k = knob(view.el);
+    view.update({ mission: 'random', mode: 'cadet' });
+    expect(knob(view.el)).toBe(k); // same control, patched
+    expect(knob(view.el).getAttribute('aria-valuetext')).toBe('RANDOM WEEK');
+    expect(rankSwitch(view.el).getAttribute('aria-checked')).toBe('false');
+    expect(text(view.el)).toContain('Ages 7 to 9. No timer.');
+  });
+
+  it('LAUNCH under its cover calls onLaunch with the model choices', () => {
+    const got = [];
+    const { el } = mount(title({ mission: 'random', mode: 'cadet' }, { onLaunch: (c) => got.push(c) }));
+    launch(el);
+    expect(got).toEqual([{ mission: 'random', mode: 'cadet' }]);
+  });
+
+  it('LAUNCH sends the changed knob and switch', () => {
+    const got = [];
+    const { el } = mount(title({ mission: 'random', mode: 'cadet' }, { onLaunch: (c) => got.push(c) }));
+    knob(el).dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    rankSwitch(el).click();
+    expect(text(el)).toContain('A real giant storm from September 2017.');
+    launch(el);
+    expect(got).toEqual([{ mission: 'sept2017', mode: 'commander' }]);
+  });
+
+  it('has an empty backdrop slot behind the controls', () => {
+    const { el } = mount(title({ mission: 'random', mode: 'cadet' }, {}));
+    const slot = el.querySelectorAll('[data-slot="backdrop"]');
+    expect(slot).toHaveLength(1);
+    expect(slot[0].childNodes).toHaveLength(0);
+    expect(el.firstElementChild).toBe(slot[0]); // first in the DOM, so it paints behind
+  });
+
+  it('model values are never shown as markup; an unknown mission falls back to RANDOM WEEK', () => {
+    const { el } = mount(title({ mission: '<b>x</b>', mode: '<i>y</i>', sample: '<b>z</b>' }, {}));
+    expect(el.querySelector('b, i')).toBeNull();
+    expect(knob(el).getAttribute('aria-valuetext')).toBe('RANDOM WEEK');
+    expect(rankSwitch(el).getAttribute('aria-checked')).toBe('false');
+    expect(banner(el).hidden).toBe(true); // only sample === true shows it
+  });
+
+  it('imports only the console kit, nothing from src/sim', () => {
+    const src = readFileSync(resolve(import.meta.dirname, '../../src/ui/screens/title.js'), 'utf8');
+    const imports = [...src.matchAll(/from\s*['"]([^'"]+)['"]/g)].map((m) => m[1]);
+    expect(imports).toEqual(['../console/util.js', '../console/index.js']);
   });
 });
