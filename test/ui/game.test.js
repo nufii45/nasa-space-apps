@@ -617,7 +617,7 @@ describe('help cards', () => {
     expect(drawer().querySelector('h2').textContent).toBe(j.name);
     const panel = () => drawer().querySelector('[role="tabpanel"]').textContent;
     const text = [panel()];
-    btn('How much', drawer()).click();
+    btn('Numbers', drawer()).click();
     text.push(panel(), drawer().querySelector('.oc-drawer-source').textContent);
     const allowed = [j.power, j.walkBackSeconds, ...Object.values(j.effect).map(Math.abs)].filter((n) => n != null);
     const numbers = text.join(' ').match(/\d+(\.\d+)?/g)?.map(Number) ?? [];
