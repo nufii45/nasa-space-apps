@@ -7,9 +7,9 @@ import {
   THIRSTY_SOLS_TO_GO_HOME, CREW,
 } from './sim/constants.js';
 import {
-  createCoverButton, createGauge, createLamps, createMissionLog, createInfoDrawer, createMuteSwitch, play,
+  createCoverButton, createGauge, createLamps, createMissionLog, createInfoDrawer, createMuteSwitch, createToggle, play,
 } from './ui/console/index.js';
-import { el, nextId } from './ui/console/util.js';
+import { el, nextId, reducedMotion } from './ui/console/util.js';
 import { jobCard } from './ui/jobInfo.js';
 import { render as solResultView } from './ui/screens/solResult.js';
 import { render as reportView } from './ui/screens/report.js';
@@ -27,10 +27,28 @@ const SHELTER = Object.keys(JOBS).find((id) => JOBS[id].where === 'shelter');
 const app = document.getElementById('app');
 const drawer = createInfoDrawer();
 document.body.append(drawer.el);
+// Reduced motion (W14): on by default when the device asks for it. It sets a class on <html> that the stage
+// and the styles read; the player's choice is remembered when storage works.
+const MOTION_KEY = 'outpost-dial.reduced-motion';
+function savedMotion() {
+  try {
+    const v = localStorage.getItem(MOTION_KEY);
+    if (v === '1' || v === '0') return v === '1';
+  } catch { /* storage blocked */ }
+  return reducedMotion();
+}
+const motion = createToggle({
+  label: 'Reduced motion', on: savedMotion(),
+  onChange(on) {
+    document.documentElement.classList.toggle('reduced-motion', on);
+    try { localStorage.setItem(MOTION_KEY, on ? '1' : '0'); } catch { /* storage blocked: it lasts this visit */ }
+  },
+});
+document.documentElement.classList.toggle('reduced-motion', motion.get());
 // One Sound switch per screen: the title view has its own, so title() takes the top bar off the page,
-// and the plan screen moves this switch into its rail.
+// and the plan screen moves these switches into its rail.
 const sound = createMuteSwitch();
-const topBar = el('header', { class: 'top-bar' }, sound.el);
+const topBar = el('header', { class: 'top-bar' }, sound.el, motion.el);
 
 let sky = null;
 let game = null; // { state, run, mode, mission, placements, log, gauges, lamps, lastSummary, rescueNote }
@@ -77,7 +95,7 @@ function show(...nodes) {
   leave?.();
   leave = null;
   drawer.close();
-  topBar.append(sound.el);
+  topBar.append(sound.el, motion.el);
   if (!topBar.isConnected) document.body.prepend(topBar);
   app.className = '';
   app.replaceChildren(...nodes.filter(Boolean));
@@ -133,6 +151,7 @@ function start({ mode, mission, state, run, placements }) {
       wall: createGauge({ label: 'Wall water', displayLabel: 'Shield', icon: '🛡', max: LIMITS.wall }),
       science: createGauge({ label: 'Science', icon: '🔬', max: SCIENCE_GOAL }),
     },
+    stageStill: false, // the player touched the stage this run, so it no longer turns by itself
     lamps: createLamps({ lamps: [
       { id: 'power', label: 'Power', icon: '⚡' },
       { id: 'water', label: 'Drinking water', icon: '💧' },
@@ -226,6 +245,10 @@ function plan() {
   const help = (id) => drawer.open(jobCard(id));
   const who = () => Object.fromEntries(Object.keys(JOBS).map((id) => [id, active.filter((c) => game.placements[c.id] === id).map((c) => c.name)]));
   const stage = createStage({ jobs: JOBS, crew: s.crew, placements: game.placements, picked, selected, mode: 'plan', layout, onStation: tap, onHelp: help });
+  // The stage stops turning on any input; once touched in a run, it stays still on the next sols too.
+  for (const t of ['pointerdown', 'keydown', 'wheel', 'focusin']) stage.el.addEventListener(t, () => { game.stageStill = true; });
+  // shortcut: the stage contract has no stop(), so send one of the inputs it stops on; use a stop() if it gets one.
+  if (game.stageStill) stage.el.dispatchEvent(new Event('wheel'));
   const callouts = createCallouts({ stage, stations: STATIONS, who: who(), selected, picked, layout, onSelect: tap, onHelp: help });
   const selectedSlot = el('div', { class: 'plan-selected' }); // phone: the selected station's card, under the stage
   if (layout === 'phone') selectedSlot.append(callouts.el);
@@ -320,6 +343,7 @@ function plan() {
   // Several CMEs can arrive on the same day; say each arrival day once.
   const forecast = [...new Set(sol.forecast.map((f) => f.inSols))].map((k) => `A cloud of Sun material (CME) is coming, about ${k} sol${k > 1 ? 's' : ''} away.`).join(' ') || 'Clear skies forecast. (The Sun can still surprise you.)';
   const soundSlot = el('span');
+  const motionSlot = el('span');
 
   drawTabs();
   draw();
@@ -329,7 +353,7 @@ function plan() {
       el('nav', { class: 'plan-rail', 'aria-label': 'Main menu' },
         navButton('Home', ICONS.home, () => app.querySelector('h1')?.focus(), { 'aria-current': 'page' }),
         navButton('How to play', ICONS.book, () => drawer.open(howToPlay())),
-        soundSlot,
+        soundSlot, motionSlot,
         navButton('Credits', ICONS.info, () => { location.hash = '#credits'; })),
       el('div', { class: 'plan-main' },
         el('header', { class: 'plan-head' },
@@ -361,6 +385,7 @@ function plan() {
           endSol.el, el('p', { class: 'plan-quiet' }, 'Lift the cover, then press END SOL.')))),
   );
   soundSlot.replaceWith(sound.el);
+  motionSlot.replaceWith(motion.el);
   topBar.remove();
   app.className = 'is-plan';
   updateInstruments();

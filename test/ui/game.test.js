@@ -335,7 +335,7 @@ describe('plan screen', () => {
     expect(run.sols[0].forecast.length).toBeGreaterThan(0);
     expect(heading()).toBe(`Sol 1 of ${SOLS_PER_RUN}`);
     expect(document.activeElement).toBe(app().querySelector('h1')); // focus lands on the heading
-    expect(allButtons(app().querySelector('nav[aria-label="Main menu"]')).map(nameOf)).toEqual(['Home', 'How to play', 'Sound', 'Credits']);
+    expect(allButtons(app().querySelector('nav[aria-label="Main menu"]')).map(nameOf)).toEqual(['Home', 'How to play', 'Sound', 'Reduced motion', 'Credits']);
     const track = app().querySelector('.plan-sols');
     expect(track.getAttribute('aria-label')).toBe(`Sol progress: 0 done, today is sol 1, ${SOLS_PER_RUN - 1} to go`);
     expect(track.children).toHaveLength(SOLS_PER_RUN);
@@ -1010,6 +1010,107 @@ describe('storm takeover', () => {
     expect(stage()).toBeNull();
     await settle(RESCUE_TIME_UP_MS * 2);
     expect(heading()).toBe('Credits and data sources');
+  });
+});
+
+describe('motion and the Reduced motion setting', () => {
+  const sky = makeSky([]);
+  const KEY = 'outpost-dial.reduced-motion';
+  const setting = () => btn('Reduced motion');
+  const isOn = () => setting().getAttribute('aria-checked') === 'true';
+  const classOn = () => document.documentElement.classList.contains('reduced-motion');
+  // A refresh: a fresh page and module; localStorage stays.
+  async function refresh(opts) {
+    document.body.innerHTML = BODY;
+    vi.resetModules();
+    await boot(sky, opts);
+  }
+  // Where the Lab hotspot sits: it moves when the stage turns to another view.
+  const labSpot = () => { const b = btn(new RegExp(`^${JOBS.lab.name}:`)); return `${b.style.left},${b.style.top}`; };
+  const TURN_MS = 16_000; // a little over one idle view step (15 s, the Components board's 1 turn per 60 s)
+
+  it.each([[true], [false]])('device asks for reduced motion = %s: the setting starts the same way', async (reduce) => {
+    await boot(sky, { reducedMotion: reduce });
+    await launch();
+    expect(setting().closest('.plan-rail')).not.toBeNull();
+    expect(isOn()).toBe(reduce);
+    expect(classOn()).toBe(reduce);
+  });
+
+  it('toggling sets the class on <html> and is remembered after a refresh, over the device default', async () => {
+    await boot(sky, { reducedMotion: true });
+    await launch();
+    setting().click();
+    expect([isOn(), classOn(), localStorage.getItem(KEY)]).toEqual([false, false, '0']);
+    await refresh({ reducedMotion: true });
+    await launch();
+    expect([isOn(), classOn()]).toEqual([false, false]);
+    setting().click();
+    expect([isOn(), classOn(), localStorage.getItem(KEY)]).toEqual([true, true, '1']);
+    await refresh({ reducedMotion: false });
+    await pressCovered('LAUNCH');
+    expect([isOn(), classOn()]).toEqual([true, true]);
+  });
+
+  it('is on the other screens too (top bar), never twice on one screen', async () => {
+    await boot(sky);
+    await launch();
+    await pressCovered('END SOL');
+    expect(onCard()).toBe(true);
+    expect(setting().closest('.top-bar')).not.toBeNull();
+    setting().click();
+    await nextSol();
+    expect(isOn()).toBe(false); // the same switch, moved into the rail
+  });
+
+  it('blocked storage: the default follows the device and the switch still works', async () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('SecurityError'); });
+    const set = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('QuotaExceededError'); });
+    try {
+      await boot(sky, { reducedMotion: true });
+      await launch();
+      expect(isOn()).toBe(true);
+      setting().click();
+      expect(set).toHaveBeenCalledWith(KEY, '0'); // guard: the save was tried
+      expect([isOn(), classOn()]).toEqual([false, false]);
+      await pressCovered('END SOL'); // the game plays on
+      expect(onCard()).toBe(true);
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
+  it('the stage turns when idle and stops on input; touched once, it stays still on the next sol', async () => {
+    await boot(sky, { reducedMotion: false });
+    await launch();
+    let at = labSpot();
+    await settle(TURN_MS);
+    expect(labSpot()).not.toBe(at); // precondition: it turns by itself
+    app().querySelector('.plan .st').dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    at = labSpot();
+    await settle(TURN_MS);
+    expect(labSpot()).toBe(at);
+    await pressCovered('END SOL');
+    await nextSol();
+    at = labSpot();
+    await settle(TURN_MS * 3);
+    expect(labSpot()).toBe(at); // the next sol's stage stays still
+    btn('Rotate right').click(); // the player can still turn it
+    expect(labSpot()).not.toBe(at);
+  });
+
+  it('Reduced motion stops the turning stage at once and removes the flow dots', async () => {
+    await boot(sky, { reducedMotion: false });
+    await launch();
+    place('ana', NEAR); // the Solar Field has a power line
+    const flows = () => app().querySelectorAll('.plan .st .st-flow').length;
+    expect(flows()).toBeGreaterThan(0); // precondition: a job runs, so dots flow
+    setting().click();
+    const at = labSpot();
+    await settle(TURN_MS * 2);
+    expect(labSpot()).toBe(at);
+    place('ben', INSIDE); // the next drawing has no dots
+    expect(flows()).toBe(0);
   });
 });
 

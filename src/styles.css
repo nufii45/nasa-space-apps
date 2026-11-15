@@ -42,7 +42,8 @@ button:focus-visible { outline: 4px solid var(--warn); outline-offset: 2px; }
 .banner { background: var(--warn); color: #000; padding: 8px 12px; border-radius: var(--radius); margin-bottom: 12px; font-weight: 700; }
 .source-footer { text-align: center; padding: 8px 16px; font-size: 13px; color: var(--ink-quiet); }
 .source-footer a { color: inherit; }
-@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+/* Reduced motion (W14): main.js sets this class from the game's setting, which follows the device by default. */
+.reduced-motion *, .reduced-motion *::before, .reduced-motion *::after { animation: none !important; transition: none !important; }
 
 /* Kit test page */
 .kit-section h2 { font-size: 16px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-quiet); }
@@ -156,6 +157,12 @@ button:focus-visible { outline: 4px solid var(--warn); outline-offset: 2px; }
 .plan-end .oc-cover-title { padding: 6px 14px; border-radius: 8px; background: var(--od-card); font: 700 15px var(--od-font-head); letter-spacing: 0.1em; color: var(--od-ink); }
 .plan-end .oc-cover-wrap { width: 100%; }
 .plan-end .oc-cover-wrap > .oc-caption { display: none; }
+
+/* Motion (Components.dc.html): cards lift on hover or tap, the tab underline slides. None of it under Reduced motion. */
+html:not(.reduced-motion) .plan-crew-card { transition: transform 0.2s, box-shadow 0.2s; }
+html:not(.reduced-motion) .plan-crew-card:not(.is-home):is(:hover, :active) { transform: translateY(-3px); }
+html:not(.reduced-motion) .plan-crew-card.is-picked { transform: translateY(-4px); box-shadow: 0 6px 14px rgba(24, 33, 61, 0.14); }
+html:not(.reduced-motion) .plan-tab::after { transition: transform 0.25s; }
 
 /* Phone: one column, swipeable crew, sideways tabs, END SOL bar and the rail as a bottom nav. */
 @media (max-width: 699px) {
