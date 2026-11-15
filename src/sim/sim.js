@@ -146,8 +146,8 @@ export function step(state, placements, solEvents = {}, rescued = []) {
   const base = stormBaseDose(storm);
   if (storm) {
     say('storm', storm.kind === 'cme'
-      ? 'A cloud of Sun material (CME) hit the base!'
-      : `Solar flare, class ${storm.cls}${storm.particles ? '. Fast particles arrived!' : '. No particle storm this time.'}`);
+      ? 'A storm cloud from the Sun (CME) hit the base!'
+      : `A flash from the Sun (flare class ${storm.cls})${storm.particles ? '. Radiation arrived!' : '. No radiation reached the base this time.'}`);
   }
   if (base > 0) {
     const rescuedSet = new Set(rescued);

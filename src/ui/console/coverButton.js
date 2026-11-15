@@ -4,11 +4,12 @@
 import { el } from './util.js';
 import { play } from './sound.js';
 
-export function createCoverButton({ label, tone = 'go', onPress = () => {}, autoClose = 4000 }) {
+export function createCoverButton({ label, tone = 'go', coverText = null, onPress = () => {}, autoClose = 4000 }) {
   let open = false;
   let timer = null;
   const press = el('button', { type: 'button', class: `oc-big-button tone-${tone}`, tabindex: -1, 'aria-hidden': 'true' }, label);
   const cover = el('button', { type: 'button', class: 'oc-cover', 'aria-expanded': 'false', 'aria-label': `Lift the safety cover over ${label}` },
+    coverText ? el('span', { class: 'oc-cover-title' }, coverText) : null,
     el('span', { class: 'oc-cover-hint' }, 'LIFT'));
   const root = el('div', { class: 'oc-cover-wrap' }, el('div', { class: 'oc-cover-housing' }, press, cover), el('div', { class: 'oc-caption' }, label));
 

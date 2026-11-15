@@ -34,11 +34,22 @@ export function createOutpostMap({ jobs, crew, placements = {}, onChange = () =>
 
   const hint = el('p', { class: 'om-hint', role: 'status' });
   const stations = new Map(); // job id -> { btn, status, slot }
+  function effect(id) {
+    if (id === shelter) return 'Rest here · safest in a storm';
+    const job = jobs[id];
+    const words = { power: 'power', tank: 'water', wall: 'shield water', science: 'science' };
+    const gains = Object.entries(job.effect ?? {}).filter(([, n]) => n > 0).map(([key, n]) => `+${n} ${words[key] ?? key}`);
+    if (job.effect?.wall && job.effect?.tank < 0) gains.push(`uses up to ${-job.effect.tank} water`);
+    if (job.power) gains.push(`costs ${job.power} power`);
+    return gains.join(' · ');
+  }
   function station(id) {
     const job = jobs[id];
+    const effectText = effect(id);
     const status = el('span', { class: 'om-station-status' });
     const btn = el('button', { type: 'button', class: 'om-station-btn', onclick: () => place(id) }, picture(id),
-      el('span', { class: 'om-station-text' }, el('span', { class: 'om-station-name' }, job.name), status));
+      el('span', { class: 'om-station-text' }, el('span', { class: 'om-station-name' }, job.name),
+        effectText ? el('span', { class: 'om-station-effect' }, effectText) : null, status));
     const info = onInfo && el('button', { type: 'button', class: 'om-info', 'aria-label': `What is ${job.name}?`, onclick: () => onInfo(id) }, '?');
     const slot = el('div', { class: 'om-slot' });
     stations.set(id, { btn, status, slot });
@@ -50,13 +61,13 @@ export function createOutpostMap({ jobs, crew, placements = {}, onChange = () =>
       el('div', { class: 'om-stations' }, list.map(station)));
   const outsideIds = ids.filter((id) => jobs[id].where === 'outside');
   const outside = outsideIds.length ? zone('is-outside', 'Outside', null, outsideIds) : null;
-  const inside = zone('is-inside', 'Inside the base', floor(), [...ids.filter((id) => jobs[id].where !== 'outside'), shelter]);
+  const inside = zone('is-inside', 'Inside the base', floor(), [shelter, ...ids.filter((id) => jobs[id].where !== 'outside')]);
 
   const tokens = new Map(crew.map((c) => [c.id, el('button', {
     type: 'button', class: 'om-token', 'aria-disabled': c.home && 'true', onclick: () => pick(c.id),
-    'aria-label': c.home ? `${c.name}, sunburn ${c.dose}/${doseLimit}, went home` : null,
+    'aria-label': c.home ? `${c.name}, radiation ${c.dose}/${doseLimit}, went home` : null,
   }, el('span', { class: 'om-helmet', 'aria-hidden': 'true' }),
-    el('span', { class: 'om-token-text' }, el('strong', {}, c.name), el('span', { class: 'om-dose' }, `sunburn ${c.dose}/${doseLimit}`),
+    el('span', { class: 'om-token-text' }, el('strong', {}, c.name), el('span', { class: 'om-dose' }, `radiation ${c.dose}/${doseLimit}`),
       c.home ? el('span', { class: 'om-dose' }, 'went home') : null))]));
   const gone = crew.filter((c) => c.home);
   const home = gone.length
@@ -64,7 +75,7 @@ export function createOutpostMap({ jobs, crew, placements = {}, onChange = () =>
       el('div', { class: 'om-slot' }, gone.map((c) => tokens.get(c.id))))
     : null;
 
-  const root = el('div', { class: 'om' }, ground(), hint, outside, inside, home);
+  const root = el('div', { class: 'om' }, ground(), hint, inside, outside, home);
 
   function pick(id) {
     const c = byId.get(id);
@@ -95,7 +106,7 @@ export function createOutpostMap({ jobs, crew, placements = {}, onChange = () =>
       const where = jobOf(c);
       const { slot } = stations.get(where);
       t.setAttribute('aria-pressed', picked === c.id);
-      t.setAttribute('aria-label', `${c.name}, sunburn ${c.dose}/${doseLimit}, at ${jobs[where].name}`);
+      t.setAttribute('aria-label', `${c.name}, radiation ${c.dose}/${doseLimit}, at ${jobs[where].name}`);
       // Re-appending a node blurs it, so only move tokens that changed station.
       if (t.parentNode !== slot) {
         const hadFocus = document.activeElement === t;

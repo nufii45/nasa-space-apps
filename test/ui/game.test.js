@@ -7,7 +7,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { newGame, step, needsRescue, normalisePlacements } from '../../src/sim/sim.js';
 import { buildRun } from '../../src/sim/sky.js';
-import { JOBS, LIMITS, RESCUE_SECONDS, SCIENCE_GOAL, SOLS_PER_RUN } from '../../src/sim/constants.js';
+import { JOBS, LIMITS, RESCUE_SECONDS, RESCUE_TIME_UP_MS, SCIENCE_GOAL, SOLS_PER_RUN } from '../../src/sim/constants.js';
 
 const ROOT = resolve(import.meta.dirname, '../..'); // jsdom env: import.meta.url is not a file: URL
 const read = (p) => readFileSync(join(ROOT, p), 'utf8');
@@ -90,11 +90,11 @@ const onRescue = () => has(/^(Done|Ready)$/, app());
 const rescueNames = () => allButtons(app()).map(nameOf).filter((n) => /^Bring .+ inside$/.test(n)).map((n) => n.slice(6, -7));
 const timer = () => app().querySelector('[role="timer"]');
 const soundSwitch = () => btn('Sound');
-// Map tokens: "Ana, sunburn 12/100, at Lab" or "..., went home".
+// Map tokens: "Ana, radiation 12/100, at Lab" or "..., went home".
 function crewOnMap() {
   const out = {};
   for (const n of allButtons(app()).map(nameOf)) {
-    const m = /^(\w+), sunburn (\d+)\/\d+, (?:at (.+)|went home)$/.exec(n);
+    const m = /^(\w+), radiation (\d+)\/\d+, (?:at (.+)|went home)$/.exec(n);
     if (m) out[m[1]] = { dose: Number(m[2]), at: m[3] ?? 'home' };
   }
   return out;
@@ -191,7 +191,7 @@ async function playSol(exp, placements, { commander }) {
     expect(rescueNames()).toEqual(outside.map((c) => c.name));
     for (const c of outside) btn(`Bring ${c.name} inside`).click();
     if (commander) {
-      await settle(RESCUE_SECONDS * 1000);
+      await settle(RESCUE_SECONDS * 1000 + RESCUE_TIME_UP_MS);
       rescued = outside.filter((c) => (JOBS[placements[c.id]].walkBackSeconds || 0) <= RESCUE_SECONDS).map((c) => c.id);
     } else {
       btn('Done').click();
@@ -258,8 +258,8 @@ describe('plan screen', () => {
     expect(heading()).toBe(`Sol 1 of ${SOLS_PER_RUN}`);
     expect(app().textContent).toContain(`about ${run.sols[0].forecast[0].inSols} sols away`);
     expect(gauges()).toEqual(expGauges(newGame()));
-    expect([...app().querySelectorAll('.oc-lamp .oc-caption')].map((c) => c.textContent)).toEqual(['Power', 'Water', 'Storm', 'Crew']);
-    expect(app().querySelector('.oc-lamp:nth-child(3) .oc-lamp-word').textContent).toBe('ALERT'); // storm in the forecast
+    expect([...app().querySelectorAll('.oc-lamp .oc-caption')].map((c) => c.textContent)).toEqual(['Power', 'Drinking water', 'Storm', 'Crew']);
+    expect(app().querySelector('.oc-lamp:nth-child(3) .oc-lamp-word').textContent).toBe('WATCH OUT'); // storm in the forecast
     expect(doses()).toEqual(expCrew(newGame())); // every astronaut is on the map
     expect(btn('Lift the safety cover over END SOL')).toBeTruthy();
     expect(app().querySelector('section[aria-label="Mission log"]')).not.toBeNull();
@@ -405,8 +405,13 @@ describe('rescue', () => {
     expect(onRescue()).toBe(true);
     await settle((RESCUE_SECONDS - 1 - walk) * 1000 - 1);
     expect(onRescue()).toBe(true); // just before 0
+    expect(timer().textContent).toBe('1 second left');
     await settle(1);
+    expect(timer().textContent).toBe("Time's up! Ana was still outside."); // said on screen before moving on
+    expect(btn('Ready').disabled).toBe(true);
+    await settle(RESCUE_TIME_UP_MS);
     advance(exp, crewAt, ['ben']); // Ana was left outside
+    expect(app().querySelector('.plan-last-sol').textContent).toContain('Ana got caught outside');
     expectPlan(exp);
   });
 
@@ -418,7 +423,7 @@ describe('rescue', () => {
     await settle((RESCUE_SECONDS - 1) * 1000);
     btn('Bring Ben inside').click();
     expect(app().textContent).toContain('Walking back...');
-    await settle(1000);
+    await settle(1000 + RESCUE_TIME_UP_MS);
     advance(exp, crewAt, ['ana']);
     expectPlan(exp);
   });
@@ -448,7 +453,7 @@ describe('help cards', () => {
     expect(drawer().querySelector('h2').textContent).toBe(j.name);
     const panel = () => drawer().querySelector('[role="tabpanel"]').textContent;
     const text = [panel()];
-    btn('Numbers', drawer()).click();
+    btn('How much', drawer()).click();
     text.push(panel(), drawer().querySelector('.oc-drawer-source').textContent);
     const allowed = [j.power, j.walkBackSeconds, ...Object.values(j.effect).map(Math.abs)].filter((n) => n != null);
     const numbers = text.join(' ').match(/\d+(\.\d+)?/g)?.map(Number) ?? [];

@@ -37,6 +37,7 @@ export const FACTOR_INSIDE = 0.6;
 export const WALL_BLOCK_PER_UNIT = 0.15; // Shelter factor = 0.6 * (1 - 0.15 * wall); keep it <= 1 / LIMITS.wall
 
 export const RESCUE_SECONDS = 10; // Commander mode countdown
+export const RESCUE_TIME_UP_MS = 1800; // "Time's up!" stays on screen this long before the sol resolves
 
 export const CREW = [
   { id: 'ana', name: 'Ana' },

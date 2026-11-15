@@ -3,7 +3,7 @@
 // `low`: at or below this value the gauge turns amber (with a "LOW" word, not colour alone).
 import { el, clamp } from './util.js';
 
-export function createGauge({ label, max = 10, value = 0, low = null, icon = '' }) {
+export function createGauge({ label, displayLabel = label, max = 10, value = 0, low = null, icon = '' }) {
   const ticks = [];
   for (let i = 0; i <= 10; i++) {
     const a = ((-90 + i * 18 - 90) * Math.PI) / 180;
@@ -23,7 +23,7 @@ export function createGauge({ label, max = 10, value = 0, low = null, icon = '' 
   const readout = el('span', { class: 'oc-gauge-readout' });
   const flag = el('span', { class: 'oc-gauge-flag' });
   const root = el('div', { class: 'oc-gauge', role: 'meter', 'aria-label': label, 'aria-valuemin': 0, 'aria-valuemax': max },
-    svg, el('div', { class: 'oc-gauge-foot' }, el('span', { class: 'oc-caption' }, `${icon ? icon + ' ' : ''}${label}`), readout, flag));
+    svg, el('div', { class: 'oc-gauge-foot' }, el('span', { class: 'oc-caption' }, `${icon ? icon + ' ' : ''}${displayLabel}`), readout, flag));
 
   function set(v) {
     value = clamp(v, 0, max);

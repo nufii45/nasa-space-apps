@@ -31,6 +31,12 @@ button:focus-visible { outline: 4px solid var(--warn); outline-offset: 2px; }
 #app > * { margin-bottom: 12px; }
 #app :is(h1, h2)[tabindex='-1']:focus { outline: none; }
 .top-bar { display: flex; justify-content: flex-end; width: min(960px, 100%); margin: 0 auto; padding: 8px 16px 0; }
+.top-bar .oc-toggle-wrap { flex-direction: row-reverse; align-items: center; gap: 3px; }
+.top-bar .oc-toggle { min-height: 36px; padding: 0 4px; font-size: 13px; }
+.top-bar .oc-toggle-track { width: 30px; height: 34px; border-radius: 7px; }
+.top-bar .oc-toggle-lever { height: 14px; bottom: 3px; }
+.top-bar .oc-toggle.is-on .oc-toggle-lever { bottom: 17px; }
+.top-bar .oc-caption { font-size: 10px; }
 .console-row { gap: 24px; align-items: flex-end; justify-content: center; }
 .hint { color: var(--ink-quiet); }
 .countdown { font-size: 20px; font-weight: 800; }
@@ -45,3 +51,43 @@ button:focus-visible { outline: 4px solid var(--warn); outline-offset: 2px; }
 .kit-section h2 { font-size: 16px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-quiet); }
 .kit-row { gap: 20px; align-items: flex-end; }
 .kit-row .oc-log { flex: 1 1 320px; }
+
+/* Keep the daily choice in front; the full console is available below the map. */
+.plan-screen { padding: 20px; }
+.plan-screen h2 { margin-bottom: 10px; }
+.plan-weather { display: flex; gap: 6px 12px; align-items: baseline; flex-wrap: wrap; padding: 10px 14px; border-radius: 10px; background: #fff5db; color: #382b14; }
+.plan-weather strong { white-space: nowrap; }
+.plan-storm-tip, .plan-last-sol { margin: 10px 0 0; padding: 9px 12px; border-left: 5px solid var(--warn); background: #fff9e9; border-radius: 4px 10px 10px 4px; }
+.plan-last-sol { border-color: var(--ok); background: #eaf5eb; }
+.plan-water-warning { margin: 10px 0 0; padding: 9px 12px; border-left: 5px solid var(--warn); background: #fff1d6; border-radius: 4px 10px 10px 4px; font-weight: 700; }
+.plan-water-warning.is-danger { border-color: #b3261e; background: #fde7e4; color: #6b130d; }
+.plan-steps { margin: 14px 0 8px; font-size: 18px; font-weight: 800; }
+.plan-screen .gauges { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 12px; }
+.plan-screen .oc-gauge { min-width: 0; padding: 10px 12px; background: #edf2ed; color: var(--ink); border: 2px solid #d7e3d8; box-shadow: none; }
+.plan-screen .oc-gauge-svg { display: none; }
+.plan-screen .oc-gauge-foot { align-items: center; gap: 2px 8px; }
+.plan-screen .oc-gauge-foot .oc-caption { color: #465349; letter-spacing: 0.03em; }
+.plan-screen .oc-gauge-readout { color: #193f2a; font-size: 19px; }
+.plan-screen .oc-gauge.is-low .oc-gauge-readout { color: #8b4200; }
+.plan-action { position: sticky; bottom: 8px; z-index: 2; display: flex; justify-content: center; align-items: center; gap: 18px; margin-top: 12px; padding: 9px 14px; background: #fff; border: 2px solid #d6d0bf; border-radius: 14px; box-shadow: 0 5px 18px rgba(31,35,40,.16); }
+.plan-action p { margin: 0; font-size: 16px; }
+.plan-action .oc-cover-housing { width: 108px; height: 78px; border-radius: 12px; }
+.plan-action .oc-big-button { width: 92px; height: 60px; border-radius: 10px; font-size: 13px; }
+.plan-action .oc-cover { inset: 5px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border-radius: 9px; background: #f3bc42; border-color: #b77508; }
+.plan-action .oc-cover-title { font-size: 14px; font-weight: 900; color: #1f2328; }
+.plan-action .oc-cover-hint { font-size: 11px; }
+.plan-action .oc-cover-wrap > .oc-caption { display: none; }
+.plan-console { margin-top: 16px; border-top: 1px solid #dedbd2; padding-top: 12px; }
+.plan-console summary { cursor: pointer; font-weight: 800; color: #334655; padding: 10px 4px; }
+.plan-console .oc-lamps-wrap { margin: 8px 0 14px; }
+@media (max-width: 650px) {
+  main { padding: 8px 8px 100px; }
+  .plan-screen { padding: 12px; }
+  .plan-screen .gauges { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .plan-action { position: fixed; bottom: 4px; left: 50%; width: min(384px, calc(100% - 16px)); transform: translateX(-50%); justify-content: space-between; gap: 8px; padding: 6px 10px; }
+  .plan-action p { font-size: 14px; max-width: 20ch; }
+}
+
+/* Storm screen: the science name stays readable on the red card; locked buttons look locked. */
+.storm-alert .storm-detail { margin-top: 0; font-size: 15px; opacity: 0.92; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }

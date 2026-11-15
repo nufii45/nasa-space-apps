@@ -3,7 +3,8 @@
 import { newGame, step, needsRescue, normalisePlacements } from './sim/sim.js';
 import { buildRun } from './sim/sky.js';
 import {
-  JOBS, LIMITS, RESCUE_SECONDS, SCIENCE_GOAL, SOLS_PER_RUN, HEATER_COST, DRINK_PER_SOL, CME_DOSE,
+  JOBS, LIMITS, RESCUE_SECONDS, RESCUE_TIME_UP_MS, SCIENCE_GOAL, SOLS_PER_RUN, HEATER_COST, DRINK_PER_SOL, CME_DOSE,
+  THIRSTY_SOLS_TO_GO_HOME,
 } from './sim/constants.js';
 import {
   createKnob, createToggle, createCoverButton, createGauge, createLamps,
@@ -73,13 +74,13 @@ function start({ mode, mission }) {
     log: createMissionLog({ max: 300 }), // the kit keeps 40 lines by default; a full run logs more and must keep every sol
     gauges: {
       power: createGauge({ label: 'Power', icon: '⚡', max: LIMITS.power, low: LOW.power }),
-      tank: createGauge({ label: 'Water tank', icon: '💧', max: LIMITS.tank, low: LOW.tank }),
-      wall: createGauge({ label: 'Wall water', icon: '🛡', max: LIMITS.wall }),
+      tank: createGauge({ label: 'Water tank', displayLabel: 'Water', icon: '💧', max: LIMITS.tank, low: LOW.tank }),
+      wall: createGauge({ label: 'Wall water', displayLabel: 'Shield', icon: '🛡', max: LIMITS.wall }),
       science: createGauge({ label: 'Science', icon: '🔬', max: SCIENCE_GOAL }),
     },
     lamps: createLamps({ lamps: [
       { id: 'power', label: 'Power', icon: '⚡' },
-      { id: 'water', label: 'Water', icon: '💧' },
+      { id: 'water', label: 'Drinking water', icon: '💧' },
       { id: 'storm', label: 'Storm', icon: '☀' },
       { id: 'crew', label: 'Crew', icon: '👩‍🚀' },
     ] }),
@@ -112,7 +113,7 @@ function plan() {
   const forecast = [...new Set(sol.forecast.map((f) => f.inSols))].map((n) => `A cloud of Sun material (CME) is coming, about ${n} sol${n > 1 ? 's' : ''} away.`).join(' ') || 'Clear skies forecast. (The Sun can still surprise you.)';
   game.placements = normalisePlacements(s, game.placements);
   const endSol = createCoverButton({
-    label: 'END SOL', tone: 'storm', autoClose: 0,
+    label: 'END SOL', tone: 'go', coverText: 'END SOL', autoClose: 0,
     onPress: () => (needsRescue(sol.storm) ? rescue() : resolve([])),
   });
   // A new map per plan screen: it reads each astronaut's dose and home flag only once.
@@ -123,16 +124,38 @@ function plan() {
   });
   show(
     sampleBanner(),
-    el('section', { class: 'card' }, heading('h2', `Sol ${s.sol} of ${SOLS_PER_RUN}`), el('p', {}, forecast),
-      // The featured week's big flares are never forecast, so say what a player needs to know to win it.
-      ...(game.run.start === sky.featured?.sept2017?.start ? [el('p', {}, 'This was a stormy week on the Sun. Big flares give no warning: fill the shelter walls early and take turns going outside.')] : [])),
-    game.lamps.el,
-    el('div', { class: 'gauges' }, ...Object.values(game.gauges).map((g) => g.el)),
-    map.el,
-    el('div', { class: 'row console-row' }, endSol.el),
-    game.log.el,
+    el('section', { class: 'card plan-screen' },
+      heading('h2', `Sol ${s.sol} of ${SOLS_PER_RUN}`),
+      el('div', { class: 'plan-weather' }, el('strong', {}, 'Sun report'), el('span', {}, forecast)),
+      game.run.start === sky.featured?.sept2017?.start
+        ? el('p', { class: 'plan-storm-tip' }, 'Big flares give no warning. Fill the shelter walls early and take turns outside.')
+        : null,
+      game.lastSummary ? el('p', { class: 'plan-last-sol', role: 'status' }, game.lastSummary) : null,
+      waterWarning(s),
+      el('p', { class: 'plan-steps' }, 'Choose jobs for your crew'),
+      el('div', { class: 'gauges' }, ...Object.values(game.gauges).map((g) => g.el)),
+      map.el,
+      el('div', { class: 'plan-action' },
+        el('p', {}, el('strong', {}, 'Ready?'), ' Lift the cover, then press END SOL.'),
+        endSol.el),
+      el('details', { class: 'plan-console' },
+        el('summary', {}, 'Mission console and full log'),
+        game.lamps.el,
+        game.log.el)),
   );
   updateInstruments();
+}
+
+// Thirst ends the whole run, so warn before it happens, not after.
+function waterWarning(s) {
+  const last = THIRSTY_SOLS_TO_GO_HOME - s.thirstyStreak === 1;
+  if (!last && s.tank >= DRINK_PER_SOL * 2) return null;
+  const text = last
+    ? 'Danger! The crew were thirsty last sol. One more thirsty sol and everyone goes home. Put someone on the Recycler now!'
+    : s.tank < DRINK_PER_SOL
+      ? `The drinking water is almost gone (${s.tank} left). Without the Recycler today, the crew will be thirsty.`
+      : `Drinking water is low (${s.tank} left, the crew drink ${DRINK_PER_SOL} each sol). Put someone on the Recycler soon.`;
+  return el('p', { class: `plan-water-warning${last ? ' is-danger' : ''}`, role: 'alert' }, text);
 }
 
 // ---------- Rescue ----------
@@ -144,14 +167,31 @@ function rescue() {
   const walking = new Map(); // crew id -> seconds remaining
   const timed = game.mode === 'commander';
   let left = RESCUE_SECONDS;
-  const label = sol.storm.kind === 'cme' ? 'CME storm' : `X-ray flash! Flare class ${sol.storm.cls}`;
+  const label = sol.storm.kind === 'cme' ? 'Storm cloud from the Sun is here!' : 'Big flash from the Sun!';
+  const detail = sol.storm.kind === 'cme'
+    ? 'Scientists call this a CME: a huge cloud of Sun material.'
+    : `Scientists call this a solar flare, class ${sol.storm.cls}. C is small, M is medium, X is the biggest.`;
+  const secondsWord = (n) => `${n === 1 ? 'second' : 'seconds'} left`;
 
   const finish = () => {
     clearInterval(game.rescueTimer);
     resolve([...rescued]);
   };
+  // Commander timer ran out: say so on screen before moving on, and remember who was caught outside.
+  const timeUp = () => {
+    clearInterval(game.rescueTimer);
+    const caught = outside.filter((c) => !rescued.has(c.id)).map((c) => c.name);
+    countdown.replaceChildren(el('strong', {}, "Time's up!"), caught.length ? ` ${caught.join(' and ')} ${caught.length > 1 ? 'were' : 'was'} still outside.` : ' Everyone made it inside.');
+    done.disabled = true;
+    play('beep');
+    game.rescueNote = caught.length ? `Time ran out: ${caught.join(' and ')} got caught outside in the storm.` : null;
+    for (const r of rows.values()) r.btn.disabled = true;
+    setTimeout(() => { if (countdown.isConnected) resolve([...rescued]); }, RESCUE_TIME_UP_MS);
+  };
   const done = button(timed ? 'Ready' : 'Done', finish, 'primary');
   const seconds = el('strong', {}, String(left));
+  const secondsText = document.createTextNode(` ${secondsWord(left)}`);
+  const countdown = el('p', { class: 'countdown', role: 'timer' }, seconds, secondsText);
   // Rows update in place so the countdown never rebuilds the screen or drops focus.
   const rows = new Map(outside.map((c) => [c.id, {
     status: el('span', {}, `Outside at the ${JOBS[game.placements[c.id]].name}`),
@@ -176,8 +216,9 @@ function rescue() {
   show(
     el('section', { class: 'card storm-alert' },
       heading('h2', label),
-      el('p', {}, 'Fast particles are on the way. Get everyone outside back to the Shelter!'),
-      timed ? el('p', { class: 'countdown', role: 'timer' }, seconds, ' seconds left') : null),
+      el('p', {}, 'Tiny, super-fast bits from the Sun are coming. This is radiation, and it is bad for the body. Get everyone outside back to the Shelter!'),
+      el('p', { class: 'storm-detail' }, detail),
+      timed ? countdown : null),
     game.lamps.el,
     el('section', { class: 'card', 'aria-live': 'polite' },
       ...(outside.length
@@ -194,7 +235,7 @@ function rescue() {
       for (const [id, t] of walking) {
         if (t <= 1) { walking.delete(id); rescued.add(id); refresh(id); } else walking.set(id, t - 1);
       }
-      if (left <= 0) finish(); else seconds.textContent = String(left);
+      if (left <= 0) timeUp(); else { seconds.textContent = String(left); secondsText.textContent = ` ${secondsWord(left)}`; }
     }, 1000);
   }
 }
@@ -203,6 +244,10 @@ function rescue() {
 function resolve(rescued) {
   const sol = today();
   const { state, log } = step(game.state, game.placements, sol, rescued);
+  const earned = state.science - game.state.science;
+  const wentHome = state.crew.filter((c, i) => c.home && !game.state.crew[i].home).map((c) => c.name);
+  game.lastSummary = `Last sol: ${earned ? `+${earned} science` : 'no science'}${sol.storm ? ' · a storm passed' : ''}${wentHome.length ? ` · ${wentHome.join(' and ')} went home` : ''}.${game.rescueNote ? ` ${game.rescueNote}` : ''}`;
+  game.rescueNote = null;
   game.log.append(`— Sol ${game.state.sol} (${sol.date}) —`, 'info');
   for (const l of log) game.log.append(l.text, l.type);
   game.state = state;
@@ -217,10 +262,14 @@ function debrief() {
   // A run can end early (win, or everyone home); only count the sols that were played (state.sol is the last one).
   const played = r.sols.filter((x) => x.sol <= s.sol);
   const big = played.filter((x) => x.storm && needsRescue(x.storm));
+  // Say plainly why the run ended; a loss should never read like a win.
+  const thirstEnd = s.thirstyStreak >= THIRSTY_SOLS_TO_GO_HOME;
   const headline = s.result === 'win'
     ? `Mission complete! ${'★'.repeat(s.stars)}${'☆'.repeat(3 - s.stars)}`
-    : s.result === 'home' ? 'The crew caught the next ride home.' : 'Time is up: the supply ship is here.';
-  const tip = s.thirstySols ? 'Tip: keep someone on the Recycler before the tank gets low.'
+    : s.result === 'home'
+      ? (thirstEnd ? 'Mission over: the water ran out, so the crew had to go home.' : 'Mission over: everyone got too much radiation and had to go home.')
+      : `Time is up: the supply ship is here. You needed ${SCIENCE_GOAL - s.science} more science.`;
+  const tip = s.thirstySols ? 'Tip: keep someone on the Recycler before the drinking water gets low.'
     : s.coldSols ? 'Tip: the Solar Field keeps the heaters on. No power, no science.'
     : s.crew.some((c) => c.home) ? 'Tip: take turns going outside so nobody gets too much radiation.'
     : 'Tip: pump water into the walls when a CME is in the forecast.';
@@ -232,7 +281,7 @@ function debrief() {
       heading('h2', 'Mission report'),
       tape.el,
       r.start === sky.featured?.sept2017?.start
-        ? el('p', {}, 'In September 2017 a big solar storm hit Mars. NASA\'s Curiosity rover measured radiation more than double its highest reading since landing, and the MAVEN orbiter saw aurora glow over the whole planet. ',
+        ? el('p', {}, 'In September 2017 a big solar storm hit Mars. Curiosity, NASA\'s robot car on Mars, measured more than twice as much radiation as ever before. MAVEN, a NASA spacecraft that flies around Mars, saw the whole sky glow with aurora (colourful lights, like the northern lights on Earth). ',
           el('a', { href: 'https://www.jpl.nasa.gov/news/large-solar-storm-sparks-global-aurora-and-doubles-radiation-levels-on-the-martian-surface/', target: '_blank', rel: 'noopener' }, 'Read the NASA story'))
         : null),
     el('p', { class: 'row' }, button('Try again', () => start({ mode, mission: 'random' }), 'primary'), button('Title', title)),
@@ -245,7 +294,7 @@ function debrief() {
     `Your sky: ${r.start} to ${played.at(-1).date}${r.sample ? ' (sample data)' : ', recorded by NASA'}`,
     ...(big.length
       ? [`${big.length} storm${big.length > 1 ? 's' : ''} reached the base:`,
-        ...big.map((x) => (x.storm.kind === 'cme' ? `CME on ${x.date}` : `Class ${x.storm.cls} flare on ${x.date}`))]
+        ...big.map((x) => (x.storm.kind === 'cme' ? `Storm cloud (CME) on ${x.date}` : `Sun flash (flare class ${x.storm.cls}) on ${x.date}`))]
       : ['The Sun was quiet that week.']),
     tip,
   ]);

@@ -178,17 +178,17 @@ describe('stations and astronauts', () => {
     for (const job of Object.values(JOBS)) expect(station(root, job.name).textContent).toContain(job.name);
   });
 
-  it('each astronaut shows name and sunburn N/100', () => {
+  it('each astronaut shows name and radiation N/100', () => {
     const { root } = mount();
-    expect(token(root, 'Ana').textContent).toMatch(/Ana.*sunburn 12\/100/);
-    expect(token(root, 'Ben').textContent).toMatch(/Ben.*sunburn 40\/100/);
-    expect(token(root, 'Cai').textContent).toMatch(/Cai.*sunburn 0\/100/);
+    expect(token(root, 'Ana').textContent).toMatch(/Ana.*radiation 12\/100/);
+    expect(token(root, 'Ben').textContent).toMatch(/Ben.*radiation 40\/100/);
+    expect(token(root, 'Cai').textContent).toMatch(/Cai.*radiation 0\/100/);
   });
 
-  it('sunburn limit comes from doseLimit', () => {
+  it('radiation limit comes from doseLimit', () => {
     const { root } = mount({ doseLimit: 50 });
-    expect(token(root, 'Ben').textContent).toMatch(/sunburn 40\/50/);
-    expect(nameOf(token(root, 'Ben'))).toMatch(/sunburn 40\/50/);
+    expect(token(root, 'Ben').textContent).toMatch(/radiation 40\/50/);
+    expect(nameOf(token(root, 'Ben'))).toMatch(/radiation 40\/50/);
   });
 });
 

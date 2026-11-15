@@ -3,7 +3,7 @@
 import { el, reducedMotion } from './util.js';
 import { play } from './sound.js';
 
-const WORD = { off: '', ok: 'OK', warn: 'LOW', storm: 'ALERT' };
+const WORD = { off: '', ok: 'OK', warn: 'LOW', storm: 'WATCH OUT' };
 
 export function createLamps({ lamps }) {
   const live = el('span', { class: 'oc-visually-hidden', role: 'status' });

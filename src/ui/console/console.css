@@ -100,8 +100,8 @@
 .oc-log-cursor { animation: oc-blink 0.8s steps(2) infinite; }
 
 /* Info drawer */
-.oc-drawer { border: none; padding: 0; width: min(560px, 100vw); max-height: 80vh; margin: auto auto 0; border-radius: 20px 20px 0 0; background: #fffdf8; color: var(--ink); box-shadow: 0 -8px 30px rgba(0,0,0,.25); }
-.oc-drawer[open] { animation: oc-slide-up 0.25s var(--oc-spring); }
+.oc-drawer { border: none; padding: 0; width: min(560px, 100vw); max-height: min(80vh, calc(100dvh - 12px)); overflow: hidden; margin: auto auto 0; border-radius: 20px 20px 0 0; background: #fffdf8; color: var(--ink); box-shadow: 0 -8px 30px rgba(0,0,0,.25); }
+.oc-drawer[open] { display: flex; flex-direction: column; animation: oc-slide-up 0.25s var(--oc-spring); }
 .oc-drawer::backdrop { background: rgba(30, 25, 15, .35); }
 .oc-drawer-head { display: flex; align-items: center; gap: 12px; padding: 16px 16px 8px; border-bottom: 4px solid var(--oc-bezel); }
 .oc-drawer-title { flex: 1; margin: 0; font-size: 20px; }
@@ -109,7 +109,7 @@
 .oc-drawer-tabs { display: flex; gap: 4px; padding: 8px 16px 0; overflow-x: auto; }
 .oc-drawer-tab { min-height: 44px; padding: 0 14px; border: 2px solid var(--oc-bezel-dark); border-bottom: none; border-radius: 10px 10px 0 0; background: var(--oc-bezel); font: 800 13px ui-rounded, system-ui, sans-serif; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; }
 .oc-drawer-tab[aria-selected='true'] { background: #fff; }
-.oc-drawer-panel { padding: 16px; font-size: 17px; line-height: 1.5; border-top: 2px solid var(--oc-bezel-dark); }
+.oc-drawer-panel { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 16px; font-size: 17px; line-height: 1.5; border-top: 2px solid var(--oc-bezel-dark); }
 .oc-drawer-source { padding: 0 16px 16px; margin: 0; font-size: 13px; color: var(--ink-quiet); }
 
 /* Ticker tape */

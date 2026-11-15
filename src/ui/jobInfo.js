@@ -6,13 +6,13 @@ import { el } from './console/util.js';
 const WHAT = {
   solar: 'Go outside and clean the solar panels. Clean panels make power for the base.',
   recycler: 'Clean used water so the crew can drink it again. It fills up the water tank.',
-  pump: 'Move water from the tank into the Shelter walls. Water in the walls blocks the fast bits from the Sun.',
+  pump: 'Move water from the tank into the Shelter walls. Water in the walls blocks radiation from the Sun.',
   lab: 'Do experiments in the Lab to earn science.',
   rover: 'Drive the rover far away to study rocks. You earn lots of science, but you are far from home.',
   shelter: 'Rest in the Shelter. No work gets done.',
 };
 const WHERE = {
-  outside: 'This job is outside. You get more sunburn out there, and storms hit hardest.',
+  outside: 'This job is outside. Out there you get more radiation (invisible energy from the Sun and space that is bad for the body), and storms hit hardest.',
   inside: 'This job is inside the base.',
   shelter: 'The Shelter is the safest place in a storm.',
 };
@@ -35,7 +35,7 @@ export function jobCard(id) {
     title: j.name,
     tabs: [
       { label: 'What it does', body: `${WHAT[id] ?? ''} ${WHERE[j.where] ?? ''}`.trim() },
-      { label: 'Numbers', body: el('ul', {}, ...numbers.map((t) => el('li', {}, t))) },
+      { label: 'How much', body: el('ul', {}, ...numbers.map((t) => el('li', {}, t))) },
     ],
     source: id === 'pump'
       ? { label: 'NASA Water Walls', url: 'https://www.nasa.gov/general/water-walls-highly-reliable-and-massively-redundant-life-support-architecture' }
