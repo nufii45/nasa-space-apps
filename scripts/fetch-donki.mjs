@@ -14,22 +14,37 @@ const BASE = process.env.DONKI_BASE || CCMC;
 const KEY = process.env.NASA_API_KEY || 'DEMO_KEY';
 const FROM = Number(process.env.FROM || 2012);
 const TO = Number(process.env.TO || 2025);
+// DONKI starts in 2010; Date.UTC also reads years 0 to 99 as 1900 to 1999.
+if (!Number.isInteger(FROM) || !Number.isInteger(TO) || FROM > TO || FROM < 2010) {
+  throw new Error(`FROM and TO must be years with FROM <= TO, from 2010 on (got FROM=${process.env.FROM}, TO=${process.env.TO})`);
+}
 
 async function get(type, start, end) {
   const url = new URL(`${BASE}/${type}`);
   url.searchParams.set('startDate', start);
   url.searchParams.set('endDate', end);
   if (BASE.startsWith(MIRROR)) url.searchParams.set('api_key', KEY);
-  for (let attempt = 1; attempt <= 4; attempt++) {
-    const res = await fetch(url, { headers: { Accept: 'application/json' } });
-    if (res.ok) {
+  const where = `${type} ${start}..${end}`; // never the URL: it can hold the api_key
+  for (let attempt = 1; ; attempt++) {
+    let res, why;
+    try {
+      res = await fetch(url, { headers: { Accept: 'application/json' } });
+    } catch (err) {
+      why = `network error (${err.message})`;
+    }
+    if (res?.ok) {
       const text = await res.text();
       return text.trim() ? JSON.parse(text) : [];
     }
-    console.warn(`  ${type} ${start}: HTTP ${res.status} ${(await res.text()).slice(0, 120)}, retry ${attempt}`);
+    if (res) {
+      why = `HTTP ${res.status} ${(await res.text()).slice(0, 120)}`;
+      // A 4xx other than 429 (rate limit) will not change on retry, e.g. the 400 for ranges over 60 days.
+      if (res.status >= 400 && res.status < 500 && res.status !== 429) throw new Error(`Failed: ${where}: ${why}`);
+    }
+    if (attempt === 4) throw new Error(`Failed after ${attempt} attempts: ${where}: ${why}`);
+    console.warn(`  ${where}: ${why}, retry ${attempt}`);
     await new Promise((r) => setTimeout(r, 2000 * attempt));
   }
-  throw new Error(`Failed: ${url}`);
 }
 
 const day = (t) => (t || '').slice(0, 10);
@@ -84,6 +99,8 @@ const unique = events.filter((e) => {
   seen.add(k);
   return true;
 }).sort((a, b) => a.date.localeCompare(b.date));
+
+if (!unique.length) throw new Error('No events produced, so public/data/sky.json was left unchanged.');
 
 const sky = {
   source: 'NASA CCMC DONKI (Space Weather Database of Notifications, Knowledge, Information)',
