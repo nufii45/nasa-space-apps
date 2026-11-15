@@ -1,9 +1,9 @@
 # Outpost Dial: MVP PRD
 
-**Status:** Draft, written 2026-11-15. The original PRD named in `README.md` was not found on
-this machine, so this one is rebuilt from the code on `main` (7e1049a), the README and the code
-comments. Rules and numbers below match the code. Sections marked *(assumed)* are not backed by
-code and need your confirmation.
+**Status:** Draft, written 2026-11-15 and updated the same day after the MVP build. The original
+PRD named in `README.md` was not found on this machine, so this one was rebuilt from the code,
+the README and the code comments. Rules and numbers below match the code on `feat/mvp-ui`.
+Sections marked *(assumed)* are not backed by a decision and need your confirmation.
 
 ## 1. Summary
 
@@ -102,10 +102,15 @@ Stars on a win: 1 for winning, +1 if nobody went home, +1 if no sol was cold or 
 
 ## 8. Screens and interface
 
-- **Plan screen:** an outpost map where the player places astronauts on jobs. Not built yet;
-  today it is rows of buttons.
-- **Console kit** (`src/ui/console/`): knob, toggle, cover button, gauge, lamps, mission log,
-  info drawer, ticker tape, mute switch and sounds. Built, not yet used by the game.
+- **Plan screen:** an outpost map (`src/ui/map/`) where the player places astronauts on jobs:
+  tap an astronaut, then tap a station. Stations are buttons with a picture each, laid over a
+  drawn Mars ground and habitat (decisions 0005, 0006). Each station has a "?" help card.
+- **Console kit** (`src/ui/console/`): mission knob, mode toggle, covered LAUNCH and END SOL
+  buttons, four needle gauges, warning lamps, mission log, help cards in the info drawer, the
+  debrief on ticker tape, a mute switch on every screen, and sounds.
+- **No results screen per sol:** the sol's lines appear in the mission log on the next plan
+  screen (decision 0005).
+- **Sept 2017 mission:** the plan screen adds one line saying big flares give no warning.
 - **Credits page** (`#credits`) lists every data source with a link. The footer names the sky
   data source on every screen.
 - Works on a phone-width screen, by touch, mouse and keyboard. Sound can be muted. *(assumed)*
@@ -121,25 +126,34 @@ Stars on a win: 1 for winning, +1 if nobody went home, +1 if no sol was cold or 
 
 ## 10. The MVP is done when
 
-- [ ] `sky.json` holds real DONKI data and the SAMPLE DATA banner is gone.
-- [ ] `npm test` passes and `npm run balance` passes on the real data, in both modes, over 1,000
+- [x] `sky.json` holds real DONKI data and the SAMPLE DATA banner is gone.
+- [x] `npm test` passes and `npm run balance` passes on the real data, in both modes, over 1,000
       runs (decision 0007): the reference player, rescuing everyone outside, wins 65% to 80% in
       Cadet and 45% to 65% in Commander; it never makes a sol thirsty by pumping; following the
       CME forecast wins at least 3 points more than ignoring it; no plan that repeats the same
       jobs every sol wins more than 80%. The best schedule written in advance is reported only.
-- [ ] The plan screen is the outpost map and the game uses the console kit.
+- [x] The plan screen is the outpost map and the game uses the console kit.
 - [ ] A full run can be played in both modes and both missions, to the debrief, on a phone and
-      on a laptop, with keyboard only.
+      on a laptop, with keyboard only. Checked so far: automated click-through tests for all
+      four runs, and headless Chrome runs at phone and laptop size. Not yet checked: a real
+      phone by touch, and keyboard-only play by a person.
 - [ ] The site is live on Cloudflare.
 
 Task breakdown: see `tasks.md`.
 
 ## 11. Open questions
 
-1. Is there a separate results screen after each sol? A code comment names a "report" step, but
-   today the log just appears on the next plan screen.
-2. What does the outpost map look like, and is there a design for it?
-3. Which console kit part goes where in the game (for example, is END SOL the cover button)?
-4. Should `/kit.html` be in the public build?
-5. What are the Space Apps submission deadline and judging criteria this must meet?
-6. Does the September 2017 run need its own script or teaching text beyond the debrief note?
+Answered during the build: no results screen per sol, the map look and the kit placement
+(decisions 0005 and 0006), and `/kit.html` stays in the build (0005). Still open:
+
+1. What are the Space Apps submission deadline and judging criteria this must meet?
+2. In a storm the rescue screen only offers astronauts who are outside. With walls built, an
+   astronaut working inside takes more radiation than one rescued into the Shelter. Should a
+   rescue also bring inside crew into the Shelter? It changes the rules and the balance.
+3. A win counts even if the whole crew reaches the radiation limit on the winning sol, because
+   the rules check for the win first. Keep or change?
+4. The reference player still loses the September 2017 mission by following the in-game tips;
+   the mission is winnable. Is the one-line hint enough, or does it need its own teaching text?
+5. A plan written in advance still wins a little more often than the reacting reference player
+   (decision 0007 reports this and accepts it for the MVP). Revisit after a playtest?
+6. "Try again" always starts a random week, even after the September 2017 mission. Intended?

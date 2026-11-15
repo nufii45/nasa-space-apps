@@ -123,7 +123,9 @@ function plan() {
   });
   show(
     sampleBanner(),
-    el('section', { class: 'card' }, heading('h2', `Sol ${s.sol} of ${SOLS_PER_RUN}`), el('p', {}, forecast)),
+    el('section', { class: 'card' }, heading('h2', `Sol ${s.sol} of ${SOLS_PER_RUN}`), el('p', {}, forecast),
+      // The featured week's big flares are never forecast, so say what a player needs to know to win it.
+      ...(game.run.start === sky.featured?.sept2017?.start ? [el('p', {}, 'This was a stormy week on the Sun. Big flares give no warning: fill the shelter walls early and take turns going outside.')] : [])),
     game.lamps.el,
     el('div', { class: 'gauges' }, ...Object.values(game.gauges).map((g) => g.el)),
     map.el,

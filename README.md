@@ -15,9 +15,9 @@ npm run fetch:donki  # downloads real DONKI data into public/data/sky.json (need
 npm run build        # static site in dist/
 ```
 
-## IMPORTANT: storm data is a sample until you fetch it
+## Storm data
 
-`public/data/sky.json` ships as **sample placeholder data** (`"sample": true`) so the game runs today. The game shows a "SAMPLE DATA" banner until it is replaced. Role D: run `npm run fetch:donki` on a machine with internet, check the printed samples and the Sept 2017 window, then commit the new `sky.json`. Then re-run `npm run balance`.
+`public/data/sky.json` holds real NASA DONKI data for 2012 to 2025, fetched 2026-11-15. To refresh it, run `npm run fetch:donki` on a machine with internet, check the printed samples and the Sept 2017 window, commit the new `sky.json`, then run `npm test` and `npm run balance`: new data can move the balance. If the file is ever sample data again (`"sample": true`), the game shows a "SAMPLE DATA" banner.
 
 ## Layout
 
@@ -26,11 +26,15 @@ npm run build        # static site in dist/
 | `src/sim/constants.js` | Every tuning number | A |
 | `src/sim/sim.js` | Pure rules: `newGame()`, `step(state, placements, solEvents, rescued)` | A |
 | `src/sim/sky.js` | Picks a real 10-day window and turns it into sols | A, D |
-| `src/main.js` | Debug UI, fully playable with plain buttons. Replace screen by screen | B, C |
+| `src/main.js` | The game: owns every screen and the flow between them | B, C |
+| `src/ui/console/` | Console kit: knob, toggle, gauges, lamps, log, drawer, ticker tape, sound (demo at `/kit.html`) | C |
+| `src/ui/map/` | Outpost map for placing astronauts | B |
+| `src/ui/jobInfo.js` | Help card text for each job | B, C |
 | `src/styles.css` | Console colour tokens | C |
-| `scripts/fetch-donki.mjs` | One-time DONKI fetch | D |
+| `scripts/fetch-donki.mjs` | DONKI fetch | D |
 | `scripts/balance-sim.mjs` | Balance simulator | A |
-| `test/sim.test.js` | Rule tests | A |
+| `test/` | Rule tests, balance and fetch script tests, and `test/ui/` click-through tests (jsdom) | A |
+| `docs/PRD.md`, `tasks.md`, `plans/` | Product requirements, task list, plans | |
 
 ## Rules of the road
 

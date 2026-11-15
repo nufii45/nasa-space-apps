@@ -1,71 +1,61 @@
 # Outpost Dial: remaining tasks
 
-Checked 2026-11-15 against the code on `main` (7e1049a). Roles A to D are the owners named in
-`README.md`. The original game design doc and MVP PRD are not in this repo, so this list comes
-from the README, the code and its comments. `docs/PRD.md` is a PRD rebuilt from the same sources.
+Updated 2026-11-15 after the MVP build on branch `feat/mvp-ui` (not pushed, not merged). Roles A
+to D are the owners named in `README.md`. Requirements: `docs/PRD.md`. Plan that was followed:
+`plans/2026-11-15-complete-mvp.md`.
 
-## Where each role stands
+## Where things stand
 
 | Role | Area | Status |
 | --- | --- | --- |
-| A | Rules, balance, tests (`src/sim/`, `test/`, `scripts/balance-sim.mjs`) | Done on sample data: 17 tests pass, balance check passes |
-| B | Outpost map for the plan screen | Not started: no map code exists, the plan screen is still rows of plain buttons |
-| C | Console kit (`src/ui/console/`) | Kit built and shown on `/kit.html`, but the game does not use it yet (`src/main.js` imports nothing from it) |
-| D | Real storm data (`public/data/sky.json`) | Not done: the file is still sample data (`"sample": true`, `"fetched": null`) |
+| A | Rules, balance, tests | Done: retuned for real data, `npm run balance` passes in both modes |
+| B | Outpost map for the plan screen | Done: `src/ui/map/`, mounted in the game |
+| C | Console kit | Done: the game uses it on every screen |
+| D | Real storm data | Done: 3,915 real DONKI events, 2012 to 2025 |
 
-The game is playable today from title to debrief with the debug UI. `npm test`, `npm run balance`
-and `npm run build` all pass.
+`npm test` (146 tests), `npm run balance` and `npm run build` all pass on the branch.
 
-## Tasks, in order
+## Done
 
-- [ ] **1. Fetch the real DONKI data** (D)
-  Fetched 2026-11-15 after fixing the script (DONKI now limits a request to 60 days):
-  3,915 events, 2012 to 2025. Still to do: check the data and commit `sky.json` and the script.
-  Run `npm run fetch:donki` on a machine with internet. Check the printed counts and samples,
-  and that the September 2017 window is there. Commit the new `public/data/sky.json`.
-  Done when: `"sample": false`, `"fetched"` holds a date, and the SAMPLE DATA banner is gone.
-  Never edit `sky.json` by hand.
+- [x] **1. Fetch the real DONKI data.** The fetch script was fixed first (DONKI now limits a
+  request to 60 days) and hardened against bad input and failed requests.
+- [x] **2. Retune on the real data.** Nine numbers changed in `src/sim/constants.js`. The balance
+  check now enforces win-rate bands for a sensible player, that it never pumps itself thirsty,
+  and that following the CME forecast beats ignoring it (decision 0007).
+- [x] **3. Split the screens out of `src/main.js`.** Dropped: the map got its own folder
+  instead (decision 0002).
+- [x] **4. Put the console kit into the game.**
+- [x] **5. Build the outpost map plan screen.**
+- [x] **6. Test the finished game.** 89 click-through tests play the real screens, including four
+  full runs. Two full games were also played in headless Chrome at phone and laptop size with no
+  errors.
 
-- [ ] **2. Re-check balance on the real data** (A, needs task 1)
-  First result on real data: the check passes, but the best adaptive player now wins only about
-  25% of runs (81% on the sample). The game is too hard as tuned and needs retuning.
-  Run `npm test` and `npm run balance`. If a fixed plan wins more than 80% of runs, retune in
-  `src/sim/constants.js` only, then run both again.
-  Done when: both commands exit 0 with the real `sky.json`.
+## Still to do
 
-- [ ] **3. Split the screens out of `src/main.js`** (B and C agree first)
-  B and C both have to change `src/main.js`, so they cannot work at the same time as it stands.
-  Give the map its own folder (`src/ui/map/`) with one mount call in `main.js`, the same way the
-  kit lives in `src/ui/console/`.
-  Done when: B and C each own files the other does not touch.
-
-- [ ] **4. Put the console kit into the game** (C)
-  Replace the debug gauges, mission log and buttons in `src/main.js` with the kit components
-  (`createGauge`, `createMissionLog`, `createCoverButton`, `createMuteSwitch` and the rest).
-  Keep the flow: title, then plan, rescue and report for 10 sols, then debrief.
-  Done when: no debug gauge or log markup is left in `main.js`, and sound can be muted.
-
-- [ ] **5. Build the outpost map plan screen** (B)
-  Replace the per-astronaut button rows with the map: place 3 astronauts on 5 jobs, one per job,
-  anyone unplaced goes to the Shelter. The UI only calls `normalisePlacements()` and `step()`;
-  no game rules in UI code.
-  Done when: a full run can be played on the map with mouse, touch and keyboard.
-
-- [ ] **6. Test the finished game** (QA, needs tasks 1 to 5)
-  Play both modes (Cadet, Commander) and both missions (Random week, Sept 2017) to the debrief.
-  Check a phone-width screen, keyboard-only play, the Commander rescue timer and the credits
-  page. Add tests for any UI logic that has branches.
-  Done when: reviewer approves and QA passes.
-
-- [ ] **7. Deploy** (you, in the Cloudflare dashboard)
-  Build command `npm run build`, output directory `dist`. Agents do not deploy.
-  Then write the staging URL into `CLAUDE.md` under Project facts.
+- [ ] **7. Deploy** (you, in the Cloudflare dashboard). Build command `npm run build`, output
+  directory `dist`. Agents do not deploy. Then write the staging URL into `CLAUDE.md` under
+  Project facts.
+- [ ] **8. Merge.** Review `feat/mvp-ui` and merge it into `main`.
+- [ ] **9. Play it on a real phone and with a keyboard only.** No agent has done either. Check
+  that the map and END SOL are easy to reach on a small screen: the four gauges fill most of
+  the first screen.
+- [ ] **10. Playtest with children.** The numbers were tuned against a scripted player, not real
+  ones. Watch how often an astronaut is sent home: it happens in about 4 runs in 10 in Cadet.
+- [ ] **11. Update `CLAUDE.md` Project facts.** They still say 17 tests, a 2 second balance run
+  and "fails if a fixed plan wins > 80%". Now: 146 tests in about 11 s, balance about 8 s on a
+  many-core machine, and the checks in decision 0007.
 
 ## Decisions needed from you
 
-- Should `/kit.html` ship in the public build? It does today (`vite.config.js` builds both pages).
-- Answer the open questions at the end of `docs/PRD.md`; tasks 4 to 6 depend on them.
-- If you still have the original game design doc and PRD, add them to `docs/`.
+See the open questions at the end of `docs/PRD.md`. The two that affect how the game teaches:
+
+- Should a storm rescue also bring inside crew into the Shelter? Today only outside crew can be
+  rescued, so with walls built an astronaut working inside takes the most radiation.
+- Is the one-line hint on the September 2017 mission enough? A player who only follows the
+  in-game tips still loses it.
+
+Decisions 0002, 0004, 0005 and 0006 are recorded as proposed in Obsidian and wait for your
+review. Decision 0007 is accepted.
 
 ## Not needed for the app to work
 
