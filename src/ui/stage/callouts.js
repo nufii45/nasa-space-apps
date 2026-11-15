@@ -16,14 +16,11 @@ import { el } from '../console/util.js';
 const SLOTS = { recycler: [4, 4], shelter: [4, 148], lab: [4, 292], pump: [660, 4], solar: [660, 136], rover: [660, 268] };
 const CARD_W = 196;
 const ANCHOR_Y = 30; // the line leaves the card's side this far below its top
-const SHELTER = 'shelter';
 const KEYS = ['stations', 'who', 'selected', 'picked', 'layout'];
 
 const list = (names) => (names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0]);
-function whoText(id, names) {
-  if (id === SHELTER) return names.length ? `${list(names)} resting here · room for everyone` : 'Nobody here · room for everyone';
-  return names.length ? `${list(names)} ${names.length > 1 ? 'are' : 'is'} here` : 'Nobody here yet';
-}
+// Kept short so three names fit one line of a 196 px card (the Shelter holds the whole crew).
+const whoText = (names) => (names.length ? `${list(names)} ${names.length > 1 ? 'are' : 'is'} here` : 'Nobody here yet');
 
 export function createCallouts({ stage, onSelect = () => {}, onHelp = () => {}, ...data }) {
   const s = { stations: [], who: {}, selected: null, picked: null, layout: 'desktop' };
@@ -43,15 +40,17 @@ export function createCallouts({ stage, onSelect = () => {}, onHelp = () => {}, 
   function makeCard(id) {
     const icon = el('svg:path', {});
     const title = el('span', { class: 'co-title' });
+    // The "Selected" badge sits under the title, in the head row, so selecting a card barely grows it.
+    const mark = el('span', { class: 'co-mark', text: 'Selected' });
     const pick = el('button', { type: 'button', class: 'co-pick' },
-      el('span', { class: 'co-ic', 'aria-hidden': 'true' }, el('svg:svg', { width: 20, height: 20, viewBox: '0 0 24 24', focusable: 'false' }, icon)), title);
+      el('span', { class: 'co-ic', 'aria-hidden': 'true' }, el('svg:svg', { width: 20, height: 20, viewBox: '0 0 24 24', focusable: 'false' }, icon)),
+      el('span', { class: 'co-name' }, title, mark));
     // stopPropagation: the help button sits inside the card, whose click selects.
     const help = el('button', { type: 'button', class: 'co-help', onclick: (e) => { e.stopPropagation(); onHelp(id); } }, '?');
     const text = el('p', { class: 'co-text' });
     const here = el('span', { class: 'co-who' });
-    const mark = el('span', { class: 'co-mark', text: 'Selected' });
     const card = el('div', { class: 'co-card', 'data-id': id, onclick: () => onSelect(id) },
-      el('div', { class: 'co-head' }, pick, help), text, el('div', { class: 'co-foot' }, here, mark));
+      el('div', { class: 'co-head' }, pick, help), text, here);
     deck.append(card);
     cards.set(id, { card, pick, icon, title, help, text, here, mark });
   }
@@ -66,7 +65,7 @@ export function createCallouts({ stage, onSelect = () => {}, onHelp = () => {}, 
     c.title.textContent = name.toUpperCase();
     c.text.textContent = st.text ?? '';
     if (st.icon) c.icon.setAttribute('d', st.icon); else c.icon.removeAttribute('d');
-    c.here.textContent = whoText(st.id, names);
+    c.here.textContent = whoText(names);
     c.here.classList.toggle('is-free', !names.length);
     c.card.classList.toggle('is-sel', sel);
     c.card.classList.toggle('is-target', target);

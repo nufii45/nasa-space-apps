@@ -58,7 +58,7 @@ describe('desktop cards', () => {
       expect(c.querySelector('.co-ic path').getAttribute('d')).toBe(st.icon);
     }
     expect(card(co.el, 'solar').querySelector('.co-who').textContent).toBe('Ana is here');
-    expect(card(co.el, 'shelter').querySelector('.co-who').textContent).toMatch(/^Cai resting here/);
+    expect(card(co.el, 'shelter').querySelector('.co-who').textContent).toBe('Cai is here');
     expect(card(co.el, 'lab').querySelector('.co-who').textContent).toBe('Nobody here yet');
   });
 
@@ -138,7 +138,12 @@ describe('who text', () => {
     expect(card(co.el, 'lab').querySelector('.co-who').textContent).toBe('Ana, Ben and Cai are here');
     expect(card(co.el, 'rover').querySelector('.co-who').textContent).toBe('Nobody here yet');
     expect(card(co.el, 'pump').querySelector('.co-who').textContent).toBe('Nobody here yet');
-    expect(card(co.el, 'shelter').querySelector('.co-who').textContent).toBe('Nobody here · room for everyone');
+    expect(card(co.el, 'shelter').querySelector('.co-who').textContent).toBe('Nobody here yet');
+  });
+
+  it('gives the Shelter with the whole crew the same short form (it must fit one line of the card)', () => {
+    const { co } = mount({ who: { shelter: ['Ana', 'Ben', 'Cai'] } });
+    expect(card(co.el, 'shelter').querySelector('.co-who').textContent).toBe('Ana, Ben and Cai are here');
   });
 
   it('copes with no who at all', () => {
