@@ -1,4 +1,6 @@
+@import './ui/theme.css';
 @import './ui/screens/screens.css';
+@import './ui/stage/stage.css';
 /* Console look tokens, shared by the game and the console kit (src/ui/console/console.css); keep these names. */
 :root {
   --console: #f6eddd;      /* cream, from the Learn Arduino inspiration */
@@ -13,10 +15,9 @@
   --tap: 64px;
   font-family: ui-rounded, 'Nunito', system-ui, sans-serif;
   color: var(--ink);
-  background: var(--console);
 }
 * { box-sizing: border-box; }
-body { margin: 0; min-height: 100vh; background: var(--console); display: flex; flex-direction: column; }
+body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; }
 main { flex: 1; width: min(960px, 100%); margin: 0 auto; padding: 16px; }
 h1, h2 { margin: 0 0 12px; letter-spacing: 0.02em; }
 button {
@@ -38,12 +39,7 @@ button:focus-visible { outline: 4px solid var(--warn); outline-offset: 2px; }
 .top-bar .oc-toggle-lever { height: 14px; bottom: 3px; }
 .top-bar .oc-toggle.is-on .oc-toggle-lever { bottom: 17px; }
 .top-bar .oc-caption { font-size: 10px; }
-.console-row { gap: 24px; align-items: flex-end; justify-content: center; }
-.hint { color: var(--ink-quiet); }
-.countdown { font-size: 20px; font-weight: 800; }
-.countdown strong { font-size: 40px; }
 .banner { background: var(--warn); color: #000; padding: 8px 12px; border-radius: var(--radius); margin-bottom: 12px; font-weight: 700; }
-.storm-alert { background: var(--storm); color: #fff; }
 .source-footer { text-align: center; padding: 8px 16px; font-size: 13px; color: var(--ink-quiet); }
 .source-footer a { color: inherit; }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
@@ -89,6 +85,10 @@ button:focus-visible { outline: 4px solid var(--warn); outline-offset: 2px; }
   .plan-action p { font-size: 14px; max-width: 20ch; }
 }
 
-/* Storm screen: the science name stays readable on the red card; locked buttons look locked. */
-.storm-alert .storm-detail { margin-top: 0; font-size: 15px; opacity: 0.92; }
+/* Storm takeover (W11): fills the window over the dimmed stage; the top bar's Sound switch stays above it. */
+.top-bar { position: relative; z-index: 11; }
+.storm-takeover { position: fixed; inset: 0; z-index: 10; overflow: auto; background: var(--od-ink); }
+.storm-takeover .sc-storm { padding-top: 64px; }
+.storm-stage { position: absolute; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; pointer-events: none; }
+/* Locked buttons look locked. */
 button:disabled { opacity: 0.5; cursor: not-allowed; }

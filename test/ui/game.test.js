@@ -89,7 +89,7 @@ const reason = () => app().querySelector('.sc-reason')?.textContent;
 const drawer = () => document.querySelector('dialog');
 const onRescue = () => has(/^(Done|Ready)$/, app());
 const rescueNames = () => allButtons(app()).map(nameOf).filter((n) => /^Bring .+ inside$/.test(n)).map((n) => n.slice(6, -7));
-const timer = () => app().querySelector('[role="timer"]');
+const timer = () => app().querySelector('[role="timer"]:not([hidden])'); // Cadet: the view hides its ring
 const soundSwitch = () => btn('Sound');
 const onReport = () => app().querySelector('.sc-kicker')?.textContent === 'Mission report';
 const onCard = () => /^Sol \d+ done$/.test(heading() ?? ''); // the Sol result card after a sol
@@ -257,6 +257,30 @@ describe('title screen', () => {
     await pressCovered('END SOL');
     expect(timer().textContent).toBe(`${RESCUE_SECONDS} seconds left`);
     expect(btn('Ready')).toBeTruthy();
+  });
+
+  it('draws the logo, tagline and controls over a stage that is inert and hidden from screen readers', async () => {
+    await boot(sky);
+    expect(document.activeElement).toBe(app().querySelector('h1')); // focus lands on the heading
+    expect(app().querySelector('.sc-logo')).not.toBeNull();
+    expect(app().querySelector('.sc-tagline').textContent).toBe('Run a base on Mars for 10 sols.');
+    const stage = app().querySelector('[data-slot="backdrop"] .st');
+    expect(stage).not.toBeNull();
+    expect(stage.hasAttribute('inert')).toBe(true);
+    expect(stage.getAttribute('aria-hidden')).toBe('true');
+    const spots = [...app().querySelectorAll('.st-hs, .st-tool')];
+    expect(spots.length).toBeGreaterThan(0); // guard: the stage has controls to hide
+    for (const b of spots) expect(b.closest('[inert][aria-hidden="true"]')).toBe(stage);
+  });
+
+  it('the idle stage stops when the title is left: no timer keeps running', async () => {
+    await boot(sky, { reducedMotion: false });
+    expect(vi.getTimerCount()).toBeGreaterThan(0); // precondition: the stage is turning
+    await pressCovered('LAUNCH');
+    await settle(2000); // the run's first log line finishes typing
+    expect(heading()).toBe(`Sol 1 of ${SOLS_PER_RUN}`);
+    expect(document.querySelector('.st')).toBeNull();
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it('LAUNCH does nothing until its cover is lifted, and the cover drops again on its own', async () => {
@@ -557,10 +581,10 @@ describe('rescue', () => {
     await settle(1000);
     expect(timer().textContent).toBe(`${RESCUE_SECONDS - 1} seconds left`);
     btn('Bring Ben inside').click(); // at t = 1 s
-    const benRow = () => [...app().querySelectorAll('.row')].find((r) => r.textContent.startsWith('Ben')).textContent;
-    expect(benRow()).toContain('Walking back...');
+    const benRow = () => [...app().querySelectorAll('.sc-row')].find((r) => r.textContent.startsWith('Ben')).textContent;
+    expect(benRow()).toContain('Walking back…');
     await settle((walk - 1) * 1000);
-    expect(benRow()).toContain('Walking back...');
+    expect(benRow()).toContain('Walking back…');
     await settle(1000);
     expect(benRow()).toContain('Safe in the Shelter');
     expect(onRescue()).toBe(true);
@@ -568,7 +592,7 @@ describe('rescue', () => {
     expect(onRescue()).toBe(true); // just before 0
     expect(timer().textContent).toBe('1 second left');
     await settle(1);
-    expect(timer().textContent).toBe("Time's up! Ana was still outside."); // said on screen before moving on
+    expect(app().querySelector('.sc-timesup').textContent).toBe("Time's up! Ana was still outside."); // said on screen before moving on
     expect(btn('Ready').disabled).toBe(true);
     await settle(RESCUE_TIME_UP_MS);
     await nextSol();
@@ -584,7 +608,7 @@ describe('rescue', () => {
     btn('Bring Ana inside').click();
     await settle((RESCUE_SECONDS - 1) * 1000);
     btn('Bring Ben inside').click();
-    expect(app().textContent).toContain('Walking back...');
+    expect(app().textContent).toContain('Walking back…');
     await settle(1000 + RESCUE_TIME_UP_MS);
     await nextSol();
     advance(exp, crewAt, ['ana']);
@@ -603,6 +627,170 @@ describe('rescue', () => {
     expectPlan(exp);
     await settle(RESCUE_SECONDS * 2000); // a countdown still running would resolve the sol again
     expectPlan(exp);
+  });
+
+  it.each([[false, 'Done'], [true, 'Ready']])('commander=%s: a double tap on %s resolves the sol once', async (commander, label) => {
+    const exp = await toRescue(commander);
+    btn('Bring Ana inside').click();
+    const b = btn(label);
+    b.click();
+    b.click();
+    await settle();
+    expect(onCard()).toBe(true);
+    await nextSol();
+    advance(exp, crewAt, ['ana']);
+    expectPlan(exp); // sol 2, not sol 3
+  });
+
+  it('Commander: a double tap on Bring does not restart the walk back', async () => {
+    const walk = JOBS[FAR].walkBackSeconds;
+    expect(walk).toBeGreaterThan(1); // precondition: a second tap mid-walk could restart it
+    const exp = await toRescue(true);
+    const bringBen = btn('Bring Ben inside');
+    bringBen.click();
+    await settle(1000);
+    bringBen.click(); // the same button, again, one second into the walk
+    await settle((walk - 1) * 1000);
+    const benRow = [...app().querySelectorAll('.sc-row')].find((r) => r.textContent.startsWith('Ben'));
+    expect(benRow.textContent).toContain('Safe in the Shelter'); // arrived on the first tap's time
+    btn('Ready').click();
+    await settle();
+    await nextSol();
+    advance(exp, crewAt, ['ben']);
+    expectPlan(exp);
+  });
+
+  it('Commander: taps on Bring and Ready after Time\'s up change nothing, and the sol resolves once', async () => {
+    const exp = await toRescue(true);
+    const bringAna = btn('Bring Ana inside');
+    const ready = btn('Ready');
+    await settle(RESCUE_SECONDS * 1000);
+    expect(app().querySelector('.sc-timesup').hidden).toBe(false);
+    for (const b of [bringAna, ready]) { b.click(); b.dispatchEvent(new MouseEvent('click', { bubbles: true })); }
+    await settle();
+    expect(onRescue()).toBe(true); // still showing Time's up
+    expect(app().querySelector('.sc-timesup').textContent).toBe("Time's up! Ana and Ben were still outside.");
+    await settle(RESCUE_TIME_UP_MS);
+    expect(onCard()).toBe(true);
+    await nextSol();
+    advance(exp, crewAt, []);
+    expectPlan(exp); // sol 2: resolved once, with nobody inside
+  });
+
+  it.each([
+    ['everyone made it inside', ['ana', 'ben'], 'Everyone made it inside.', null],
+    ['nobody brought in', [], 'Ana and Ben were still outside.', 'Time ran out: Ana and Ben got caught outside in the storm.'],
+  ])('Commander, %s: Time\'s up text, the sim result and the rescue note', async (_, bring, text, note) => {
+    expect(JOBS[FAR].walkBackSeconds).toBeLessThan(RESCUE_SECONDS); // precondition: Ben can arrive in time
+    const exp = await toRescue(true);
+    differs(exp, ['ana', 'ben'], []);
+    for (const id of bring) btn(`Bring ${nameOfCrew(id)} inside`).click();
+    await settle(RESCUE_SECONDS * 1000);
+    expect(app().querySelector('.sc-timesup').textContent).toBe(`Time's up! ${text}`);
+    await settle(RESCUE_TIME_UP_MS);
+    await nextSol();
+    advance(exp, crewAt, bring);
+    expectPlan(exp);
+    const last = app().querySelector('.plan-last-sol').textContent;
+    if (note) expect(last).toContain(note);
+    else expect(last).not.toContain('Time ran out');
+  });
+});
+
+describe('storm takeover', () => {
+  const stage = () => app().querySelector('.st');
+  const timesUp = () => app().querySelector('.sc-timesup');
+  // Ana on the Solar Field (outside); a storm on sol 1.
+  async function toStorm(sky, commander, opts) {
+    await boot(sky, opts);
+    await launch({ commander });
+    place('ana', NEAR);
+    await pressCovered('END SOL');
+    expect(onRescue()).toBe(true);
+  }
+
+  it('a flare: kid words, the real class, focus on the heading, over an inert storm stage', async () => {
+    await toStorm(makeSky([flare(0, 'X5.0')]), false);
+    expect(heading()).toBe('Big flash from the Sun!');
+    expect(document.activeElement).toBe(app().querySelector('h2'));
+    expect(app().querySelector('.sc-class').textContent).toContain('class X5.0');
+    expect(stage().dataset.mode).toBe('storm');
+    expect(stage().hasAttribute('inert')).toBe(true);
+    expect(stage().getAttribute('aria-hidden')).toBe('true');
+    expect(app().textContent).not.toMatch(/sunburn/i);
+  });
+
+  it('a CME: the storm cloud title and a CME line, no flare class', async () => {
+    await toStorm(makeSky([cme(0)]), false);
+    expect(heading()).toBe('Storm cloud from the Sun is here!');
+    const line = app().querySelector('.sc-class').textContent;
+    expect(line).toContain('CME');
+    expect(line).toContain('cloud of Sun material');
+    expect(line).not.toMatch(/class/);
+    expect(app().textContent).not.toMatch(/sunburn/i);
+  });
+
+  it('Cadet: Done and no timer, however long it waits', async () => {
+    await toStorm(makeSky([flare(0, 'X5.0')]), false);
+    expect(timer()).toBeNull();
+    expect(has(/^Ready$/)).toBe(false);
+    await settle(RESCUE_SECONDS * 3000);
+    expect(btn('Done').disabled).toBe(false);
+    expect(timesUp().hidden).toBe(true);
+  });
+
+  it('Commander: "1 second left", then Time\'s up names who was caught and stays on screen', async () => {
+    await toStorm(makeSky([flare(0, 'X5.0')]), true);
+    await settle((RESCUE_SECONDS - 1) * 1000);
+    expect(timer().textContent).toBe('1 second left');
+    expect(timesUp().hidden).toBe(true);
+    await settle(1000);
+    expect(timesUp().textContent).toBe("Time's up! Ana was still outside.");
+    expect(btn('Bring Ana inside').disabled).toBe(true);
+    await settle(RESCUE_TIME_UP_MS - 1);
+    expect(onRescue()).toBe(true); // still on screen just before RESCUE_TIME_UP_MS
+    await settle(1);
+    expect(onCard()).toBe(true);
+  });
+
+  it.each([
+    ['Done', async () => { btn('Done').click(); await settle(); }],
+    ['#credits', openCredits],
+  ])('the footer under the takeover is inert during the storm and usable again after leaving by %s', async (_, leaveStorm) => {
+    const footer = () => document.querySelector('.source-footer');
+    await boot(makeSky([flare(0, 'X5.0')]));
+    expect(footer().hasAttribute('inert')).toBe(false);
+    await launch();
+    place('ana', NEAR);
+    await pressCovered('END SOL');
+    expect(onRescue()).toBe(true);
+    expect(footer().hasAttribute('inert')).toBe(true);
+    expect(footer().querySelector('a').closest('[inert]')).toBe(footer()); // the Credits link cannot take focus
+    await leaveStorm();
+    expect(onRescue()).toBe(false);
+    expect(footer().hasAttribute('inert')).toBe(false);
+  });
+
+  it('leaving by Ready leaves no timer or stage running', async () => {
+    await toStorm(makeSky([flare(0, 'X5.0')]), true, { reducedMotion: false });
+    expect(vi.getTimerCount()).toBeGreaterThan(1); // precondition: the countdown and the turning stage
+    btn('Ready').click();
+    await settle();
+    expect(onCard()).toBe(true);
+    expect(stage()).toBeNull();
+    await settle(120_000); // the log finishes typing
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('opening #credits during Time\'s up cancels the pending sol and stops everything', async () => {
+    await toStorm(makeSky([flare(0, 'X5.0')]), true);
+    await settle(RESCUE_SECONDS * 1000);
+    expect(timesUp().hidden).toBe(false);
+    await openCredits();
+    expect(vi.getTimerCount()).toBe(0);
+    expect(stage()).toBeNull();
+    await settle(RESCUE_TIME_UP_MS * 2);
+    expect(heading()).toBe('Credits and data sources');
   });
 });
 
@@ -901,7 +1089,11 @@ describe('mute switch', () => {
     const sky = makeSky(Array.from({ length: SOLS_PER_RUN }, (_, i) => flare(i, 'X5.0')));
     await boot(sky);
     const seen = [];
-    const check = (screen) => { expect(soundSwitch().isConnected).toBe(true); seen.push(screen); };
+    // One Sound switch per screen: the title view's own on the title, the top bar's everywhere else.
+    const check = (screen) => {
+      expect(soundSwitch().closest(screen === 'title' ? '.sc-title' : '.top-bar')).not.toBeNull();
+      seen.push(screen);
+    };
     check('title');
     await launch();
     check('plan');
@@ -933,9 +1125,14 @@ describe('mute switch', () => {
 describe('sky data', () => {
   const FOOTER = BODY.match(/<footer[^>]*>([^<]*)/)[1];
 
-  it('sample: true shows the SAMPLE DATA banner on the plan screen and a sample footer', async () => {
+  it('the footer never says live', () => {
+    expect(BODY.match(/<footer[\s\S]*?<\/footer>/)[0]).not.toMatch(/live/i);
+  });
+
+  it('sample: true shows the SAMPLE DATA banner on the title, the plan screen and the report, and a sample footer', async () => {
     await boot(makeSky([], { sample: true }));
     expect(document.querySelector('.source-footer').firstChild.textContent).toMatch(/sample/i);
+    expect(app().querySelector('.sc-sample').hidden).toBe(false);
     await launch();
     expect(app().querySelector('.banner')?.textContent).toMatch(/^SAMPLE DATA/);
     while (!onReport()) {
@@ -949,6 +1146,7 @@ describe('sky data', () => {
   it('sample: false shows neither', async () => {
     await boot(makeSky([]));
     expect(document.querySelector('.source-footer').firstChild.textContent).toBe(FOOTER);
+    expect(app().querySelector('.sc-sample').hidden).toBe(true);
     expect(FOOTER).not.toMatch(/sample/i);
     await launch();
     expect(app().textContent).not.toMatch(/SAMPLE/i);

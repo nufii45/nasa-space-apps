@@ -212,7 +212,7 @@ describe('resume after a refresh', () => {
     expect(gauges()).toEqual(expGauges(state));
     expect(crewOnMap()).toEqual(expCrew(state, p));
     await pressCovered('END SOL'); // sol 5: the X flare
-    expect(app().querySelector('[role="timer"]')).not.toBeNull(); // Commander came back too
+    expect(app().querySelector('[role="timer"]:not([hidden])')).not.toBeNull(); // Commander came back too
   });
 
   it('Random week resumed after the clock moved plays on from the save: same sols and report as an unbroken run', async () => {

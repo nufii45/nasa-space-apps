@@ -7,8 +7,7 @@ import {
   THIRSTY_SOLS_TO_GO_HOME, CREW,
 } from './sim/constants.js';
 import {
-  createKnob, createToggle, createCoverButton, createGauge, createLamps,
-  createMissionLog, createInfoDrawer, createMuteSwitch, play,
+  createCoverButton, createGauge, createLamps, createMissionLog, createInfoDrawer, createMuteSwitch, play,
 } from './ui/console/index.js';
 import { el } from './ui/console/util.js';
 import { jobCard } from './ui/jobInfo.js';
@@ -16,6 +15,9 @@ import { createOutpostMap } from './ui/map/index.js';
 import { render as solResultView } from './ui/screens/solResult.js';
 import { render as reportView } from './ui/screens/report.js';
 import { render as resumeView } from './ui/screens/resume.js';
+import { render as titleView } from './ui/screens/title.js';
+import { render as stormView } from './ui/screens/storm.js';
+import { createStage } from './ui/stage/index.js';
 
 // Warning thresholds for gauges and lamps, derived from the rules so retuning keeps them meaningful.
 const LOW = { power: HEATER_COST, tank: DRINK_PER_SOL };
@@ -24,10 +26,11 @@ const NEAR_LIMIT = LIMITS.dose - CME_DOSE; // one more CME caught outside would 
 const app = document.getElementById('app');
 const drawer = createInfoDrawer();
 document.body.append(drawer.el);
-document.body.prepend(el('header', { class: 'top-bar' }, createMuteSwitch().el));
+// The title view has its own Sound switch, so title() takes this one off the page.
+const topBar = el('header', { class: 'top-bar' }, createMuteSwitch().el);
 
 let sky = null;
-let game = null; // { state, run, mode, mission, placements, log, gauges, lamps, rescueTimer }
+let game = null; // { state, run, mode, mission, placements, log, gauges, lamps, lastSummary, rescueNote }
 
 // The run is saved after each sol so a refresh can resume it. Storage can throw (private mode, full,
 // blocked); the game must play on without it. Pass null to clear.
@@ -61,15 +64,28 @@ function loadSave() {
 async function loadSky() {
   const res = await fetch('./data/sky.json');
   sky = await res.json();
-  if (sky.sample) document.querySelector('.source-footer').firstChild.textContent = 'SAMPLE storm data (placeholder, not real) · ';
+  if (sky?.sample) document.querySelector('.source-footer').firstChild.textContent = 'SAMPLE storm data (placeholder, not real) · ';
 }
 
 // Swap the screen and move focus to its heading so keyboard and screen-reader users land on it.
+// A screen with timers or a stage sets `leave` after show(); the next show() stops them.
+let leave = null;
 function show(...nodes) {
-  clearInterval(game?.rescueTimer);
+  leave?.();
+  leave = null;
   drawer.close();
+  if (!topBar.isConnected) document.body.prepend(topBar);
   app.replaceChildren(...nodes.filter(Boolean));
   app.querySelector('h1, h2')?.focus();
+}
+// The stage behind the title and storm screens is a picture: never focusable, never read out.
+function backdropStage(opts) {
+  // Same 700 px switch as the help drawer (src/ui/console/infoDrawer.js).
+  const layout = window.matchMedia?.('(max-width: 699px)')?.matches ? 'phone' : 'desktop';
+  const stage = createStage({ jobs: JOBS, layout, ...opts });
+  stage.el.setAttribute('inert', '');
+  stage.el.setAttribute('aria-hidden', 'true');
+  return stage;
 }
 const heading = (tag, text) => el(tag, { tabindex: -1 }, text);
 const button = (text, onclick, cls) => el('button', { type: 'button', class: cls, onclick }, text);
@@ -83,18 +99,15 @@ function stopGame() {
 // last: { mode, mission } from "Change mission", so the knob and switch keep the previous choice.
 function title(last = {}) {
   stopGame();
-  const mission = createKnob({ label: 'Mission', value: last.mission, options: Object.entries(MISSIONS).map(([value, label]) => ({ value, label: label.toUpperCase() })) });
-  const mode = createToggle({ label: 'Commander mode', on: last.mode === 'commander', onLabel: 'COMMANDER', offLabel: 'CADET' });
-  const launch = createCoverButton({
-    label: 'LAUNCH',
-    onPress: () => { play('cheer'); start({ mode: mode.get() ? 'commander' : 'cadet', mission: mission.get() }); },
-  });
-  show(el('section', { class: 'card' },
-    heading('h1', 'Outpost Dial'),
-    el('p', {}, `Run a base on Mars for ${SOLS_PER_RUN} sols (a sol is a Mars day). Real solar storms, recorded by NASA, are coming.`),
-    el('div', { class: 'row console-row' }, mission.el, mode.el, launch.el),
-    el('p', { class: 'hint' }, 'SEPT 2017 is a real giant storm. Cadet (7 to 9) has no timer. Commander (10 to 12) races a storm countdown.'),
-  ));
+  const view = titleView(
+    { mission: last.mission ?? 'random', mode: last.mode ?? 'cadet', sample: !!sky?.sample },
+    { onLaunch: ({ mission, mode }) => { play('cheer'); start({ mode, mission }); } },
+  );
+  const stage = backdropStage({ crew: newGame().crew, placements: {} });
+  view.el.querySelector('[data-slot="backdrop"]').append(stage.el);
+  show(view.el);
+  topBar.remove();
+  leave = () => stage.destroy();
 }
 
 // A new run, or with a save { state, run, placements } the run it holds (its placements are normalised again in plan()).
@@ -143,13 +156,13 @@ function sampleBanner() {
 }
 const today = () => game.run.sols[game.state.sol - 1];
 
-function updateInstruments(storming = false) {
+function updateInstruments() {
   const s = game.state;
   for (const [k, g] of Object.entries(game.gauges)) g.set(s[k]);
   const l = game.lamps;
   l.set('power', s.power <= LOW.power ? 'warn' : 'ok');
   l.set('water', s.tank <= LOW.tank ? 'warn' : 'ok');
-  l.set('storm', storming || today().forecast.length ? 'storm' : 'ok');
+  l.set('storm', today().forecast.length ? 'storm' : 'ok');
   l.set('crew', s.crew.some((c) => c.home) ? 'storm' : s.crew.some((c) => c.dose >= NEAR_LIMIT) ? 'warn' : 'ok');
 }
 
@@ -214,76 +227,61 @@ function rescue() {
   const rescued = new Set();
   const walking = new Map(); // crew id -> seconds remaining
   const timed = game.mode === 'commander';
+  const cme = sol.storm.kind === 'cme';
   let left = RESCUE_SECONDS;
-  const label = sol.storm.kind === 'cme' ? 'Storm cloud from the Sun is here!' : 'Big flash from the Sun!';
-  const detail = sol.storm.kind === 'cme'
-    ? 'Scientists call this a CME: a huge cloud of Sun material.'
-    : `Scientists call this a solar flare, class ${sol.storm.cls}. C is small, M is medium, X is the biggest.`;
-  const secondsWord = (n) => `${n === 1 ? 'second' : 'seconds'} left`;
+  let timesUp = false;
+  let timer = null;
+  let upTimer = null;
+  let finished = false; // a double tap on Done or Ready must resolve the sol once
+  const finish = () => { if (!finished) { finished = true; resolve([...rescued]); } };
+  const caught = () => outside.filter((c) => !rescued.has(c.id)).map((c) => c.name);
+  const model = () => ({
+    title: cme ? 'Storm cloud from the Sun is here!' : 'Big flash from the Sun!',
+    classText: cme ? 'Scientists call this a CME: a huge cloud of Sun material.' : `Scientists call this a solar flare, class ${sol.storm.cls}.`,
+    timed, left, total: RESCUE_SECONDS, timesUp,
+    caughtText: caught().length ? `${caught().join(' and ')} ${caught().length > 1 ? 'were' : 'was'} still outside.` : 'Everyone made it inside.',
+    rows: outside.map((c) => ({
+      id: c.id, name: c.name, where: JOBS[game.placements[c.id]].name,
+      status: rescued.has(c.id) ? 'safe' : walking.has(c.id) ? 'walk' : 'out', walkLeft: walking.get(c.id) ?? 0,
+    })),
+  });
 
-  const finish = () => {
-    clearInterval(game.rescueTimer);
-    resolve([...rescued]);
-  };
+  const view = stormView(model(), {
+    onBring(id) {
+      if (finished || timesUp || rescued.has(id) || walking.has(id)) return;
+      const far = JOBS[game.placements[id]].walkBackSeconds || 0;
+      if (timed && far) walking.set(id, far);
+      else rescued.add(id);
+      view.update(model());
+    },
+    onReady: () => { if (!timesUp) finish(); },
+  });
   // Commander timer ran out: say so on screen before moving on, and remember who was caught outside.
   const timeUp = () => {
-    clearInterval(game.rescueTimer);
-    const caught = outside.filter((c) => !rescued.has(c.id)).map((c) => c.name);
-    countdown.replaceChildren(el('strong', {}, "Time's up!"), caught.length ? ` ${caught.join(' and ')} ${caught.length > 1 ? 'were' : 'was'} still outside.` : ' Everyone made it inside.');
-    done.disabled = true;
+    clearInterval(timer);
+    timesUp = true;
+    view.update(model());
     play('beep');
-    game.rescueNote = caught.length ? `Time ran out: ${caught.join(' and ')} got caught outside in the storm.` : null;
-    for (const r of rows.values()) r.btn.disabled = true;
-    setTimeout(() => { if (countdown.isConnected) resolve([...rescued]); }, RESCUE_TIME_UP_MS);
+    const names = caught();
+    game.rescueNote = names.length ? `Time ran out: ${names.join(' and ')} got caught outside in the storm.` : null;
+    upTimer = setTimeout(finish, RESCUE_TIME_UP_MS);
   };
-  const done = button(timed ? 'Ready' : 'Done', finish, 'primary');
-  const seconds = el('strong', {}, String(left));
-  const secondsText = document.createTextNode(` ${secondsWord(left)}`);
-  const countdown = el('p', { class: 'countdown', role: 'timer' }, seconds, secondsText);
-  // Rows update in place so the countdown never rebuilds the screen or drops focus.
-  const rows = new Map(outside.map((c) => [c.id, {
-    status: el('span', {}, `Outside at the ${JOBS[game.placements[c.id]].name}`),
-    btn: button(`Bring ${c.name} inside`, () => bring(c.id), 'danger'),
-  }]));
-  const refresh = (id) => {
-    const r = rows.get(id);
-    r.status.textContent = rescued.has(id) ? 'Safe in the Shelter' : 'Walking back...';
-    if (r.btn.isConnected) {
-      const hadFocus = document.activeElement === r.btn;
-      r.btn.remove();
-      if (hadFocus) ([...rows.values()].find((x) => x.btn.isConnected)?.btn ?? done).focus();
-    }
-  };
-  function bring(id) {
-    const far = JOBS[game.placements[id]].walkBackSeconds || 0;
-    if (timed && far) walking.set(id, far);
-    else rescued.add(id);
-    refresh(id);
-  }
 
-  show(
-    el('section', { class: 'card storm-alert' },
-      heading('h2', label),
-      el('p', {}, 'Tiny, super-fast bits from the Sun are coming. This is radiation, and it is bad for the body. Get everyone outside back to the Shelter!'),
-      el('p', { class: 'storm-detail' }, detail),
-      timed ? countdown : null),
-    game.lamps.el,
-    el('section', { class: 'card', 'aria-live': 'polite' },
-      ...(outside.length
-        ? outside.map((c) => el('div', { class: 'row' }, el('strong', {}, c.name), rows.get(c.id).status, rows.get(c.id).btn))
-        : [el('p', {}, 'Everyone is already inside. Phew!')]),
-      el('p', {}, done)),
-  );
-  updateInstruments(true);
-  game.lamps.sweep();
+  const stage = backdropStage({ crew: s.crew, placements: game.placements, mode: 'storm' });
+  show(el('div', { class: 'storm-takeover' }, el('div', { class: 'storm-stage' }, stage.el), view.el));
+  // The takeover covers the footer, so its Credits link must not take focus until the storm is over.
+  const footer = document.querySelector('.source-footer');
+  footer?.setAttribute('inert', '');
+  leave = () => { clearInterval(timer); clearTimeout(upTimer); stage.destroy(); footer?.removeAttribute('inert'); };
+  play('alarm');
 
   if (timed) {
-    game.rescueTimer = setInterval(() => {
+    timer = setInterval(() => {
       left -= 1;
       for (const [id, t] of walking) {
-        if (t <= 1) { walking.delete(id); rescued.add(id); refresh(id); } else walking.set(id, t - 1);
+        if (t <= 1) { walking.delete(id); rescued.add(id); } else walking.set(id, t - 1);
       }
-      if (left <= 0) timeUp(); else { seconds.textContent = String(left); secondsText.textContent = ` ${secondsWord(left)}`; }
+      if (left <= 0) timeUp(); else view.update(model());
     }, 1000);
   }
 }
