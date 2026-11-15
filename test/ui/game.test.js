@@ -628,6 +628,73 @@ describe('rescue', () => {
     await settle(RESCUE_SECONDS * 2000); // a countdown still running would resolve the sol again
     expectPlan(exp);
   });
+
+  it.each([[false, 'Done'], [true, 'Ready']])('commander=%s: a double tap on %s resolves the sol once', async (commander, label) => {
+    const exp = await toRescue(commander);
+    btn('Bring Ana inside').click();
+    const b = btn(label);
+    b.click();
+    b.click();
+    await settle();
+    expect(onCard()).toBe(true);
+    await nextSol();
+    advance(exp, crewAt, ['ana']);
+    expectPlan(exp); // sol 2, not sol 3
+  });
+
+  it('Commander: a double tap on Bring does not restart the walk back', async () => {
+    const walk = JOBS[FAR].walkBackSeconds;
+    expect(walk).toBeGreaterThan(1); // precondition: a second tap mid-walk could restart it
+    const exp = await toRescue(true);
+    const bringBen = btn('Bring Ben inside');
+    bringBen.click();
+    await settle(1000);
+    bringBen.click(); // the same button, again, one second into the walk
+    await settle((walk - 1) * 1000);
+    const benRow = [...app().querySelectorAll('.sc-row')].find((r) => r.textContent.startsWith('Ben'));
+    expect(benRow.textContent).toContain('Safe in the Shelter'); // arrived on the first tap's time
+    btn('Ready').click();
+    await settle();
+    await nextSol();
+    advance(exp, crewAt, ['ben']);
+    expectPlan(exp);
+  });
+
+  it('Commander: taps on Bring and Ready after Time\'s up change nothing, and the sol resolves once', async () => {
+    const exp = await toRescue(true);
+    const bringAna = btn('Bring Ana inside');
+    const ready = btn('Ready');
+    await settle(RESCUE_SECONDS * 1000);
+    expect(app().querySelector('.sc-timesup').hidden).toBe(false);
+    for (const b of [bringAna, ready]) { b.click(); b.dispatchEvent(new MouseEvent('click', { bubbles: true })); }
+    await settle();
+    expect(onRescue()).toBe(true); // still showing Time's up
+    expect(app().querySelector('.sc-timesup').textContent).toBe("Time's up! Ana and Ben were still outside.");
+    await settle(RESCUE_TIME_UP_MS);
+    expect(onCard()).toBe(true);
+    await nextSol();
+    advance(exp, crewAt, []);
+    expectPlan(exp); // sol 2: resolved once, with nobody inside
+  });
+
+  it.each([
+    ['everyone made it inside', ['ana', 'ben'], 'Everyone made it inside.', null],
+    ['nobody brought in', [], 'Ana and Ben were still outside.', 'Time ran out: Ana and Ben got caught outside in the storm.'],
+  ])('Commander, %s: Time\'s up text, the sim result and the rescue note', async (_, bring, text, note) => {
+    expect(JOBS[FAR].walkBackSeconds).toBeLessThan(RESCUE_SECONDS); // precondition: Ben can arrive in time
+    const exp = await toRescue(true);
+    differs(exp, ['ana', 'ben'], []);
+    for (const id of bring) btn(`Bring ${nameOfCrew(id)} inside`).click();
+    await settle(RESCUE_SECONDS * 1000);
+    expect(app().querySelector('.sc-timesup').textContent).toBe(`Time's up! ${text}`);
+    await settle(RESCUE_TIME_UP_MS);
+    await nextSol();
+    advance(exp, crewAt, bring);
+    expectPlan(exp);
+    const last = app().querySelector('.plan-last-sol').textContent;
+    if (note) expect(last).toContain(note);
+    else expect(last).not.toContain('Time ran out');
+  });
 });
 
 describe('storm takeover', () => {
@@ -684,6 +751,24 @@ describe('storm takeover', () => {
     expect(onRescue()).toBe(true); // still on screen just before RESCUE_TIME_UP_MS
     await settle(1);
     expect(onCard()).toBe(true);
+  });
+
+  it.each([
+    ['Done', async () => { btn('Done').click(); await settle(); }],
+    ['#credits', openCredits],
+  ])('the footer under the takeover is inert during the storm and usable again after leaving by %s', async (_, leaveStorm) => {
+    const footer = () => document.querySelector('.source-footer');
+    await boot(makeSky([flare(0, 'X5.0')]));
+    expect(footer().hasAttribute('inert')).toBe(false);
+    await launch();
+    place('ana', NEAR);
+    await pressCovered('END SOL');
+    expect(onRescue()).toBe(true);
+    expect(footer().hasAttribute('inert')).toBe(true);
+    expect(footer().querySelector('a').closest('[inert]')).toBe(footer()); // the Credits link cannot take focus
+    await leaveStorm();
+    expect(onRescue()).toBe(false);
+    expect(footer().hasAttribute('inert')).toBe(false);
   });
 
   it('leaving by Ready leaves no timer or stage running', async () => {

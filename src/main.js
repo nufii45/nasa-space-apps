@@ -64,7 +64,7 @@ function loadSave() {
 async function loadSky() {
   const res = await fetch('./data/sky.json');
   sky = await res.json();
-  if (sky.sample) document.querySelector('.source-footer').firstChild.textContent = 'SAMPLE storm data (placeholder, not real) · ';
+  if (sky?.sample) document.querySelector('.source-footer').firstChild.textContent = 'SAMPLE storm data (placeholder, not real) · ';
 }
 
 // Swap the screen and move focus to its heading so keyboard and screen-reader users land on it.
@@ -80,6 +80,7 @@ function show(...nodes) {
 }
 // The stage behind the title and storm screens is a picture: never focusable, never read out.
 function backdropStage(opts) {
+  // Same 700 px switch as the help drawer (src/ui/console/infoDrawer.js).
   const layout = window.matchMedia?.('(max-width: 699px)')?.matches ? 'phone' : 'desktop';
   const stage = createStage({ jobs: JOBS, layout, ...opts });
   stage.el.setAttribute('inert', '');
@@ -99,7 +100,7 @@ function stopGame() {
 function title(last = {}) {
   stopGame();
   const view = titleView(
-    { mission: last.mission ?? 'random', mode: last.mode ?? 'cadet', sample: sky?.sample === true },
+    { mission: last.mission ?? 'random', mode: last.mode ?? 'cadet', sample: !!sky?.sample },
     { onLaunch: ({ mission, mode }) => { play('cheer'); start({ mode, mission }); } },
   );
   const stage = backdropStage({ crew: newGame().crew, placements: {} });
@@ -231,6 +232,8 @@ function rescue() {
   let timesUp = false;
   let timer = null;
   let upTimer = null;
+  let finished = false; // a double tap on Done or Ready must resolve the sol once
+  const finish = () => { if (!finished) { finished = true; resolve([...rescued]); } };
   const caught = () => outside.filter((c) => !rescued.has(c.id)).map((c) => c.name);
   const model = () => ({
     title: cme ? 'Storm cloud from the Sun is here!' : 'Big flash from the Sun!',
@@ -245,13 +248,13 @@ function rescue() {
 
   const view = stormView(model(), {
     onBring(id) {
-      if (timesUp || rescued.has(id) || walking.has(id)) return;
+      if (finished || timesUp || rescued.has(id) || walking.has(id)) return;
       const far = JOBS[game.placements[id]].walkBackSeconds || 0;
       if (timed && far) walking.set(id, far);
       else rescued.add(id);
       view.update(model());
     },
-    onReady: () => { if (!timesUp) resolve([...rescued]); },
+    onReady: () => { if (!timesUp) finish(); },
   });
   // Commander timer ran out: say so on screen before moving on, and remember who was caught outside.
   const timeUp = () => {
@@ -261,12 +264,15 @@ function rescue() {
     play('beep');
     const names = caught();
     game.rescueNote = names.length ? `Time ran out: ${names.join(' and ')} got caught outside in the storm.` : null;
-    upTimer = setTimeout(() => resolve([...rescued]), RESCUE_TIME_UP_MS);
+    upTimer = setTimeout(finish, RESCUE_TIME_UP_MS);
   };
 
   const stage = backdropStage({ crew: s.crew, placements: game.placements, mode: 'storm' });
   show(el('div', { class: 'storm-takeover' }, el('div', { class: 'storm-stage' }, stage.el), view.el));
-  leave = () => { clearInterval(timer); clearTimeout(upTimer); stage.destroy(); };
+  // The takeover covers the footer, so its Credits link must not take focus until the storm is over.
+  const footer = document.querySelector('.source-footer');
+  footer?.setAttribute('inert', '');
+  leave = () => { clearInterval(timer); clearTimeout(upTimer); stage.destroy(); footer?.removeAttribute('inert'); };
   play('alarm');
 
   if (timed) {
