@@ -172,7 +172,6 @@
 .sc-ctl-hint { max-width: 170px; text-align: center; font-size: 13px; color: var(--sc-quiet); }
 /* The kit's own rings are 4 px amber; on this screen every control gets the 3 px teal ring instead. */
 .sc-title :is(button, [tabindex]:not([tabindex='-1'])):focus-visible { outline: 3px solid var(--sc-teal); outline-offset: 3px; box-shadow: none; }
-.sc-foot { position: absolute; left: 0; right: 0; bottom: 18px; z-index: 1; margin: 0; text-align: center; font-size: 13px; color: #4A5270; }
 
 /* Phone (390 px) */
 @media (max-width: 720px) {

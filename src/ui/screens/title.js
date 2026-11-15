@@ -41,8 +41,7 @@ export function render(model, { onLaunch } = {}) {
       el('div', { class: 'sc-controls' },
         el('div', { class: 'sc-ctl sc-ctl-knob' }, mission.el, missionHint),
         el('div', { class: 'sc-ctl' }, rank.el, rankHint),
-        el('div', { class: 'sc-ctl' }, launch.el, el('p', { class: 'sc-ctl-hint' }, 'Tap once to lift the cover, then press.')))),
-    el('p', { class: 'sc-foot' }, 'Storm data: NASA DONKI (archived, real dates)'));
+        el('div', { class: 'sc-ctl' }, launch.el, el('p', { class: 'sc-ctl-hint' }, 'Tap once to lift the cover, then press.')))));
 
   function update(m) {
     mission.set(m.mission === 'sept2017' ? 'sept2017' : 'random');

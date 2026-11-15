@@ -595,7 +595,7 @@ describe('Title (W13)', () => {
     expect(text(h)).toBe('Outpost Dial');
     expect(el.querySelector('.sc-logo svg')).not.toBeNull();
     expect(text(el.querySelector('.sc-tagline'))).toBe('Run a base on Mars for 10 sols.');
-    expect(text(el.querySelector('.sc-foot'))).toBe('Storm data: NASA DONKI (archived, real dates)');
+    expect(el.querySelector('.sc-foot')).toBeNull(); // the page footer in index.html carries the data line on every screen
     expect(text(el)).not.toMatch(/\blive\b/i);
   });
 
