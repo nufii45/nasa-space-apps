@@ -90,6 +90,12 @@ const onRescue = () => has(/^(Done|Ready)$/, app());
 const rescueNames = () => allButtons(app()).map(nameOf).filter((n) => /^Bring .+ inside$/.test(n)).map((n) => n.slice(6, -7));
 const timer = () => app().querySelector('[role="timer"]');
 const soundSwitch = () => btn('Sound');
+const onReport = () => heading() === 'Mission report';
+const onCard = () => /^Sol \d+ done$/.test(heading() ?? ''); // the Sol result card after a sol
+async function nextSol() {
+  btn('NEXT SOL →').click();
+  await settle();
+}
 // Map tokens: "Ana, radiation 12/100, at Lab" or "..., went home".
 function crewOnMap() {
   const out = {};
@@ -200,6 +206,8 @@ async function playSol(exp, placements, { commander }) {
     }
   }
   advance(exp, placements, rescued);
+  expect(onCard()).toBe(!exp.state.over); // a card after every sol, except the one that ends the run
+  if (onCard()) await nextSol();
 }
 
 // =====================================================================================
@@ -288,6 +296,7 @@ describe('plan screen', () => {
     place('ana', 'lab');
     expect(crewOnMap().Ana.at).toBe(JOBS.lab.name);
     await pressCovered('END SOL');
+    await nextSol();
     advance(exp, { ana: 'lab', ben: 'shelter', cai: 'shelter' }, []);
     expect(exp.solLines.some((l) => l.includes('Ana') && l.includes(JOBS.lab.name))).toBe(true); // guard: placement mattered
     expectPlan(exp);
@@ -304,7 +313,7 @@ describe('plan screen', () => {
 describe('after END SOL', () => {
   const sky = makeSky([cme(2, 0), flare(1, 'M1.0', false)]);
 
-  it('gauges and log follow the sim, the log keeps earlier sols, placements carry over, no results screen', async () => {
+  it('gauges and log follow the sim, the log keeps earlier sols, placements carry over after the card', async () => {
     await boot(sky);
     await launch();
     const exp = model(runFor(sky));
@@ -314,12 +323,79 @@ describe('after END SOL', () => {
     for (let i = 0; i < 3; i++) {
       await pressCovered('END SOL');
       if (onRescue()) { btn('Done').click(); await settle(); }
+      await nextSol();
       advance(exp, p, []);
-      expectPlan(exp); // straight back to the plan screen, whole log so far
+      expectPlan(exp); // back to the plan screen, whole log so far
       expect(app().querySelector('section[aria-label="Mission log"]')).toBe(log); // one log for the run
       expect(crewOnMap()).toMatchObject({ Ana: { at: JOBS[NEAR].name }, Ben: { at: JOBS.lab.name }, Cai: { at: JOBS[INSIDE].name } });
     }
     expect(exp.state.sol).toBe(4);
+  });
+});
+
+describe('sol result card', () => {
+  // Sol 1: a particle M flare (Cadet, rescue screen). Sol 2: calm.
+  const sky = makeSky([flare(0, 'M1.0')]);
+  const p = { ana: NEAR, ben: 'lab', cai: INSIDE };
+  const KEYS = { power: 'power', tank: 'water', wall: 'shield', science: 'science' };
+  // Expected card lines from the sim's states before and after: only what changed, minus sign U+2212.
+  const expected = (before, after) => ({
+    changes: Object.keys(KEYS).filter((k) => after[k] !== before[k])
+      .map((k) => `${after[k] > before[k] ? '+' : '−'}${Math.abs(after[k] - before[k])} ${KEYS[k]}`),
+    doses: after.crew.map((c, i) => [c.name, c.dose - before.crew[i].dose]).filter(([, d]) => d > 0).map(([n, d]) => `${n} +${d} radiation`),
+  });
+  const cardLines = () => ({
+    changes: [...app().querySelectorAll('.sc-line:not(.sc-dose) .sc-badge')].map((b) => b.textContent),
+    doses: [...app().querySelectorAll('.sc-dose')].map((d) => /^\S+ \S+ radiation/.exec(d.textContent.replace(/\s+/g, ' '))[0]),
+  });
+  async function firstSol() {
+    await boot(sky);
+    await launch();
+    const exp = model(runFor(sky));
+    place('ana', NEAR); place('ben', 'lab'); place('cai', INSIDE);
+    await pressCovered('END SOL');
+    btn('Done').click(); // nobody brought in: Ana takes the outside dose
+    await settle();
+    const before = exp.state;
+    advance(exp, p, []);
+    return { exp, before };
+  }
+
+  it('after a sol (and its rescue) lists only what changed and each radiation rise; NEXT SOL is the only button', async () => {
+    const { exp, before } = await firstSol();
+    expect(heading()).toBe('Sol 1 done');
+    expect(document.activeElement).toBe(app().querySelector('h2')); // focus lands on the heading
+    expect(app().textContent).toContain(`Real sky: ${exp.run.sols[0].date}`);
+    const want = expected(before, exp.state);
+    expect(want.changes.length).toBeGreaterThan(0); // guards: something changed, and something did not
+    expect(want.changes.length).toBeLessThan(4);
+    expect(want.doses).toContain(`Ana +${exp.state.crew[0].dose} radiation`);
+    expect(cardLines()).toEqual(want);
+    expect(app().querySelector('.sc-dose').textContent).toContain(`0 → ${exp.state.crew[0].dose}/${LIMITS.dose}`);
+    const power = [...app().querySelectorAll('.sc-line')].find((l) => / power/.test(l.querySelector('.sc-badge').textContent));
+    expect(power.textContent).toContain(JOBS[NEAR].name); // the why comes from the sol's log
+    expect(allButtons(app()).map(nameOf)).toEqual(['NEXT SOL →']);
+    await nextSol();
+    expectPlan(exp);
+  });
+
+  it('Enter on the card goes to the next plan', async () => {
+    const { exp } = await firstSol();
+    document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+    await settle();
+    expectPlan(exp);
+  });
+
+  it('a double click or a double Enter on NEXT SOL never skips a sol', async () => {
+    const { exp } = await firstSol();
+    const next = btn('NEXT SOL →');
+    next.click();
+    next.click();
+    await settle();
+    expectPlan(exp);
+    for (let i = 0; i < 2; i++) document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+    await settle();
+    expectPlan(exp); // still the plan for sol 2: the Enter landed on the plan heading
   });
 });
 
@@ -331,7 +407,7 @@ describe('rescue', () => {
     await launch();
     const run = runFor(sky);
     const seen = [];
-    while (heading() !== 'Mission report') {
+    while (!onReport()) {
       const sol = Number(/^Sol (\d+)/.exec(heading())[1]);
       await pressCovered('END SOL');
       seen.push([sol, onRescue()]);
@@ -340,6 +416,7 @@ describe('rescue', () => {
         btn('Done').click();
         await settle();
       }
+      if (onCard()) await nextSol();
     }
     expect(seen).toEqual(seen.map(([sol]) => [sol, needsRescue(run.sols[sol - 1].storm)]));
     expect(seen.length).toBeGreaterThanOrEqual(6); // covered both kinds of sol
@@ -368,6 +445,7 @@ describe('rescue', () => {
     expect(has(/^Bring Ana inside$/)).toBe(false);
     btn('Done').click();
     await settle();
+    await nextSol();
     advance(exp, crewAt, ['ana']);
     expect(exp.solLines.some((l) => /^Ana .*\(shelter\)$/.test(l)) && exp.solLines.some((l) => /^Ben .*\(outside\)$/.test(l))).toBe(true);
     expectPlan(exp);
@@ -383,6 +461,7 @@ describe('rescue', () => {
     expect(app().textContent).not.toContain('Walking back');
     btn('Done').click();
     await settle();
+    await nextSol();
     advance(exp, crewAt, ['ben']);
     expectPlan(exp);
   });
@@ -410,6 +489,7 @@ describe('rescue', () => {
     expect(timer().textContent).toBe("Time's up! Ana was still outside."); // said on screen before moving on
     expect(btn('Ready').disabled).toBe(true);
     await settle(RESCUE_TIME_UP_MS);
+    await nextSol();
     advance(exp, crewAt, ['ben']); // Ana was left outside
     expect(app().querySelector('.plan-last-sol').textContent).toContain('Ana got caught outside');
     expectPlan(exp);
@@ -424,6 +504,7 @@ describe('rescue', () => {
     btn('Bring Ben inside').click();
     expect(app().textContent).toContain('Walking back...');
     await settle(1000 + RESCUE_TIME_UP_MS);
+    await nextSol();
     advance(exp, crewAt, ['ana']);
     expectPlan(exp);
   });
@@ -435,6 +516,7 @@ describe('rescue', () => {
     btn('Bring Ben inside').click(); // still walking
     btn('Ready').click();
     await settle();
+    await nextSol();
     advance(exp, crewAt, ['ana']);
     expectPlan(exp);
     await settle(RESCUE_SECONDS * 2000); // a countdown still running would resolve the sol again
@@ -468,6 +550,7 @@ describe('help cards', () => {
     await launch();
     btn('What is Lab?').click();
     await pressCovered('END SOL');
+    await nextSol();
     expect(heading()).toBe(`Sol 2 of ${SOLS_PER_RUN}`);
     expect(drawer().hasAttribute('open')).toBe(false);
     btn('What is Lab?').click();
@@ -533,6 +616,7 @@ describe('debrief', () => {
       await pressCovered('END SOL');
       if (onRescue()) { btn('Done').click(); await settle(); }
       advance(exp, p, []);
+      if (!exp.state.over) await nextSol();
     }
     return exp;
   }
@@ -589,9 +673,10 @@ describe('mission report: Try again and Change mission keep the mission and mode
   const sky = makeSky([...xWeek(0), ...xWeek(30)], { featured: { sept2017: { start: day(30), seed: 1 } } });
   async function toReport() {
     place('ana', NEAR); place('ben', FAR);
-    while (heading() !== 'Mission report') {
+    while (!onReport()) {
       await pressCovered('END SOL');
       if (onRescue()) { btn(/^(Done|Ready)$/).click(); await settle(); }
+      if (onCard()) await nextSol();
     }
   }
   const knob = () => app().querySelector('[role="slider"][aria-label="Mission"]').getAttribute('aria-valuetext');
@@ -664,7 +749,7 @@ describe('credits', () => {
 });
 
 describe('mute switch', () => {
-  it('is on title, plan, rescue, debrief and credits, and toggles sound', async () => {
+  it('is on title, plan, rescue, sol result, debrief and credits, and toggles sound', async () => {
     const sky = makeSky(Array.from({ length: SOLS_PER_RUN }, (_, i) => flare(i, 'X5.0')));
     await boot(sky);
     const seen = [];
@@ -678,14 +763,18 @@ describe('mute switch', () => {
     check('rescue');
     btn('Done').click();
     await settle();
-    while (heading() !== 'Mission report') {
+    expect(onCard()).toBe(true);
+    check('sol result');
+    await nextSol();
+    while (!onReport()) {
       await pressCovered('END SOL');
       if (onRescue()) { btn('Done').click(); await settle(); }
+      if (onCard()) await nextSol();
     }
     check('debrief');
     await openCredits();
     check('credits');
-    expect(seen).toEqual(['title', 'plan', 'rescue', 'debrief', 'credits']);
+    expect(seen).toEqual(['title', 'plan', 'rescue', 'sol result', 'debrief', 'credits']);
     expect(soundSwitch().getAttribute('aria-checked')).toBe('true');
     soundSwitch().click();
     expect(soundSwitch().getAttribute('aria-checked')).toBe('false');

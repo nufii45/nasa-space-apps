@@ -13,6 +13,7 @@ import {
 import { el } from './ui/console/util.js';
 import { jobCard } from './ui/jobInfo.js';
 import { createOutpostMap } from './ui/map/index.js';
+import { render as solResultView } from './ui/screens/solResult.js';
 
 // Warning thresholds for gauges and lamps, derived from the rules so retuning keeps them meaningful.
 const LOW = { power: HEATER_COST, tank: DRINK_PER_SOL };
@@ -254,7 +255,8 @@ function rescue() {
 // ---------- Resolve ----------
 function resolve(rescued) {
   const sol = today();
-  const { state, log } = step(game.state, game.placements, sol, rescued);
+  const before = game.state;
+  const { state, log } = step(before, game.placements, sol, rescued);
   const earned = state.science - game.state.science;
   const wentHome = state.crew.filter((c, i) => c.home && !game.state.crew[i].home).map((c) => c.name);
   game.lastSummary = `Last sol: ${earned ? `+${earned} science` : 'no science'}${sol.storm ? ' · a storm passed' : ''}${wentHome.length ? ` · ${wentHome.join(' and ')} went home` : ''}.${game.rescueNote ? ` ${game.rescueNote}` : ''}`;
@@ -264,7 +266,31 @@ function resolve(rescued) {
   game.state = state;
   if (state.over) return debrief();
   save({ v: 1, state, run: game.run, mode: game.mode, mission: game.mission, placements: game.placements });
-  plan();
+  solResult(before, sol, log);
+}
+
+// ---------- Sol result ----------
+// Each gauge's word on the card, and the step() log types that explain its change.
+const CHANGES = {
+  power: { word: 'power', why: ['power'] },
+  tank: { word: 'water', why: ['water', 'shield'] },
+  wall: { word: 'shield', why: ['shield'] },
+  science: { word: 'science', why: ['science'] },
+};
+// Only what changed, read from the states before and after step(); the rules are never re-run here.
+function solResult(before, sol, log) {
+  const after = game.state;
+  const changes = Object.entries(CHANGES).filter(([k]) => after[k] !== before[k]).map(([k, c]) => {
+    const d = after[k] - before[k];
+    const text = `${d > 0 ? '+' : '−'}${Math.abs(d)} ${c.word}`;
+    const why = log.filter((l) => c.why.includes(l.type) && l.text !== text).map((l) => `${l.text}.`).join(' ');
+    return { text, why, dir: d > 0 ? 'up' : 'down' };
+  });
+  const doses = after.crew.map((c, i) => ({ name: c.name, before: before.crew[i].dose, after: c.dose, limit: LIMITS.dose }))
+    .filter((d) => d.after > d.before);
+  let moved = false; // a double click or a second Enter must not skip the next plan
+  const next = () => { if (!moved) { moved = true; plan(); } };
+  show(sampleBanner(), solResultView({ sol: before.sol, date: sol.date, changes, doses, isLast: false }, { onNext: next }).el);
 }
 
 // ---------- Debrief ----------

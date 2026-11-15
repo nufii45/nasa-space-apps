@@ -64,6 +64,7 @@ function btn(re) {
   return found[0];
 }
 const heading = () => app().querySelector('h1, h2')?.textContent;
+const onCard = () => /^Sol \d+ done$/.test(heading() ?? ''); // the Sol result card after a sol
 async function pressCovered(label) {
   btn(`Lift the safety cover over ${label}`).click();
   btn(label).click();
@@ -85,7 +86,7 @@ describe('saving the run', () => {
     expect(localStorage.getItem(KEY)).toBeNull();
     place('ana', 'lab');
     await pressCovered('END SOL');
-    expect(heading()).toBe(`Sol 2 of ${SOLS_PER_RUN}`);
+    expect(heading()).toBe('Sol 1 done');
     const run = buildRun(makeSky([]), { mode: 'cadet', featured: null, seed: NOW >>> 0 });
     const placements = { ana: 'lab', ben: 'shelter', cai: 'shelter' };
     const { state } = step(newGame(), placements, run.sols[0], []);
@@ -100,8 +101,8 @@ describe('saving the run', () => {
     let sols = 0;
     while (heading() !== 'Mission report') {
       await pressCovered('END SOL');
-      if (heading() !== 'Mission report' && !/^Sol /.test(heading())) { btn('Done').click(); await settle(); } // rescue screen
-      if (heading() !== 'Mission report') { sols += 1; expect(saved().state.sol).toBe(sols + 1); }
+      if (heading() !== 'Mission report' && !onCard()) { btn('Done').click(); await settle(); } // rescue screen
+      if (onCard()) { sols += 1; expect(saved().state.sol).toBe(sols + 1); btn('NEXT SOL →').click(); await settle(); }
     }
     expect(sols).toBeGreaterThan(0); // precondition: a save existed before the report
     expect(localStorage.getItem(KEY)).toBeNull();
@@ -114,6 +115,8 @@ describe('saving the run', () => {
     await pressCovered('LAUNCH');
     await pressCovered('END SOL');
     expect(set).toHaveBeenCalledWith(KEY, expect.any(String)); // guard: the save was tried
+    btn('NEXT SOL →').click();
+    await settle();
     expect(heading()).toBe(`Sol 2 of ${SOLS_PER_RUN}`);
   });
 });
