@@ -51,7 +51,7 @@ export function normalisePlacements(state, placements = {}) {
   for (const c of state.crew) {
     if (c.home) continue;
     let job = placements[c.id];
-    if (!JOBS[job] || (job !== 'shelter' && taken.has(job))) job = 'shelter';
+    if (!Object.hasOwn(JOBS, job) || (job !== 'shelter' && taken.has(job))) job = 'shelter';
     if (job !== 'shelter') taken.add(job);
     out[c.id] = job;
   }

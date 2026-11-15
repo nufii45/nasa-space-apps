@@ -57,9 +57,9 @@ radiation. **Limits:** power 10, tank 10, wall 6, science 100, radiation 100.
 | Job | Where | Power cost | Effect |
 | --- | --- | --- | --- |
 | Solar Field | Outside | 0 | +5 power |
-| Recycler | Inside | 2 | +3 water in the tank |
-| Water Wall pump | Inside | 1 | Moves 2 water from the tank into the shelter walls |
-| Lab | Inside | 1 | +5 science |
+| Recycler | Inside | 2 | +4 water in the tank |
+| Water Wall pump | Inside | 1 | Moves 4 water from the tank into the shelter walls |
+| Lab | Inside | 1 | +6 science |
 | Rover trip | Outside | 2 | +10 science; 4 second walk back in a Commander rescue |
 | Shelter | Shelter | 0 | Nothing; the safest place |
 
@@ -71,17 +71,18 @@ radiation. **Limits:** power 10, tank 10, wall 6, science 100, radiation 100.
 3. Jobs run in the order Recycler, pump, Lab, Rover. A job without enough power is skipped.
 4. The crew drink 2 water. If there is not enough, the sol is thirsty: the tank drops to 0 and
    no science is earned.
-5. Background radiation: +2 for everyone, +1 more for anyone outside.
+5. Background radiation: +1 for everyone, +5 more for anyone outside.
 6. Storm radiation, if a harmful storm hits (see below).
 7. Science earned this sol is added, unless the sol was cold or thirsty.
 8. An astronaut at 100 radiation goes home; the run goes on with the rest. Two thirsty sols in a
    row send the whole crew home.
 
-**Storms.** Base dose: flare with particles, class C 10, class M 25, class X 50; CME 20. A flare
-without particles does no harm. The dose each astronaut takes is the base dose times where they
-are: outside 1.0, inside 0.6, Shelter 0.6 × (1 − 0.1 × wall water). With full walls (6) the
-Shelter factor is 0.24. An astronaut rescued in time takes the Shelter dose, and their job still
-counts for that sol.
+**Storms.** Base dose: flare with particles, class C 10, class M 20, class X 40; CME 50. A flare
+without particles does no harm. CMEs hit hardest and are the storms that are forecast, so pumping
+the walls after a warning pays. The dose each astronaut takes is the base dose times where they
+are: outside 1.0, inside 0.6, Shelter 0.6 × (1 − 0.15 × wall water). With full walls (6) the
+Shelter factor is 0.06; one pump (4 wall water) makes it 0.24. Only astronauts outside can be
+rescued. One rescued in time takes the Shelter dose, and their job still counts for that sol.
 
 **Ending.** Win at 100 science. Lose if the whole crew has gone home, or if sol 10 ends first.
 Stars on a win: 1 for winning, +1 if nobody went home, +1 if no sol was cold or thirsty.
@@ -121,8 +122,11 @@ Stars on a win: 1 for winning, +1 if nobody went home, +1 if no sol was cold or 
 ## 10. The MVP is done when
 
 - [ ] `sky.json` holds real DONKI data and the SAMPLE DATA banner is gone.
-- [ ] `npm test` passes and `npm run balance` passes on the real data (no fixed plan wins more
-      than 80% of 1,000 runs).
+- [ ] `npm test` passes and `npm run balance` passes on the real data, in both modes, over 1,000
+      runs (decision 0007): the reference player, rescuing everyone outside, wins 65% to 80% in
+      Cadet and 45% to 65% in Commander; it never makes a sol thirsty by pumping; following the
+      CME forecast wins at least 3 points more than ignoring it; no plan that repeats the same
+      jobs every sol wins more than 80%. The best schedule written in advance is reported only.
 - [ ] The plan screen is the outpost map and the game uses the console kit.
 - [ ] A full run can be played in both modes and both missions, to the debrief, on a phone and
       on a laptop, with keyboard only.

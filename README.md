@@ -10,7 +10,7 @@ Design: see the game design doc and the MVP PRD in the project.
 npm install
 npm run dev          # local dev server
 npm test             # rule tests (vitest)
-npm run balance      # plays 1,000 runs per strategy, flags any fixed plan that wins > 80%
+npm run balance      # 1,000 real runs per mode: reference player in its win band, forecast pays, no fixed plan > 80%
 npm run fetch:donki  # downloads real DONKI data into public/data/sky.json (needs internet)
 npm run build        # static site in dist/
 ```

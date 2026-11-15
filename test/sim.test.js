@@ -18,6 +18,9 @@ describe('placements', () => {
     const p = normalisePlacements(newGame(), { ana: 'lab', ben: 'lab', cai: 'moon' });
     expect(p).toEqual({ ana: 'lab', ben: 'shelter', cai: 'shelter' });
   });
+  it('inherited object names are not jobs', () => {
+    expect(normalisePlacements(newGame(), { ana: 'constructor', ben: 'toString' })).toEqual({ ana: 'shelter', ben: 'shelter', cai: 'shelter' });
+  });
 });
 
 describe('power and heaters', () => {
@@ -41,14 +44,14 @@ describe('power and heaters', () => {
 });
 
 describe('water', () => {
-  it('recycler +3, crew drink 2', () => {
-    expect(step({ ...newGame(), tank: 4 }, { ana: 'recycler' }).state.tank).toBe(5);
-    expect(step(newGame(), { ana: 'recycler' }).state.tank).toBe(8); // 8 + 3 capped at 10, then - 2
+  it('recycler +4, crew drink 2', () => {
+    expect(step({ ...newGame(), tank: 4 }, { ana: 'recycler' }).state.tank).toBe(6);
+    expect(step(newGame(), { ana: 'recycler' }).state.tank).toBe(8); // 8 + 4 capped at 10, then - 2
   });
-  it('pump moves 2 water into the walls', () => {
+  it('pump moves 4 water into the walls', () => {
     const { state } = step(newGame(), { ana: 'pump' });
-    expect(state.wall).toBe(2);
-    expect(state.tank).toBe(4); // 8 - 2 pumped - 2 drunk
+    expect(state.wall).toBe(4);
+    expect(state.tank).toBe(2); // 8 - 4 pumped - 2 drunk
   });
   it('two thirsty sols in a row send everyone home', () => {
     let s = { ...newGame(), tank: 0 };
@@ -61,29 +64,29 @@ describe('water', () => {
 });
 
 describe('radiation', () => {
-  it('background: +2 everyone, +1 more outside', () => {
+  it('background: +1 everyone, +5 more outside', () => {
     const { state } = step(newGame(), { ana: 'solar', ben: 'lab' });
-    expect(state.crew.map((c) => c.dose)).toEqual([3, 2, 2]);
+    expect(state.crew.map((c) => c.dose)).toEqual([6, 1, 1]);
   });
   it('storm base dose by class, only with particles', () => {
-    expect(stormBaseDose({ kind: 'flare', cls: 'X8.2', particles: true })).toBe(50);
-    expect(stormBaseDose({ kind: 'flare', cls: 'M1.0', particles: true })).toBe(25);
+    expect(stormBaseDose({ kind: 'flare', cls: 'X8.2', particles: true })).toBe(40);
+    expect(stormBaseDose({ kind: 'flare', cls: 'M1.0', particles: true })).toBe(20);
     expect(stormBaseDose({ kind: 'flare', cls: 'X9.3', particles: false })).toBe(0);
-    expect(stormBaseDose({ kind: 'cme' })).toBe(20);
+    expect(stormBaseDose({ kind: 'cme' })).toBe(50);
   });
   it('location factors', () => {
     expect(locationFactor('outside', 6)).toBe(1);
     expect(locationFactor('inside', 6)).toBe(0.6);
     expect(locationFactor('shelter', 0)).toBeCloseTo(0.6);
-    expect(locationFactor('shelter', 6)).toBeCloseTo(0.24);
+    expect(locationFactor('shelter', 6)).toBeCloseTo(0.06);
   });
   it('rescued crew take the shelter dose', () => {
     const storm = { kind: 'flare', cls: 'X1', particles: true };
     const s = newGame();
     const left = step(s, { ana: 'rover' }, { storm }).state.crew[0].dose;
     const saved = step(s, { ana: 'rover' }, { storm }, ['ana']).state.crew[0].dose;
-    expect(left).toBe(3 + 50);
-    expect(saved).toBe(3 + 30);
+    expect(left).toBe(6 + 40);
+    expect(saved).toBe(6 + 24);
   });
   it('crew at 100 go home, the run continues', () => {
     const s = newGame();
