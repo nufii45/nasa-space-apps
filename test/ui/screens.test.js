@@ -244,3 +244,84 @@ describe('all views', () => {
     }
   });
 });
+
+describe('fix cycle 1: edge cases', () => {
+  const NASTY = '<b>Ana</b> & <i>Ben</i>';
+  const goldStars = (root) => [...root.querySelectorAll('svg path')].filter((p) => p.getAttribute('fill') === '#F2C14E').length;
+
+  it('text with < and & is shown as text in every view', () => {
+    const sol = mount(solResult({ sol: 1, date: NASTY, changes: [{ text: NASTY, why: NASTY, dir: 'up' }], doses: [{ name: NASTY, before: 0, after: 5 }] }, {})).el;
+    const rep = mount(report({ ...base, ...REPORT.home, reason: NASTY, tip: NASTY, storms: [{ label: NASTY, date: NASTY }], sky: { start: NASTY, end: NASTY } }, {})).el;
+    const res = mount(resume({ sol: 1, missionLabel: NASTY, modeLabel: NASTY }, {})).el;
+    for (const root of [sol, rep, res]) {
+      expect(root.querySelector('b, i')).toBeNull();
+      expect(root.textContent).toContain(NASTY);
+    }
+  });
+
+  it.each([0, 3])('%i stars: text stars and gold stars in the picture agree', (n) => {
+    const { el } = mount(report({ ...base, ...REPORT.win, stars: n }, {}));
+    expect(el.querySelector('.sc-stars').textContent).toBe('★'.repeat(n) + '☆'.repeat(3 - n));
+    expect(el.querySelector('.sc-stars').getAttribute('aria-label')).toBe(`${n} of 3 stars`);
+    expect(goldStars(el)).toBe(n);
+  });
+
+  it('update() removes old content: doses and date on the Sol result', () => {
+    const view = mount(solResult(SOL, {}));
+    view.update({ sol: 4, changes: [], doses: [] });
+    expect(view.el.querySelectorAll('.sc-dose, li')).toHaveLength(0);
+    expect(text(view.el)).not.toContain('Real sky');
+  });
+
+  it('update() removes old content: Sept 2017 story, tip and stars on the report', () => {
+    const view = mount(report({ ...base, ...REPORT.win, stars: 3, sept2017: true }, {}));
+    expect(goldStars(view.el)).toBe(3);
+    view.update({ ...base, ...REPORT.time, sept2017: false, tip: '' });
+    expect(text(view.el)).not.toContain('September 2017');
+    expect(view.el.querySelector('a')).toBeNull();
+    expect(text(view.el)).not.toContain('Tip:');
+    expect(view.el.querySelector('.sc-stars')).toBeNull();
+    expect(goldStars(view.el)).toBe(0);
+  });
+
+  it('Enter after update() still calls onNext once', () => {
+    const { log, handlers } = calls('onNext');
+    const view = mount(solResult(SOL, handlers));
+    view.update({ ...SOL, sol: 5 });
+    enter(heading(view.el));
+    expect(log).toEqual(['onNext']);
+  });
+
+  it('isLast: the one button reads NEXT: MISSION REPORT and calls onNext', () => {
+    const { log, handlers } = calls('onNext');
+    const { el } = mount(solResult({ ...SOL, isLast: true }, handlers));
+    expect(buttons(el).map(text)).toEqual(['NEXT: MISSION REPORT →']);
+    button(el, 'NEXT: MISSION REPORT →').click();
+    expect(log).toEqual(['onNext']);
+  });
+
+  it('a held Enter (repeat) is ignored', () => {
+    const { log, handlers } = calls('onNext');
+    const { el } = mount(solResult(SOL, handlers));
+    heading(el).dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', repeat: true, bubbles: true }));
+    expect(log).toEqual([]);
+  });
+
+  it('the card root can take focus, and Enter on it calls onNext', () => {
+    const { log, handlers } = calls('onNext');
+    const { el } = mount(solResult(SOL, handlers));
+    expect(el.getAttribute('tabindex')).toBe('-1');
+    el.focus();
+    expect(document.activeElement).toBe(el);
+    enter(el);
+    expect(log).toEqual(['onNext']);
+  });
+
+  it('sky.sample labels the sky line; missing sample adds nothing', () => {
+    const line = (sample) => [...mount(report({ ...base, ...REPORT.time, sky: { ...base.sky, sample } }, {})).el.querySelectorAll('.sc-receipt p')]
+      .map(text).find((t) => t.startsWith('Your sky'));
+    expect(line(true)).toBe('Your sky: 2017-09-05 to 2017-09-14 (sample data)');
+    expect(line(false)).toBe('Your sky: 2017-09-05 to 2017-09-14, recorded by NASA');
+    expect(line(undefined)).toBe('Your sky: 2017-09-05 to 2017-09-14');
+  });
+});

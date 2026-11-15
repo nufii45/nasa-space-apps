@@ -18,7 +18,8 @@ function doseLine({ name, before, after, limit = 100 }) {
 
 export function render(model, { onNext } = {}) {
   const id = nextId('sc-result');
-  const root = el('section', { class: 'sc-screen sc-result', 'aria-labelledby': id });
+  // tabindex -1: a click on the card's text keeps focus on the card, so Enter still works.
+  const root = el('section', { class: 'sc-screen sc-result', 'aria-labelledby': id, tabindex: -1 });
   // Enter anywhere on the card moves on; a focused button or link already handles its own Enter.
   root.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter' || e.repeat || e.target.closest?.('button, a')) return;

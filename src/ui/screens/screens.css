@@ -34,6 +34,7 @@
 .sc-h { margin: 0; font-family: var(--sc-head); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
 .sc-screen h2.sc-h { font-size: 28px; line-height: 1.05; }
 .sc-screen h2[tabindex='-1']:focus { outline: none; }
+.sc-result:focus { outline: none; }
 .sc-mono { font-family: var(--sc-mono-font); font-weight: 500; }
 .sc-quiet { color: var(--sc-quiet); font-size: 15px; }
 
@@ -76,7 +77,7 @@
 .sc-titles { display: flex; flex-direction: column; gap: 6px; }
 .sc-kicker { font-size: 13px; color: var(--sc-quiet); }
 .sc-screen h2.sc-headline { font-size: 44px; line-height: 1.02; color: var(--sc-tone-text); }
-.sc-stars { font-size: 32px; line-height: 1; color: #B07D10; letter-spacing: 0.1em; }
+.sc-stars { font-size: 32px; line-height: 1; color: #7A5600; letter-spacing: 0.1em; }
 .sc-reason { font-size: 24px; font-weight: 600; line-height: 1.25; }
 .sc-receipt {
   background: #FFFDF8; border: 1px solid var(--sc-line); border-radius: 4px; padding: 14px 16px;

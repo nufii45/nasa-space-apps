@@ -1,5 +1,5 @@
 // Mission report (W3): one of three endings. A pure view (decision 0009):
-// render({ ending: 'win'|'home'|'time', stars, reason, science, scienceGoal?, sky: { start, end },
+// render({ ending: 'win'|'home'|'time', stars, reason, science, scienceGoal?, sky: { start, end, sample? },
 //          storms: [{ label, date }], tip, sept2017 }, { onTryAgain, onChangeMission, onTitle })
 import { el, nextId } from '../console/util.js';
 
@@ -46,6 +46,9 @@ function picture(ending, stars) {
 const SEPT_2017 = 'In September 2017 a big solar storm hit Mars. Curiosity, NASA\'s robot car on Mars, measured more than twice as much radiation as ever before. MAVEN, a NASA spacecraft that flies around Mars, saw the whole sky glow with aurora (colourful lights, like the northern lights on Earth). ';
 const SEPT_2017_URL = 'https://www.jpl.nasa.gov/news/large-solar-storm-sparks-global-aurora-and-doubles-radiation-levels-on-the-martian-surface/';
 
+// Archived data is always labelled: sample placeholders never read as real NASA records.
+const skySuffix = (sample) => (sample === true ? ' (sample data)' : sample === false ? ', recorded by NASA' : '');
+
 export function render(model, { onTryAgain, onChangeMission, onTitle } = {}) {
   const id = nextId('sc-report');
   const root = el('section', { class: 'sc-screen sc-report', 'aria-labelledby': id });
@@ -67,7 +70,7 @@ export function render(model, { onTryAgain, onChangeMission, onTitle } = {}) {
           el('p', { class: 'sc-reason' }, m.reason)),
         el('div', { class: 'sc-receipt', role: 'group', 'aria-label': 'Mission receipt' },
           el('p', {}, `Science: ${m.science}/${m.scienceGoal ?? 100}`),
-          m.sky ? el('p', {}, `Your sky: ${m.sky.start} to ${m.sky.end}`) : null,
+          m.sky ? el('p', {}, `Your sky: ${m.sky.start} to ${m.sky.end}${skySuffix(m.sky.sample)}`) : null,
           storms.length
             ? [el('p', {}, `${storms.length} storm${storms.length > 1 ? 's' : ''} reached the base:`),
               el('ul', {}, storms.map((s) => el('li', {}, `${s.label} · ${s.date}`)))]
