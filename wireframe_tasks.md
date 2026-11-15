@@ -41,50 +41,6 @@ and the wireframe board to match.
 
 ## Tier 2: the 3D console (after the submission)
 
-- [ ] **W5. Design tokens and fonts.** Needs D4.
-  - Acceptance: the colours, type and spacing from `docs/wireframes/README.md` are CSS custom
-    properties in `src/styles.css`. Fonts load per D4. Paper background with the 32 px grid.
-    `kit.html` still renders.
-  - Owns: `src/styles.css`, `index.html`, `kit.html`, `public/fonts/` (if self-hosted).
-
-- [ ] **W6. Isometric stage component.** Needs D3.
-  - Acceptance: a new `src/ui/stage/` draws the outpost as SVG: ground plate, base floor,
-    Shelter dome with its water-wall ring, Recycler, pump and tank, battery, Lab, four solar
-    panels, rover, and the power and water pipes. The geometry can be ported from
-    `docs/wireframes/source/Scene.dc.html` (`P(x, y, z)` projection, `box`, cylinder and dome
-    helpers). The 6 hotspots are `<button>`s with labels like "Solar Field: Ana is here".
-    Astronauts stand at their station. API: `createStage({ jobs, crew, placements, picked,
-    onStation, onHelp, mode })` → `{ el, update(state) }`. jsdom tests check 6 hotspots,
-    their labels, and that a click calls `onStation(id)`.
-  - Owns: `src/ui/stage/*`, `test/ui/stage.test.js`.
-  - Board: `Scene.dc.html`.
-
-- [ ] **W7. Callouts, leader lines and the Labels toggle.**
-  - Acceptance: each hotspot has a callout card (icon, UPPERCASE title, one sentence, who is
-    there, a 44 px "?" that calls `onHelp`). Dashed leader lines go from card to dot. Labels on
-    and off works; the phone layout has no callouts and shows the selected station's card under
-    the stage instead.
-  - Owns: `src/ui/stage/*`, `test/ui/stage.test.js`.
-  - Board: `Main.dc.html`, `PhonePlan.dc.html`.
-
-- [ ] **W8. Stage toolbar: rotate, zoom, pan.**
-  - Acceptance: rotate left/right steps through 4 pre-drawn 90° views; zoom 75% to 150%; drag
-    pans; the info button explains the controls; keyboard works for every control.
-  - Owns: `src/ui/stage/*`, `test/ui/stage.test.js`.
-
-- [ ] **W9. Plan screen layout.** Needs W6 and W7.
-  - Acceptance: desktop has the left rail (Home, How to play, Sound, Credits), a sol track in
-    the header, the Sun report card, the stage, a crew strip at the bottom, and a right panel
-    with status (4 lamps, 4 gauges with the science goal marker), Station/Mission log tabs and
-    the END SOL cover. Phone has one column, a swipeable crew carousel, sideways-scrolling
-    tabs, a sticky END SOL bar and a bottom nav. Placing works as today: tap an astronaut, then
-    a station; one per job; the Shelter takes everyone; unplaced crew rest in the Shelter. A
-    busy job swaps: the newcomer takes it and the occupant goes to the Shelter (user decision
-    2026-11-15, decision 0012; the earlier "Pick another station" line is dropped). Existing plan-screen tests still pass or are
-    updated to the new layout.
-  - Owns: `src/main.js`, `src/styles.css`, `test/ui/game.test.js`.
-  - Board: `Main.dc.html`, `PhonePlan.dc.html`.
-
 - [ ] **W10. Flat map fallback.** CUT by the user on 2026-11-15 (the flat map uses SVG too, so
   "when SVG fails" cannot trigger; see decision 0010). Do not build.
   - Acceptance: the current `src/ui/map/` stays as the fallback when SVG fails or the player
@@ -92,45 +48,6 @@ and the wireframe board to match.
     are covered by tests.
   - Owns: `src/main.js`, `src/ui/map/*` (only if needed), tests.
   - Board: `States.dc.html` panel C.
-
-- [ ] **W11. Storm takeover.**
-  - Acceptance: orange full-screen takeover over the dimmed stage. Title in kid words; the real
-    flare class in small text with a "?" explainer. Each outside astronaut goes Outside →
-    Walking back… → Safe in the Shelter. Commander shows a countdown ring from 10, with "1
-    second left" in the singular. Time's up stays on screen about 2 seconds before moving on.
-    Cadet shows Done and no timer.
-  - Owns: `src/main.js`, `src/styles.css`, `test/ui/game.test.js`.
-  - Board: `Storm.dc.html`, `StormTimesUp.dc.html`, `StormPhone*.dc.html`.
-
-- [ ] **W12. Help drawer as side drawer and bottom sheet.** Console kit task.
-  - Acceptance: side drawer 400 px wide on desktop; bottom sheet (at most 85% tall, drag
-    handle) on phone. The header and ✕ never scroll; only the panel scrolls. It fits a
-    1024×572 window. Esc and the backdrop close it, and focus goes back to the "?" that opened
-    it. Tab names per D1.
-  - Owns: `src/ui/console/infoDrawer.js`, `src/ui/console/console.css`, `src/ui/jobInfo.js`,
-    `kit.html`, tests.
-  - Board: `Drawer.dc.html`, `DrawerPhone.dc.html`.
-
-- [ ] **W13. Title screen.**
-  - Acceptance: the logo, the tagline "Run a base on Mars for 10 sols.", the Mission knob, the
-    Cadet/Commander switch, LAUNCH under its cover, and the Sound switch, with the idle stage
-    turning slowly behind them. The footer says "Storm data: NASA DONKI (archived, real dates)"
-    and never "live". The SAMPLE DATA banner shows only with sample data.
-  - Owns: `src/main.js`, `src/styles.css`, tests.
-  - Board: `Title.dc.html`, `TitlePhone.dc.html`.
-
-- [ ] **W14. Motion and Reduced motion.**
-  - Acceptance: cards lift on hover or tap, tab underlines slide, the stage turns slowly when
-    idle and stops on input, and dots flow along the pipes while a job runs. A Reduced motion
-    setting (on by default when `prefers-reduced-motion` is set) turns all of that off.
-  - Owns: `src/styles.css`, `src/ui/stage/*`, `src/main.js`.
-  - Board: `Components.dc.html` (Motion).
-
-- [ ] **W15. Keyboard and focus.**
-  - Acceptance: tab order matches `States.dc.html` panel F, arrow keys move between hotspots,
-    every new screen moves focus to its heading, and every control has the 3 px teal focus ring.
-    Add a keyboard-only test of a whole sol.
-  - Owns: `src/main.js`, `src/ui/stage/*`, tests.
 
 - [ ] **W16. Check in a real browser.**
   - Acceptance: screenshots at 1280×800, 1024×572 and 390×844 for every screen, compared with
@@ -179,3 +96,96 @@ and the wireframe board to match.
   - Owns: `src/main.js`, `test/ui/game.test.js` (or a new `test/ui/resume.test.js`).
   - Board: `States.dc.html` panel D, `StatesPhone.dc.html`.
   - Done 2026-11-15, merged into `feat/wireframes` at `846eb48` (reviewer APPROVE, QA PASS).
+
+- [x] **W5. Design tokens and fonts.** Needs D4.
+  - Acceptance: the colours, type and spacing from `docs/wireframes/README.md` are CSS custom
+    properties in `src/styles.css`. Fonts load per D4. Paper background with the 32 px grid.
+    `kit.html` still renders.
+  - Owns: `src/styles.css`, `index.html`, `kit.html`, `public/fonts/` (if self-hosted).
+  - Done 2026-11-15, merged into `feat/wireframes` at `b09187c`, imported at `2b8519d` (reviewer APPROVE, QA PASS; not yet checked in a real browser).
+
+- [x] **W6. Isometric stage component.** Needs D3.
+  - Acceptance: a new `src/ui/stage/` draws the outpost as SVG: ground plate, base floor,
+    Shelter dome with its water-wall ring, Recycler, pump and tank, battery, Lab, four solar
+    panels, rover, and the power and water pipes. The geometry can be ported from
+    `docs/wireframes/source/Scene.dc.html` (`P(x, y, z)` projection, `box`, cylinder and dome
+    helpers). The 6 hotspots are `<button>`s with labels like "Solar Field: Ana is here".
+    Astronauts stand at their station. API: `createStage({ jobs, crew, placements, picked,
+    onStation, onHelp, mode })` → `{ el, update(state) }`. jsdom tests check 6 hotspots,
+    their labels, and that a click calls `onStation(id)`.
+  - Owns: `src/ui/stage/*`, `test/ui/stage.test.js`.
+  - Board: `Scene.dc.html`.
+  - Done 2026-11-15, merged into `feat/wireframes` at `1745efa`, on the plan screen at `d6807f6` (reviewer APPROVE, QA PASS; not yet checked in a real browser).
+
+- [x] **W7. Callouts, leader lines and the Labels toggle.**
+  - Acceptance: each hotspot has a callout card (icon, UPPERCASE title, one sentence, who is
+    there, a 44 px "?" that calls `onHelp`). Dashed leader lines go from card to dot. Labels on
+    and off works; the phone layout has no callouts and shows the selected station's card under
+    the stage instead.
+  - Owns: `src/ui/stage/*`, `test/ui/stage.test.js`.
+  - Board: `Main.dc.html`, `PhonePlan.dc.html`.
+  - Done 2026-11-15, merged into `feat/wireframes` at `b68c3d1`, on the plan screen at `d6807f6` (reviewer APPROVE, QA PASS; not yet checked in a real browser).
+
+- [x] **W8. Stage toolbar: rotate, zoom, pan.**
+  - Acceptance: rotate left/right steps through 4 pre-drawn 90° views; zoom 75% to 150%; drag
+    pans; the info button explains the controls; keyboard works for every control.
+  - Owns: `src/ui/stage/*`, `test/ui/stage.test.js`.
+  - Done 2026-11-15, merged into `feat/wireframes` at `1745efa` (reviewer APPROVE, QA PASS; not yet checked in a real browser).
+
+- [x] **W9. Plan screen layout.** Needs W6 and W7.
+  - Acceptance: desktop has the left rail (Home, How to play, Sound, Credits), a sol track in
+    the header, the Sun report card, the stage, a crew strip at the bottom, and a right panel
+    with status (4 lamps, 4 gauges with the science goal marker), Station/Mission log tabs and
+    the END SOL cover. Phone has one column, a swipeable crew carousel, sideways-scrolling
+    tabs, a sticky END SOL bar and a bottom nav. Placing works as today: tap an astronaut, then
+    a station; one per job; the Shelter takes everyone; unplaced crew rest in the Shelter. A
+    busy job swaps: the newcomer takes it and the occupant goes to the Shelter (user decision
+    2026-11-15, decision 0012; the earlier "Pick another station" line is dropped). Existing plan-screen tests still pass or are
+    updated to the new layout.
+  - Owns: `src/main.js`, `src/styles.css`, `test/ui/game.test.js`.
+  - Board: `Main.dc.html`, `PhonePlan.dc.html`.
+  - Done 2026-11-15, merged into `feat/wireframes` at `d6807f6` (reviewer APPROVE, QA PASS; not yet checked in a real browser).
+
+- [x] **W11. Storm takeover.**
+  - Acceptance: orange full-screen takeover over the dimmed stage. Title in kid words; the real
+    flare class in small text with a "?" explainer. Each outside astronaut goes Outside →
+    Walking back… → Safe in the Shelter. Commander shows a countdown ring from 10, with "1
+    second left" in the singular. Time's up stays on screen about 2 seconds before moving on.
+    Cadet shows Done and no timer.
+  - Owns: `src/main.js`, `src/styles.css`, `test/ui/game.test.js`.
+  - Board: `Storm.dc.html`, `StormTimesUp.dc.html`, `StormPhone*.dc.html`.
+  - Done 2026-11-15, merged into `feat/wireframes` at `e13935b` (view) and `2b8519d` (wiring) (reviewer APPROVE, QA PASS; not yet checked in a real browser).
+
+- [x] **W12. Help drawer as side drawer and bottom sheet.** Console kit task.
+  - Acceptance: side drawer 400 px wide on desktop; bottom sheet (at most 85% tall, drag
+    handle) on phone. The header and ✕ never scroll; only the panel scrolls. It fits a
+    1024×572 window. Esc and the backdrop close it, and focus goes back to the "?" that opened
+    it. Tab names per D1.
+  - Owns: `src/ui/console/infoDrawer.js`, `src/ui/console/console.css`, `src/ui/jobInfo.js`,
+    `kit.html`, tests.
+  - Board: `Drawer.dc.html`, `DrawerPhone.dc.html`.
+  - Done 2026-11-15, merged into `feat/wireframes` at `d0680e2` (reviewer APPROVE, QA PASS; not yet checked in a real browser).
+
+- [x] **W13. Title screen.**
+  - Acceptance: the logo, the tagline "Run a base on Mars for 10 sols.", the Mission knob, the
+    Cadet/Commander switch, LAUNCH under its cover, and the Sound switch, with the idle stage
+    turning slowly behind them. The footer says "Storm data: NASA DONKI (archived, real dates)"
+    and never "live". The SAMPLE DATA banner shows only with sample data.
+  - Owns: `src/main.js`, `src/styles.css`, tests.
+  - Board: `Title.dc.html`, `TitlePhone.dc.html`.
+  - Done 2026-11-15, merged into `feat/wireframes` at `e13935b` (view) and `2b8519d` (wiring) (reviewer APPROVE, QA PASS; not yet checked in a real browser).
+
+- [x] **W14. Motion and Reduced motion.**
+  - Acceptance: cards lift on hover or tap, tab underlines slide, the stage turns slowly when
+    idle and stops on input, and dots flow along the pipes while a job runs. A Reduced motion
+    setting (on by default when `prefers-reduced-motion` is set) turns all of that off.
+  - Owns: `src/styles.css`, `src/ui/stage/*`, `src/main.js`.
+  - Board: `Components.dc.html` (Motion).
+  - Done 2026-11-15, merged into `feat/wireframes` at `1745efa` (stage) and `d6807f6` (setting) (reviewer APPROVE, QA PASS; not yet checked in a real browser).
+
+- [x] **W15. Keyboard and focus.**
+  - Acceptance: tab order matches `States.dc.html` panel F, arrow keys move between hotspots,
+    every new screen moves focus to its heading, and every control has the 3 px teal focus ring.
+    Add a keyboard-only test of a whole sol.
+  - Owns: `src/main.js`, `src/ui/stage/*`, tests.
+  - Done 2026-11-15, merged into `feat/wireframes` at `d6807f6` (reviewer APPROVE, QA PASS; not yet checked in a real browser).
