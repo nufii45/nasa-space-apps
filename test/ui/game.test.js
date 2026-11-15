@@ -259,6 +259,30 @@ describe('title screen', () => {
     expect(btn('Ready')).toBeTruthy();
   });
 
+  it('draws the logo, tagline and controls over a stage that is inert and hidden from screen readers', async () => {
+    await boot(sky);
+    expect(document.activeElement).toBe(app().querySelector('h1')); // focus lands on the heading
+    expect(app().querySelector('.sc-logo')).not.toBeNull();
+    expect(app().querySelector('.sc-tagline').textContent).toBe('Run a base on Mars for 10 sols.');
+    const stage = app().querySelector('[data-slot="backdrop"] .st');
+    expect(stage).not.toBeNull();
+    expect(stage.hasAttribute('inert')).toBe(true);
+    expect(stage.getAttribute('aria-hidden')).toBe('true');
+    const spots = [...app().querySelectorAll('.st-hs, .st-tool')];
+    expect(spots.length).toBeGreaterThan(0); // guard: the stage has controls to hide
+    for (const b of spots) expect(b.closest('[inert][aria-hidden="true"]')).toBe(stage);
+  });
+
+  it('the idle stage stops when the title is left: no timer keeps running', async () => {
+    await boot(sky, { reducedMotion: false });
+    expect(vi.getTimerCount()).toBeGreaterThan(0); // precondition: the stage is turning
+    await pressCovered('LAUNCH');
+    await settle(2000); // the run's first log line finishes typing
+    expect(heading()).toBe(`Sol 1 of ${SOLS_PER_RUN}`);
+    expect(document.querySelector('.st')).toBeNull();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it('LAUNCH does nothing until its cover is lifted, and the cover drops again on its own', async () => {
     await boot(sky);
     btn('LAUNCH').click();
@@ -901,7 +925,11 @@ describe('mute switch', () => {
     const sky = makeSky(Array.from({ length: SOLS_PER_RUN }, (_, i) => flare(i, 'X5.0')));
     await boot(sky);
     const seen = [];
-    const check = (screen) => { expect(soundSwitch().isConnected).toBe(true); seen.push(screen); };
+    // One Sound switch per screen: the title view's own on the title, the top bar's everywhere else.
+    const check = (screen) => {
+      expect(soundSwitch().closest(screen === 'title' ? '.sc-title' : '.top-bar')).not.toBeNull();
+      seen.push(screen);
+    };
     check('title');
     await launch();
     check('plan');
@@ -933,9 +961,14 @@ describe('mute switch', () => {
 describe('sky data', () => {
   const FOOTER = BODY.match(/<footer[^>]*>([^<]*)/)[1];
 
-  it('sample: true shows the SAMPLE DATA banner on the plan screen and a sample footer', async () => {
+  it('the footer never says live', () => {
+    expect(BODY.match(/<footer[\s\S]*?<\/footer>/)[0]).not.toMatch(/live/i);
+  });
+
+  it('sample: true shows the SAMPLE DATA banner on the title, the plan screen and the report, and a sample footer', async () => {
     await boot(makeSky([], { sample: true }));
     expect(document.querySelector('.source-footer').firstChild.textContent).toMatch(/sample/i);
+    expect(app().querySelector('.sc-sample').hidden).toBe(false);
     await launch();
     expect(app().querySelector('.banner')?.textContent).toMatch(/^SAMPLE DATA/);
     while (!onReport()) {
@@ -949,6 +982,7 @@ describe('sky data', () => {
   it('sample: false shows neither', async () => {
     await boot(makeSky([]));
     expect(document.querySelector('.source-footer').firstChild.textContent).toBe(FOOTER);
+    expect(app().querySelector('.sc-sample').hidden).toBe(true);
     expect(FOOTER).not.toMatch(/sample/i);
     await launch();
     expect(app().textContent).not.toMatch(/SAMPLE/i);

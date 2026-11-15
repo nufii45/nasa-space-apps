@@ -7,8 +7,7 @@ import {
   THIRSTY_SOLS_TO_GO_HOME, CREW,
 } from './sim/constants.js';
 import {
-  createKnob, createToggle, createCoverButton, createGauge, createLamps,
-  createMissionLog, createInfoDrawer, createMuteSwitch, play,
+  createCoverButton, createGauge, createLamps, createMissionLog, createInfoDrawer, createMuteSwitch, play,
 } from './ui/console/index.js';
 import { el } from './ui/console/util.js';
 import { jobCard } from './ui/jobInfo.js';
@@ -16,6 +15,8 @@ import { createOutpostMap } from './ui/map/index.js';
 import { render as solResultView } from './ui/screens/solResult.js';
 import { render as reportView } from './ui/screens/report.js';
 import { render as resumeView } from './ui/screens/resume.js';
+import { render as titleView } from './ui/screens/title.js';
+import { createStage } from './ui/stage/index.js';
 
 // Warning thresholds for gauges and lamps, derived from the rules so retuning keeps them meaningful.
 const LOW = { power: HEATER_COST, tank: DRINK_PER_SOL };
@@ -24,7 +25,8 @@ const NEAR_LIMIT = LIMITS.dose - CME_DOSE; // one more CME caught outside would 
 const app = document.getElementById('app');
 const drawer = createInfoDrawer();
 document.body.append(drawer.el);
-document.body.prepend(el('header', { class: 'top-bar' }, createMuteSwitch().el));
+// The title view has its own Sound switch, so title() takes this one off the page.
+const topBar = el('header', { class: 'top-bar' }, createMuteSwitch().el);
 
 let sky = null;
 let game = null; // { state, run, mode, mission, placements, log, gauges, lamps, rescueTimer }
@@ -65,11 +67,23 @@ async function loadSky() {
 }
 
 // Swap the screen and move focus to its heading so keyboard and screen-reader users land on it.
+// A screen with timers or a stage sets `leave` after show(); the next show() stops them.
+let leave = null;
 function show(...nodes) {
-  clearInterval(game?.rescueTimer);
+  leave?.();
+  leave = null;
   drawer.close();
+  if (!topBar.isConnected) document.body.prepend(topBar);
   app.replaceChildren(...nodes.filter(Boolean));
   app.querySelector('h1, h2')?.focus();
+}
+// The stage behind the title and storm screens is a picture: never focusable, never read out.
+function backdropStage(opts) {
+  const layout = window.matchMedia?.('(max-width: 699px)')?.matches ? 'phone' : 'desktop';
+  const stage = createStage({ jobs: JOBS, layout, ...opts });
+  stage.el.setAttribute('inert', '');
+  stage.el.setAttribute('aria-hidden', 'true');
+  return stage;
 }
 const heading = (tag, text) => el(tag, { tabindex: -1 }, text);
 const button = (text, onclick, cls) => el('button', { type: 'button', class: cls, onclick }, text);
@@ -83,18 +97,15 @@ function stopGame() {
 // last: { mode, mission } from "Change mission", so the knob and switch keep the previous choice.
 function title(last = {}) {
   stopGame();
-  const mission = createKnob({ label: 'Mission', value: last.mission, options: Object.entries(MISSIONS).map(([value, label]) => ({ value, label: label.toUpperCase() })) });
-  const mode = createToggle({ label: 'Commander mode', on: last.mode === 'commander', onLabel: 'COMMANDER', offLabel: 'CADET' });
-  const launch = createCoverButton({
-    label: 'LAUNCH',
-    onPress: () => { play('cheer'); start({ mode: mode.get() ? 'commander' : 'cadet', mission: mission.get() }); },
-  });
-  show(el('section', { class: 'card' },
-    heading('h1', 'Outpost Dial'),
-    el('p', {}, `Run a base on Mars for ${SOLS_PER_RUN} sols (a sol is a Mars day). Real solar storms, recorded by NASA, are coming.`),
-    el('div', { class: 'row console-row' }, mission.el, mode.el, launch.el),
-    el('p', { class: 'hint' }, 'SEPT 2017 is a real giant storm. Cadet (7 to 9) has no timer. Commander (10 to 12) races a storm countdown.'),
-  ));
+  const view = titleView(
+    { mission: last.mission ?? 'random', mode: last.mode ?? 'cadet', sample: sky?.sample === true },
+    { onLaunch: ({ mission, mode }) => { play('cheer'); start({ mode, mission }); } },
+  );
+  const stage = backdropStage({ crew: newGame().crew, placements: {} });
+  view.el.querySelector('[data-slot="backdrop"]').append(stage.el);
+  show(view.el);
+  topBar.remove();
+  leave = () => stage.destroy();
 }
 
 // A new run, or with a save { state, run, placements } the run it holds (its placements are normalised again in plan()).
@@ -274,6 +285,7 @@ function rescue() {
         : [el('p', {}, 'Everyone is already inside. Phew!')]),
       el('p', {}, done)),
   );
+  leave = () => clearInterval(game.rescueTimer);
   updateInstruments(true);
   game.lamps.sweep();
 

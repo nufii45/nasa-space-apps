@@ -39,8 +39,6 @@ button:focus-visible { outline: 4px solid var(--warn); outline-offset: 2px; }
 .top-bar .oc-toggle-lever { height: 14px; bottom: 3px; }
 .top-bar .oc-toggle.is-on .oc-toggle-lever { bottom: 17px; }
 .top-bar .oc-caption { font-size: 10px; }
-.console-row { gap: 24px; align-items: flex-end; justify-content: center; }
-.hint { color: var(--ink-quiet); }
 .countdown { font-size: 20px; font-weight: 800; }
 .countdown strong { font-size: 40px; }
 .banner { background: var(--warn); color: #000; padding: 8px 12px; border-radius: var(--radius); margin-bottom: 12px; font-weight: 700; }
