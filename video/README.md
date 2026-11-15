@@ -1,8 +1,7 @@
-# Outpost Dial: 30-second concept video
+# Outpost Dial: 30-second video
 
 `outpost-dial.mp4` is a 30-second, 1920×1080, 30 fps video made with Remotion from the wireframes
-in `docs/wireframes/`. It shows the next-version UI concept, not the current game. Scenes 2 to 5 are
-labelled "UI CONCEPT · NEXT VERSION".
+in `docs/wireframes/`.
 
 Scenes: Title (0–3 s), Build the base (3–9 s), Plan a sol (9–15 s), Sept 2017 storm rescue
 (15–22 s), Mission report (22–27 s), End card (27–30 s).

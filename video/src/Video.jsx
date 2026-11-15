@@ -204,7 +204,7 @@ const Caption = ({ children, start = 0 }) => {
 };
 const H = ({ size = 64, color = C.ink, children, style }) => <div style={{ fontFamily: HEAD, fontWeight: 700, fontSize: size, lineHeight: 1.02, letterSpacing: '0.04em', textTransform: 'uppercase', color, ...style }}>{children}</div>;
 const Sub = ({ children, style }) => <div style={{ fontSize: 34, lineHeight: 1.3, color: C.ink2, marginTop: 14, ...style }}>{children}</div>;
-const Tag = () => <div style={{ position: 'absolute', right: 40, bottom: 32, padding: '6px 14px', borderRadius: 10, border: `2px solid ${C.border}`, background: C.card, fontFamily: HEAD, fontWeight: 700, fontSize: 20, letterSpacing: '0.1em', color: C.ink2 }}>UI CONCEPT · NEXT VERSION</div>;
+const Tag = () => null;
 
 const Callout = ({ id, x, y, delay }) => {
   const frame = useCurrentFrame();
