@@ -1,11 +1,15 @@
 // Callout cards for the isometric stage: one card per station with a dashed leader line to its
 // hotspot, plus a Labels toggle. Plain data and handlers in, DOM out (decision 0009).
 // createCallouts({ stage, stations, who, selected, picked, layout, onSelect, onHelp })
-//   -> { el, update(partial), setVisible(bool) }
+//   -> { el, update(partial), setVisible(bool), toggle }
 //   stage: { el, hotspots() -> [{ id, x, y }], overlay } in stage px; stations: [{ id, title, text, icon }]
 //   (icon is an SVG path "d" on a 24 px grid); who: { jobId: [names] }; layout: 'desktop' | 'phone'.
-// Desktop: el lives in stage.overlay. Phone: el leaves the overlay and holds only the selected card
-// (or a hint); the caller places it under the stage. Styles: callouts.css (imported by the caller).
+//   picked: truthy while an astronaut is picked; every card then reads "send your astronaut here".
+//   toggle: the Labels button. It starts inside el; the caller may move it (e.g. into the stage
+//   toolbar) and it keeps working.
+// Desktop: el lives in stage.overlay. Phone: update({ layout: 'phone' }) detaches el, which then
+// holds only the selected card (or a hint); the caller re-attaches it under the stage in the same
+// task (synchronously), and focus that was inside el is put back. Styles: callouts.css (imported by the caller).
 import { el } from '../console/util.js';
 
 // Card slots in stage px, from Scene.dc.html (desktop stage 860x440). Stations without a slot get no card.
@@ -56,7 +60,8 @@ export function createCallouts({ stage, onSelect = () => {}, onHelp = () => {}, 
     const c = cards.get(st.id);
     const names = s.who?.[st.id] ?? [];
     const sel = st.id === s.selected;
-    const target = !!s.picked && (st.id === SHELTER || !names.length);
+    // Any station takes a picked astronaut; who moves out of a busy job is the game's call, not ours.
+    const target = !!s.picked;
     const name = String(st.title ?? '');
     c.title.textContent = name.toUpperCase();
     c.text.textContent = st.text ?? '';
@@ -75,7 +80,7 @@ export function createCallouts({ stage, onSelect = () => {}, onHelp = () => {}, 
   }
 
   function drawLines() {
-    if (lines.hidden) return lines.replaceChildren();
+    if (lines.hasAttribute('hidden')) return lines.replaceChildren();
     lines.replaceChildren(...stage.hotspots().filter((p) => cards.has(p.id) && SLOTS[p.id]).flatMap(({ id, x, y }) => {
       const [cx, cy] = SLOTS[id];
       const ax = x > cx + CARD_W ? cx + CARD_W : cx;
@@ -93,14 +98,27 @@ export function createCallouts({ stage, onSelect = () => {}, onHelp = () => {}, 
     for (const [id, c] of cards) if (!ids.has(id)) { c.card.remove(); cards.delete(id); }
     for (const st of stations) { if (!cards.has(st.id)) makeCard(st.id); fill(st, phone); }
     root.classList.toggle('is-phone', phone);
-    lines.hidden = phone || !visible;
+    lines.toggleAttribute('hidden', phone || !visible); // SVG elements have no .hidden property
     toggle.hidden = phone;
     toggle.setAttribute('aria-pressed', String(visible));
     state.textContent = visible ? 'on' : 'off';
     hint.hidden = !phone || cards.has(s.selected);
-    if (phone) { if (root.parentNode === stage.overlay) root.remove(); }
-    else if (root.parentNode !== stage.overlay) stage.overlay.append(root);
+    move(phone);
     drawLines();
+  }
+
+  // Detaching or moving el blurs whatever had focus inside it, so put focus back afterwards.
+  function move(phone) {
+    const inOverlay = root.parentNode === stage.overlay;
+    if (phone ? !inOverlay : inOverlay) return;
+    const focused = root.contains(document.activeElement) ? document.activeElement : null;
+    if (phone) root.remove(); else stage.overlay.append(root);
+    if (!focused) return;
+    if (focused.isConnected) focused.focus();
+    // Desktop to phone: the caller re-attaches el right after update(); refocus once it has, if nobody else took focus.
+    else queueMicrotask(() => {
+      if (focused.isConnected && (document.activeElement === document.body || !document.activeElement)) focused.focus();
+    });
   }
 
   function update(partial = {}) {
@@ -116,5 +134,5 @@ export function createCallouts({ stage, onSelect = () => {}, onHelp = () => {}, 
   // shortcut: never removed, as the contract has no destroy; add one if callouts outlive their stage.
   stage.el.addEventListener('stagechange', drawLines);
   render();
-  return { el: root, update, setVisible };
+  return { el: root, update, setVisible, toggle };
 }

@@ -103,11 +103,47 @@ describe('desktop cards', () => {
     expect(card(co.el, 'lab').querySelector('.co-mark').hidden).toBe(true);
   });
 
-  it('with an astronaut picked, free stations and the Shelter say "send your astronaut here"', () => {
-    const { co } = mount({ picked: 'ben' });
-    expect(card(co.el, 'lab').querySelector('.co-pick').getAttribute('aria-label')).toBe('Lab: send your astronaut here');
-    expect(card(co.el, 'shelter').querySelector('.co-pick').getAttribute('aria-label')).toBe('Shelter: send your astronaut here');
+  it('with an astronaut picked, every card (busy ones too) is a target; none after', () => {
+    const { co } = mount();
+    const targets = () => STATIONS.filter((st) => {
+      const c = card(co.el, st.id);
+      const said = c.querySelector('.co-pick').getAttribute('aria-label') === `${st.title}: send your astronaut here`;
+      expect(c.classList.contains('is-target')).toBe(said);
+      return said;
+    }).length;
+    expect(targets()).toBe(0);
+    co.update({ picked: 'ben' });
+    expect(targets()).toBe(6); // solar is busy (Ana) and still a target
+    co.update({ picked: null });
+    expect(targets()).toBe(0);
     expect(card(co.el, 'solar').querySelector('.co-pick').getAttribute('aria-label')).toBe('Solar Field');
+  });
+
+  it('works without onSelect and onHelp', () => {
+    const stage = stubStage();
+    const co = createCallouts({ stage, stations: STATIONS });
+    expect(() => { card(co.el, 'lab').querySelector('.co-help').click(); card(co.el, 'lab').click(); }).not.toThrow();
+  });
+
+  it('keeps & and other characters as written', () => {
+    const { co } = mount({ stations: [{ id: 'lab', title: 'Rocks & ice', text: 'Look & learn <3', icon: '' }] });
+    expect(card(co.el, 'lab').querySelector('.co-title').textContent).toBe('ROCKS & ICE');
+    expect(card(co.el, 'lab').querySelector('.co-text').textContent).toBe('Look & learn <3');
+  });
+});
+
+describe('who text', () => {
+  it('lists three names, and says nobody for an empty list or a station missing from who', () => {
+    const { co } = mount({ who: { lab: ['Ana', 'Ben', 'Cai'], rover: [], shelter: [] } });
+    expect(card(co.el, 'lab').querySelector('.co-who').textContent).toBe('Ana, Ben and Cai are here');
+    expect(card(co.el, 'rover').querySelector('.co-who').textContent).toBe('Nobody here yet');
+    expect(card(co.el, 'pump').querySelector('.co-who').textContent).toBe('Nobody here yet');
+    expect(card(co.el, 'shelter').querySelector('.co-who').textContent).toBe('Nobody here · room for everyone');
+  });
+
+  it('copes with no who at all', () => {
+    const { co } = mount({ who: undefined });
+    expect(card(co.el, 'solar').querySelector('.co-who').textContent).toBe('Nobody here yet');
   });
 });
 
@@ -130,6 +166,31 @@ describe('leader lines', () => {
     stage.move('rover', 500, 300);
     expect(line(co.el, 'rover').getAttribute('x2')).toBe('500');
     expect(line(co.el, 'rover').getAttribute('y2')).toBe('300');
+  });
+
+  it('listens on stage.el itself, not only for events bubbling up to it', () => {
+    const { stage, co } = mount();
+    stage.spots.pump = [420, 120];
+    stage.el.dispatchEvent(new CustomEvent('stagechange'));
+    expect(line(co.el, 'pump').getAttribute('x2')).toBe('420');
+  });
+
+  it('skips the line, not the card, when hotspots() lacks an id', () => {
+    const { stage, co } = mount();
+    delete stage.spots.lab;
+    co.update({});
+    expect(line(co.el, 'lab')).toBeNull();
+    expect(lines(co.el)).toHaveLength(5);
+    expect(card(co.el, 'lab').hidden).toBe(false);
+  });
+
+  it('hides the line layer with the hidden attribute', () => {
+    const { co } = mount();
+    const svg = co.el.querySelector('.co-lines');
+    co.setVisible(false);
+    expect(svg.hasAttribute('hidden')).toBe(true);
+    co.setVisible(true);
+    expect(svg.hasAttribute('hidden')).toBe(false);
   });
 
   it('redraws on update too', () => {
@@ -173,6 +234,24 @@ describe('Labels toggle', () => {
     toggle(co.el).click();
     expect(document.activeElement).toBe(toggle(co.el));
   });
+
+  it('is returned as toggle and keeps working after being moved out of el', () => {
+    const { co } = mount();
+    expect(co.toggle).toBe(toggle(co.el));
+    const toolbar = document.createElement('div');
+    document.body.append(toolbar);
+    toolbar.append(co.toggle); // the integrator moves it into the stage toolbar
+    co.toggle.focus();
+    co.toggle.click();
+    expect(co.toggle.parentNode).toBe(toolbar);
+    expect(document.activeElement).toBe(co.toggle);
+    expect(co.toggle.getAttribute('aria-pressed')).toBe('false');
+    expect(shown(co.el)).toHaveLength(0);
+    co.setVisible(true);
+    expect(co.toggle.getAttribute('aria-pressed')).toBe('true');
+    expect(shown(co.el)).toHaveLength(6);
+    expect(lines(co.el)).toHaveLength(6);
+  });
 });
 
 describe('phone layout', () => {
@@ -203,6 +282,19 @@ describe('phone layout', () => {
     expect(co.el.parentNode).toBe(stage.overlay);
     expect(shown(co.el)).toHaveLength(6);
     expect(lines(co.el)).toHaveLength(6);
+  });
+
+  it('keeps focus across a layout switch when the caller re-attaches el', async () => {
+    const { stage, co } = mount({ selected: 'lab' });
+    const help = card(co.el, 'lab').querySelector('.co-help');
+    help.focus();
+    co.update({ layout: 'phone' });
+    document.body.append(co.el); // caller re-attaches el under the stage, same task
+    await Promise.resolve();
+    expect(document.activeElement).toBe(help);
+    co.update({ layout: 'desktop' });
+    expect(co.el.parentNode).toBe(stage.overlay);
+    expect(document.activeElement).toBe(help);
   });
 });
 

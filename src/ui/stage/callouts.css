@@ -2,7 +2,8 @@
    Layout from docs/wireframes Scene.dc.html; positions are stage px inside stage.overlay. */
 .co { position: absolute; inset: 0; pointer-events: none; font-family: var(--od-font-body, system-ui); color: var(--od-ink, #18213D); }
 .co [hidden] { display: none !important; }
-.co button { font: inherit; color: inherit; cursor: pointer; }
+/* :where keeps this reset weaker than .co-help and .co-toggle. */
+:where(.co) button { font: inherit; color: inherit; cursor: pointer; }
 .co button:focus-visible { outline: 3px solid var(--od-teal, #1AA3A1); outline-offset: 2px; }
 
 .co-lines { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; }
@@ -45,12 +46,18 @@
   font: 700 11px/1.5 var(--od-font-head, system-ui); letter-spacing: .06em; text-transform: uppercase;
 }
 
+/* The toggle may be moved out of .co (into the stage toolbar), so its own rules are not scoped to .co. */
 .co-toggle {
-  position: absolute; right: 4px; bottom: 6px; pointer-events: auto; min-width: 44px; min-height: 44px; padding: 0 10px;
-  display: flex; align-items: center; gap: 6px; border: 1px solid var(--od-line, #CEC0AD); border-radius: 10px;
-  background: var(--od-card, #F9F2E5); font: 600 12px/1 var(--od-font-head, system-ui); letter-spacing: .06em; text-transform: uppercase;
+  box-sizing: border-box; min-width: 44px; min-height: 44px; padding: 0 10px; pointer-events: auto; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--od-line, #CEC0AD); border-radius: 10px;
+  background: var(--od-card, #F9F2E5); color: var(--od-ink, #18213D);
+  font: 600 12px/1 var(--od-font-head, system-ui); letter-spacing: .06em; text-transform: uppercase;
 }
+.co-toggle[hidden] { display: none; }
+.co-toggle:focus-visible { outline: 3px solid var(--od-teal, #1AA3A1); outline-offset: 2px; }
 .co-toggle[aria-pressed="true"] { background: var(--od-teal-soft, #DDF1EF); color: var(--od-teal-text, #0E5F5E); }
+/* Default spot: top centre, between the two card columns (x 200 to 660), above the scene. */
+.co > .co-toggle { position: absolute; top: 4px; left: 50%; transform: translateX(-50%); }
 
 /* Hover lift, off under Reduced motion (system setting or the game's own switch). */
 @media (prefers-reduced-motion: no-preference) {
