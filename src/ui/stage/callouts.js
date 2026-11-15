@@ -13,7 +13,7 @@
 import { el } from '../console/util.js';
 
 // Card slots in stage px, from Scene.dc.html (desktop stage 860x440). Stations without a slot get no card.
-const SLOTS = { recycler: [4, 4], shelter: [4, 148], lab: [4, 292], pump: [660, 4], solar: [660, 136], rover: [660, 268] };
+const SLOTS = { recycler: [4, 4], shelter: [4, 148], lab: [4, 300], pump: [660, 4], solar: [660, 136], rover: [660, 268] };
 const CARD_W = 196;
 const ANCHOR_Y = 30; // the line leaves the card's side this far below its top
 const SHELTER = 'shelter';
@@ -21,7 +21,7 @@ const KEYS = ['stations', 'who', 'selected', 'picked', 'layout'];
 
 const list = (names) => (names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0]);
 function whoText(id, names) {
-  if (id === SHELTER) return names.length ? `${list(names)} resting here · room for everyone` : 'Nobody here · room for everyone';
+  if (id === SHELTER) return names.length ? `${list(names)} resting here` : 'Nobody here · room for everyone';
   return names.length ? `${list(names)} ${names.length > 1 ? 'are' : 'is'} here` : 'Nobody here yet';
 }
 

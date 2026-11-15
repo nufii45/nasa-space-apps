@@ -4,6 +4,7 @@
 .st-view:active { cursor: grabbing; }
 /* Phone: one finger pans the stage sideways and still scrolls the page up and down; two fingers pinch. */
 .st[data-layout="phone"] .st-view { touch-action: pan-y; }
+.st-fit { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
 .st-layer { position: absolute; inset: 0; transform-origin: 50% 50%; }
 .st-svg { position: absolute; left: 0; top: 0; }
 .st-tags, .st-spots, .st-overlay { position: absolute; inset: 0; pointer-events: none; }
