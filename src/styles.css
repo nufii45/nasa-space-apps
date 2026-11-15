@@ -1,6 +1,7 @@
 @import './ui/theme.css';
 @import './ui/screens/screens.css';
 @import './ui/stage/stage.css';
+@import './ui/stage/callouts.css';
 /* Console look tokens, shared by the game and the console kit (src/ui/console/console.css); keep these names. */
 :root {
   --console: #f6eddd;      /* cream, from the Learn Arduino inspiration */
@@ -29,7 +30,6 @@ button.danger { background: var(--storm); color: #fff; border-color: var(--storm
 button:focus-visible { outline: 4px solid var(--warn); outline-offset: 2px; }
 .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .card { background: #fff; border-radius: var(--radius); padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 0 rgba(0,0,0,0.08); }
-.gauges { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
 #app > * { margin-bottom: 12px; }
 #app :is(h1, h2)[tabindex='-1']:focus { outline: none; }
 .top-bar { display: flex; justify-content: flex-end; width: min(960px, 100%); margin: 0 auto; padding: 8px 16px 0; }
@@ -49,40 +49,140 @@ button:focus-visible { outline: 4px solid var(--warn); outline-offset: 2px; }
 .kit-row { gap: 20px; align-items: flex-end; }
 .kit-row .oc-log { flex: 1 1 320px; }
 
-/* Keep the daily choice in front; the full console is available below the map. */
-.plan-screen { padding: 20px; }
-.plan-screen h2 { margin-bottom: 10px; }
-.plan-weather { display: flex; gap: 6px 12px; align-items: baseline; flex-wrap: wrap; padding: 10px 14px; border-radius: 10px; background: #fff5db; color: #382b14; }
-.plan-weather strong { white-space: nowrap; }
-.plan-storm-tip, .plan-last-sol { margin: 10px 0 0; padding: 9px 12px; border-left: 5px solid var(--warn); background: #fff9e9; border-radius: 4px 10px 10px 4px; }
-.plan-last-sol { border-color: var(--ok); background: #eaf5eb; }
-.plan-water-warning { margin: 10px 0 0; padding: 9px 12px; border-left: 5px solid var(--warn); background: #fff1d6; border-radius: 4px 10px 10px 4px; font-weight: 700; }
-.plan-water-warning.is-danger { border-color: #b3261e; background: #fde7e4; color: #6b130d; }
-.plan-steps { margin: 14px 0 8px; font-size: 18px; font-weight: 800; }
-.plan-screen .gauges { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 12px; }
-.plan-screen .oc-gauge { min-width: 0; padding: 10px 12px; background: #edf2ed; color: var(--ink); border: 2px solid #d7e3d8; box-shadow: none; }
-.plan-screen .oc-gauge-svg { display: none; }
-.plan-screen .oc-gauge-foot { align-items: center; gap: 2px 8px; }
-.plan-screen .oc-gauge-foot .oc-caption { color: #465349; letter-spacing: 0.03em; }
-.plan-screen .oc-gauge-readout { color: #193f2a; font-size: 19px; }
-.plan-screen .oc-gauge.is-low .oc-gauge-readout { color: #8b4200; }
-.plan-action { position: sticky; bottom: 8px; z-index: 2; display: flex; justify-content: center; align-items: center; gap: 18px; margin-top: 12px; padding: 9px 14px; background: #fff; border: 2px solid #d6d0bf; border-radius: 14px; box-shadow: 0 5px 18px rgba(31,35,40,.16); }
-.plan-action p { margin: 0; font-size: 16px; }
-.plan-action .oc-cover-housing { width: 108px; height: 78px; border-radius: 12px; }
-.plan-action .oc-big-button { width: 92px; height: 60px; border-radius: 10px; font-size: 13px; }
-.plan-action .oc-cover { inset: 5px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border-radius: 9px; background: #f3bc42; border-color: #b77508; }
-.plan-action .oc-cover-title { font-size: 14px; font-weight: 900; color: #1f2328; }
-.plan-action .oc-cover-hint { font-size: 11px; }
-.plan-action .oc-cover-wrap > .oc-caption { display: none; }
-.plan-console { margin-top: 16px; border-top: 1px solid #dedbd2; padding-top: 12px; }
-.plan-console summary { cursor: pointer; font-weight: 800; color: #334655; padding: 10px 4px; }
-.plan-console .oc-lamps-wrap { margin: 8px 0 14px; }
-@media (max-width: 650px) {
-  main { padding: 8px 8px 100px; }
-  .plan-screen { padding: 12px; }
-  .plan-screen .gauges { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .plan-action { position: fixed; bottom: 4px; left: 50%; width: min(384px, calc(100% - 16px)); transform: translateX(-50%); justify-content: space-between; gap: 8px; padding: 6px 10px; }
-  .plan-action p { font-size: 14px; max-width: 20ch; }
+/* Plan screen (W9): left rail, main column (header, Sun report, stage, crew strip) and right panel
+   (status, Station / Mission log tabs, END SOL). Boards: Main.dc.html and, below 700 px, PhonePlan.dc.html. */
+#app.is-plan { width: 100%; max-width: 1280px; padding: 0; }
+.plan { display: grid; grid-template-columns: 64px minmax(0, 1fr) 332px; align-items: start; color: var(--od-ink); font-family: var(--od-font-body); }
+.plan h1, .plan h2 { margin: 0; font-family: var(--od-font-head); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+.plan h1 { font-size: 30px; line-height: 1; }
+.plan h2 { font-size: 20px; }
+.plan-cap { margin: 0; font: 700 12px/1.2 var(--od-font-head); letter-spacing: 0.1em; text-transform: uppercase; color: var(--od-muted, #4A5270); }
+.plan-quiet { margin: 0; font-size: 13px; color: var(--od-muted, #4A5270); }
+.plan-mono { font: 500 12px var(--od-font-mono); }
+.plan-card { background: var(--od-card); border: 1px solid var(--od-line); border-radius: var(--od-radius-card); box-shadow: 0 2px 8px rgba(24, 33, 61, 0.06); }
+
+/* Left rail: one 44 px icon button per item; the word is for screen readers here and shows on the phone. */
+.plan-rail { position: sticky; top: 0; align-self: stretch; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 14px 0; background: var(--od-grid); border-right: 1px solid var(--od-line); }
+.plan-nav { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 44px; min-width: 44px; height: 44px; min-height: 44px; padding: 0; border: 0; border-radius: 10px; background: transparent; color: var(--od-ink); font: 700 10px var(--od-font-head); letter-spacing: 0.08em; text-transform: uppercase; }
+.plan-nav[aria-current='page'] { background: var(--od-ink); color: var(--od-card); }
+.plan-nav-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.plan-rail .oc-toggle-wrap { gap: 0; align-items: center; }
+.plan-rail .oc-toggle { min-height: 44px; padding: 0 4px; gap: 4px; font-size: 11px; }
+.plan-rail .oc-toggle-track { width: 22px; height: 36px; border-radius: 6px; }
+.plan-rail .oc-toggle-lever { left: 3px; right: 3px; height: 14px; bottom: 3px; }
+.plan-rail .oc-toggle.is-on .oc-toggle-lever { bottom: 19px; }
+.plan-rail .oc-toggle-state { display: none; }
+.plan-rail .oc-caption { font-size: 10px; text-align: center; }
+
+/* Main column */
+.plan-main { min-width: 0; display: flex; flex-direction: column; gap: 8px; padding: 12px; }
+.plan-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; min-height: 52px; }
+.plan-head .plan-quiet { margin-top: 2px; }
+.plan-sols { display: flex; align-items: center; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.plan-sols li { box-sizing: border-box; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font: 700 12px var(--od-font-mono); }
+.plan-sols .is-done { background: var(--od-ink); color: var(--od-card); }
+.plan-sols .is-today { width: 36px; height: 36px; border: 3px solid var(--od-teal); background: var(--od-card); }
+.plan-sols .is-next { border: 1px dashed var(--od-line); color: var(--od-muted, #6A6F82); }
+.plan-sun { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 14px; }
+.plan-sun svg { flex: none; }
+.plan-sun p { margin: 0; font-size: 15px; }
+.plan-sun strong { margin-right: 8px; font: 700 14px var(--od-font-head); letter-spacing: 0.05em; text-transform: uppercase; }
+.plan-sun .plan-storm-tip { margin-top: 2px; font-size: 13px; color: var(--od-muted, #4A5270); }
+.plan-last-sol, .plan-water-warning { margin: 0; padding: 8px 12px; border-radius: var(--od-radius-card); border: 1px solid var(--od-line); border-left: 5px solid var(--od-ok); background: var(--od-card); font-size: 14px; }
+.plan-water-warning { border-left-color: var(--od-orange); font-weight: 700; }
+.plan-water-warning.is-danger { border-color: var(--od-orange); background: var(--od-orange); color: #FFFFFF; }
+/* The stage keeps its drawn size; a narrow window scrolls it sideways rather than squashing it. */
+.plan-stage { position: relative; max-width: 100%; overflow-x: auto; }
+.plan-stage > .co-toggle { position: absolute; right: 8px; bottom: 8px; }
+
+/* Crew strip: one card per astronaut, lifted while picked. */
+.plan-crew { display: flex; flex-direction: column; gap: 6px; }
+.plan-hint { margin: 0; font-size: 14px; }
+.plan-crew-row { display: flex; gap: 10px; }
+.plan-crew-card { flex: 1 1 0; min-width: 0; min-height: 44px; display: flex; gap: 12px; align-items: center; padding: 12px; text-align: left; font: inherit; font-weight: 400; color: var(--od-ink); background: var(--od-card); border: 1px solid var(--od-line); border-radius: var(--od-radius-card); box-shadow: 0 2px 8px rgba(24, 33, 61, 0.06); }
+.plan-crew-card.is-picked { border: 2px solid var(--od-teal); background: var(--od-teal-soft, #E9F6F4); }
+.plan-crew-card.is-home { border-style: dashed; background: #EFE9DE; color: var(--od-muted, #5A6178); cursor: not-allowed; }
+.plan-helmet { flex: none; }
+.plan-crew-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.plan-crew-top { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+.plan-crew-name { font: 700 17px var(--od-font-head); letter-spacing: 0.05em; text-transform: uppercase; }
+.plan-crew-status { font-size: 13px; }
+.plan-meter { display: block; height: 8px; border-radius: 4px; background: #E6DCCB; overflow: hidden; }
+.plan-meter > span { display: block; height: 100%; background: var(--od-ink); }
+
+/* Right panel */
+.plan-side { min-width: 0; display: flex; flex-direction: column; gap: 10px; padding: 12px 16px 12px 0; }
+.plan-status { display: flex; flex-direction: column; gap: 10px; padding: 12px; }
+.plan .oc-lamps { flex-wrap: nowrap; gap: 4px; }
+.plan .oc-lamp { flex: 1; min-width: 0; }
+.plan .oc-lamp-bulb { width: 26px; height: 26px; font-size: 13px; }
+.plan .oc-lamp .oc-caption { font-size: 10px; text-align: center; }
+.plan-gauges { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+/* The kit's needle gauge drawn as a bar: --fill (0 to 1) is set by main.js; the science bar ends at the goal mark. */
+.plan .oc-gauge { position: relative; min-width: 0; padding: 8px 10px 20px; background: var(--od-card-hi, #FFFDF8); color: var(--od-ink); border: 1px solid var(--od-line); border-radius: 10px; box-shadow: none; }
+.plan .oc-gauge-svg { display: none; }
+.plan .oc-gauge-foot { align-items: center; gap: 2px 6px; font-size: 13px; }
+.plan .oc-gauge-foot .oc-caption { color: var(--od-ink); font-size: 13px; }
+.plan .oc-gauge-readout { font: 700 13px var(--od-font-mono); color: var(--od-ink); }
+.plan .oc-gauge.is-low { border-color: var(--od-orange); }
+.plan .oc-gauge.is-low .oc-gauge-readout { color: #9A4A1C; }
+.plan .oc-gauge::before, .plan .oc-gauge::after { content: ''; position: absolute; left: 10px; bottom: 8px; height: 8px; border-radius: 4px; }
+.plan .oc-gauge::before { right: 10px; background: #E6DCCB; }
+.plan .oc-gauge::after { width: calc((100% - 20px) * var(--fill, 0)); background: var(--od-ink); transition: width 0.4s; }
+.plan .oc-gauge[aria-label='Power']::after { background: var(--od-power); }
+.plan .oc-gauge[aria-label='Water tank']::after { background: var(--od-water); }
+.plan .oc-gauge.is-goal::after { background: var(--od-teal); }
+.plan .oc-gauge.is-low::after { background: var(--od-orange); }
+.plan .oc-gauge.is-goal::before { bottom: 4px; height: 16px; border-radius: 0; background: linear-gradient(#E6DCCB, #E6DCCB) left center / 100% 8px no-repeat; border-right: 3px solid var(--od-ink); }
+
+.plan-tabs { display: flex; flex-direction: column; min-height: 0; padding: 0 14px 12px; }
+.plan-tablist { display: flex; gap: 18px; border-bottom: 1px solid var(--od-line); }
+.plan-tab { position: relative; flex: none; min-width: 44px; min-height: 44px; padding: 0 4px; border: 0; border-radius: 0; background: none; color: var(--od-muted, #5A6178); font: 700 13px var(--od-font-head); letter-spacing: 0.08em; text-transform: uppercase; }
+.plan-tab[aria-selected='true'] { color: var(--od-ink); }
+.plan-tab::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--od-teal); transform: scaleX(0); }
+.plan-tab[aria-selected='true']::after { transform: scaleX(1); }
+.plan-panel { display: flex; flex-direction: column; gap: 8px; padding-top: 10px; font-size: 14px; line-height: 1.45; }
+.plan-panel[hidden] { display: none; }
+.plan-panel p, .plan-panel ul { margin: 0; }
+.plan-panel ul { padding-left: 20px; }
+.plan-station-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.plan-help { align-self: flex-start; min-height: 44px; padding: 0 12px; border: 1px solid var(--od-line); border-radius: 10px; background: var(--od-card-hi, #FFFDF8); font: 600 14px var(--od-font-body); }
+.plan .oc-log-screen { height: 220px; }
+
+.plan-end { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.plan-end .oc-cover-housing { width: 100%; height: 84px; border-radius: 14px; }
+.plan-end .oc-big-button { width: calc(100% - 20px); height: 64px; border-radius: 14px; font: 700 22px var(--od-font-head); letter-spacing: 0.12em; }
+.plan-end .oc-cover { inset: 5px; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 11px; }
+.plan-end .oc-cover-title { padding: 6px 14px; border-radius: 8px; background: var(--od-card); font: 700 15px var(--od-font-head); letter-spacing: 0.1em; color: var(--od-ink); }
+.plan-end .oc-cover-wrap { width: 100%; }
+.plan-end .oc-cover-wrap > .oc-caption { display: none; }
+
+/* Phone: one column, swipeable crew, sideways tabs, END SOL bar and the rail as a bottom nav. */
+@media (max-width: 699px) {
+  body:has(#app.is-plan) { padding-bottom: 150px; }
+  .plan { grid-template-columns: minmax(0, 1fr); }
+  .plan h1 { font-size: 22px; }
+  .plan-main { padding: 10px 16px 0; gap: 10px; }
+  .plan-side { padding: 10px 16px 16px; }
+  .plan-sols { gap: 4px; }
+  .plan-sols li { width: 8px; height: 8px; font-size: 0; border: 2px solid var(--od-ink); }
+  .plan-sols .is-today { width: 12px; height: 12px; border-width: 2px; background: var(--od-teal); }
+  .plan-sols .is-next { border: 1px solid var(--od-line); }
+  .plan-sun { padding: 8px 12px; }
+  .plan-sun svg { display: none; }
+  .plan-stage { margin: 0 -16px; }
+  .plan-crew-row { overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 -16px; padding: 2px 16px 6px; gap: 8px; }
+  .plan-crew-card { flex: none; width: 236px; padding: 10px; scroll-snap-align: start; }
+  .plan-tablist { overflow-x: auto; gap: 16px; }
+  .plan-rail { position: fixed; top: auto; left: 0; right: 0; bottom: 0; z-index: 5; flex-direction: row; justify-content: space-around; align-items: center; gap: 0; padding: 0 0 6px; border-right: 0; border-top: 1px solid var(--od-line); }
+  .plan-nav { flex: 1; width: auto; min-height: 56px; }
+  .plan-nav[aria-current='page'] { background: none; color: var(--od-ink); box-shadow: inset 0 3px 0 var(--od-teal); }
+  .plan-nav-text { position: static; width: auto; height: auto; overflow: visible; clip: auto; }
+  .plan-rail .oc-toggle-wrap { flex: 1; }
+  .plan-end { position: fixed; left: 0; right: 0; bottom: 62px; z-index: 5; flex-direction: row; padding: 8px 16px; background: var(--od-card); border-top: 1px solid var(--od-line); box-shadow: 0 -6px 16px rgba(24, 33, 61, 0.08); }
+  .plan-end .oc-cover-housing { height: 56px; }
+  .plan-end .oc-big-button { height: 44px; font-size: 19px; }
+  .plan-end .plan-quiet { display: none; }
 }
 
 /* Storm takeover (W11): fills the window over the dimmed stage; the top bar's Sound switch stays above it. */

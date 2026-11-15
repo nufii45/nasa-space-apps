@@ -56,10 +56,28 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+// A matchMedia stand-in: the device's reduced-motion wish and a phone-wide window (below 700 px).
+// media.resize(phone) flips the width and fires 'change' like a real resize; media.listeners counts who listens.
+let media;
+function stubMedia({ reduce, phone }) {
+  const listeners = new Map(); // query -> Set of handlers
+  const matches = (q) => (/reduce/.test(q) ? reduce : /max-width: 699px/.test(q) ? phone : /min-width: 700px/.test(q) ? !phone : false);
+  window.matchMedia = (q) => ({
+    get matches() { return matches(q); }, media: q,
+    addEventListener: (t, f) => { if (!listeners.has(q)) listeners.set(q, new Set()); listeners.get(q).add(f); },
+    removeEventListener: (t, f) => listeners.get(q)?.delete(f),
+  });
+  return {
+    resize(p) { phone = p; for (const [q, fs] of listeners) for (const f of [...fs]) f({ matches: matches(q), media: q }); },
+    listeners: (q) => listeners.get(q)?.size ?? 0,
+  };
+}
+
 // reducedMotion: the log and ticker tape print instantly (a real user setting); false types with timers.
-async function boot(sky, { reducedMotion = true, fetchImpl } = {}) {
+// phone: the window is narrower than 700 px.
+async function boot(sky, { reducedMotion = true, phone = false, fetchImpl } = {}) {
   vi.stubGlobal('fetch', vi.fn(fetchImpl ?? (async () => ({ ok: true, json: async () => structuredClone(sky) }))));
-  if (reducedMotion) window.matchMedia = (q) => ({ matches: /reduce/.test(q), media: q, addEventListener() {}, removeEventListener() {} });
+  media = stubMedia({ reduce: reducedMotion, phone });
   await import('../../src/main.js');
   await settle();
 }
@@ -106,7 +124,7 @@ const whys = () => Object.fromEntries([...app().querySelectorAll('.sc-line:not(.
 function expectWhysWithoutAmounts() {
   for (const [line, why] of Object.entries(whys())) expect(why, line).not.toMatch(/[\d+−]/);
 }
-// Map tokens: "Ana, radiation 12/100, at Lab" or "..., went home".
+// Crew cards: "Ana, radiation 12/100, at Lab" or "..., went home".
 function crewOnMap() {
   const out = {};
   for (const n of allButtons(app()).map(nameOf)) {
@@ -135,7 +153,7 @@ async function launch({ mission = 'RANDOM WEEK', commander = false } = {}) {
 const nameOfCrew = (id) => newGame().crew.find((c) => c.id === id).name;
 function place(id, job) {
   btn(new RegExp(`^${nameOfCrew(id)},`)).click();
-  btn(new RegExp(`^${esc(JOBS[job].name)}:`)).click();
+  btn(new RegExp(`^${esc(JOBS[job].name)}: .*Send ${esc(nameOfCrew(id))} here$`)).click(); // its hotspot on the stage
 }
 async function openCredits() {
   history.replaceState(null, '', '#credits');
@@ -279,7 +297,9 @@ describe('title screen', () => {
     await pressCovered('LAUNCH');
     await settle(2000); // the run's first log line finishes typing
     expect(heading()).toBe(`Sol 1 of ${SOLS_PER_RUN}`);
-    expect(document.querySelector('.st')).toBeNull();
+    expect([...document.querySelectorAll('.st')]).toEqual([app().querySelector('.plan .st')]); // only the plan's own stage
+    expect(vi.getTimerCount()).toBe(1); // that stage's idle turn; the title's has stopped
+    app().querySelector('.st').dispatchEvent(new Event('pointerdown')); // any input stops it
     expect(vi.getTimerCount()).toBe(0);
   });
 
@@ -299,20 +319,42 @@ describe('title screen', () => {
 describe('plan screen', () => {
   // Sol 1: CME warning (arrives on sol 3). Everything else calm.
   const sky = makeSky([cme(2, 0)]);
+  const stage = () => app().querySelector('.plan .st');
+  const overlay = () => stage().querySelector('.st-overlay');
+  const card = (job) => app().querySelector(`.co-card[data-id="${job}"]`);
+  const shownCards = () => [...app().querySelectorAll('.co-card')].filter((c) => !c.hidden).map((c) => c.dataset.id);
+  const where = () => Object.fromEntries(Object.entries(crewOnMap()).map(([n, c]) => [n, c.at]));
+  const hint = () => app().querySelector('.plan-hint').textContent;
+  const pick = (id) => btn(new RegExp(`^${nameOfCrew(id)},`)).click();
+  const PLAN = { ana: 'shelter', ben: 'shelter', cai: 'shelter' };
 
-  it('shows sol, forecast, four gauges, lamps, map, END SOL and the log, with the sim\'s start state', async () => {
+  it('shows the rail, sol track, Sun report, stage with callouts, crew, status, tabs, END SOL and the log, with the sim\'s start state', async () => {
     await boot(sky);
     await launch();
     const run = runFor(sky);
     expect(run.sols[0].forecast.length).toBeGreaterThan(0);
     expect(heading()).toBe(`Sol 1 of ${SOLS_PER_RUN}`);
-    expect(app().textContent).toContain(`about ${run.sols[0].forecast[0].inSols} sols away`);
+    expect(document.activeElement).toBe(app().querySelector('h1')); // focus lands on the heading
+    expect(allButtons(app().querySelector('nav[aria-label="Main menu"]')).map(nameOf)).toEqual(['Home', 'How to play', 'Sound', 'Credits']);
+    const track = app().querySelector('.plan-sols');
+    expect(track.getAttribute('aria-label')).toBe(`Sol progress: 0 done, today is sol 1, ${SOLS_PER_RUN - 1} to go`);
+    expect(track.children).toHaveLength(SOLS_PER_RUN);
+    expect(app().textContent).toContain(`Your sky: real NASA dates, ${run.sols[0].date}.`);
+    const sun = app().querySelector('section[aria-label="Sun report"]');
+    expect(sun.textContent).toContain(`about ${run.sols[0].forecast[0].inSols} sols away`);
+    expect(stage().querySelectorAll('.st-hs')).toHaveLength(Object.keys(JOBS).length);
+    expect([...overlay().querySelectorAll('.co-card')].map((c) => c.dataset.id).sort()).toEqual(Object.keys(JOBS).sort()); // a callout per station
     expect(gauges()).toEqual(expGauges(newGame()));
+    expect(app().querySelector('.oc-gauge.is-goal').getAttribute('aria-label')).toBe('Science'); // the goal mark
     expect([...app().querySelectorAll('.oc-lamp .oc-caption')].map((c) => c.textContent)).toEqual(['Power', 'Drinking water', 'Storm', 'Crew']);
     expect(app().querySelector('.oc-lamp:nth-child(3) .oc-lamp-word').textContent).toBe('WATCH OUT'); // storm in the forecast
-    expect(doses()).toEqual(expCrew(newGame())); // every astronaut is on the map
-    expect(btn('Lift the safety cover over END SOL')).toBeTruthy();
-    expect(app().querySelector('section[aria-label="Mission log"]')).not.toBeNull();
+    expect(allButtons(app().querySelector('section[aria-label="Your crew"]'))).toHaveLength(newGame().crew.length);
+    expect(doses()).toEqual(expCrew(newGame())); // every astronaut has a card
+    expect(Object.values(where()).every((at) => at === JOBS.shelter.name)).toBe(true); // unplaced crew rest in the Shelter
+    expect([...app().querySelectorAll('[role="tab"]')].map(nameOf)).toEqual(['Station', 'Mission log']);
+    expect(btn('Lift the safety cover over END SOL').closest('aside')).not.toBeNull();
+    expect(app().querySelector('[role="tabpanel"] section[aria-label="Mission log"]')).not.toBeNull();
+    expect(document.querySelector('.top-bar')).toBeNull(); // its Sound switch is in the rail
   });
 
   it('a calm sol says clear skies', async () => {
@@ -322,13 +364,12 @@ describe('plan screen', () => {
     expect(app().textContent).not.toContain('sols away');
   });
 
-  it('has no placement controls besides the map', async () => {
+  it('places only through the stage, its callouts and the crew cards: no other inputs', async () => {
     await boot(sky);
     await launch();
-    const map = app().querySelector('.om');
-    const other = allButtons(app()).filter((b) => !map.contains(b)).map(nameOf);
-    expect(other).toEqual(['END SOL', 'Lift the safety cover over END SOL']);
-    expect(app().querySelectorAll('input, select, textarea, [role="slider"], [role="switch"], [role="radio"], [role="listbox"]')).toHaveLength(0);
+    const other = allButtons(app()).filter((b) => !b.closest('.plan-rail, .st, .plan-crew') && !b.classList.contains('co-toggle')).map(nameOf);
+    expect(other).toEqual(['Station', 'Mission log', 'END SOL', 'Lift the safety cover over END SOL']);
+    expect(app().querySelectorAll(':is(.plan-main, .plan-side) :is(input, select, textarea, [role="slider"], [role="switch"], [role="radio"], [role="listbox"])')).toHaveLength(0);
   });
 
   it('tap an astronaut then a station places them, and END SOL runs the sim with that placement', async () => {
@@ -337,6 +378,7 @@ describe('plan screen', () => {
     const exp = model(runFor(sky));
     place('ana', 'lab');
     expect(crewOnMap().Ana.at).toBe(JOBS.lab.name);
+    expect(card('lab').querySelector('.co-who').textContent).toBe('Ana is here');
     await pressCovered('END SOL');
     await nextSol();
     advance(exp, { ana: 'lab', ben: 'shelter', cai: 'shelter' }, []);
@@ -344,11 +386,188 @@ describe('plan screen', () => {
     expectPlan(exp);
   });
 
-  it('tapping a station with nobody picked places nobody', async () => {
+  it('a callout card places the picked astronaut too', async () => {
+    await boot(sky);
+    await launch();
+    const exp = model(runFor(sky));
+    pick('ben');
+    expect(btn(/^Ben,/).getAttribute('aria-pressed')).toBe('true');
+    expect(hint()).toBe('Now tap a station for Ben. Tap Ben again to cancel.');
+    btn(`${JOBS[NEAR].name}: send your astronaut here`).click(); // the card's own button
+    expect(where()).toEqual({ Ana: JOBS.shelter.name, Ben: JOBS[NEAR].name, Cai: JOBS.shelter.name });
+    pick('cai');
+    card(INSIDE).querySelector('.co-text').click(); // anywhere on the card
+    expect(where().Cai).toBe(JOBS[INSIDE].name);
+    expect(btn(/^Cai,/).getAttribute('aria-pressed')).toBe('false');
+    await pressCovered('END SOL');
+    await nextSol();
+    advance(exp, { ana: 'shelter', ben: NEAR, cai: INSIDE }, []);
+    expectPlan(exp);
+  });
+
+  it('tapping a station with nobody picked places nobody and shows that station', async () => {
     await boot(sky);
     await launch();
     btn(new RegExp(`^${JOBS.lab.name}:`)).click();
-    expect(Object.values(crewOnMap()).every((c) => c.at === JOBS.shelter.name)).toBe(true);
+    expect(Object.values(where()).every((at) => at === JOBS.shelter.name)).toBe(true);
+    const panel = app().querySelector('[role="tabpanel"]:not([hidden])');
+    expect(panel.querySelector('h2').textContent).toBe(JOBS.lab.name);
+    expect(card('lab').classList.contains('is-sel')).toBe(true);
+    btn('? Open help card').click();
+    expect(drawer().hasAttribute('open')).toBe(true);
+    expect(drawer().querySelector('h2').textContent).toBe(JOBS.lab.name);
+  });
+
+  it.each([['its hotspot', (job) => btn(new RegExp(`^${esc(JOBS[job].name)}: .*Send`)).click()],
+    ['its callout card', (job) => card(job).click()]])('a busy job swaps by %s: the newcomer takes it, the one there goes to the Shelter', async (_, tapStation) => {
+    await boot(sky);
+    await launch();
+    const exp = model(runFor(sky));
+    place('ana', 'lab');
+    pick('ben');
+    tapStation('lab');
+    expect(where()).toEqual({ Ana: JOBS.shelter.name, Ben: JOBS.lab.name, Cai: JOBS.shelter.name });
+    expect(hint()).toBe(`Ben is at the ${JOBS.lab.name}. Ana went to the ${JOBS.shelter.name}.`);
+    expect(app().textContent).not.toMatch(/pick another station/i);
+    await pressCovered('END SOL');
+    await nextSol();
+    advance(exp, { ana: 'shelter', ben: 'lab', cai: 'shelter' }, []);
+    expectPlan(exp);
+  });
+
+  it('the Shelter takes everyone, and a second tap on an astronaut lets go', async () => {
+    await boot(sky);
+    await launch();
+    place('ana', NEAR);
+    place('ben', INSIDE);
+    place('ana', 'shelter');
+    place('ben', 'shelter');
+    expect(where()).toEqual(Object.fromEntries(Object.keys(PLAN).map((id) => [nameOfCrew(id), JOBS.shelter.name])));
+    expect(card('shelter').querySelector('.co-who').textContent).toBe('Ana, Ben and Cai resting here · room for everyone');
+    pick('cai');
+    pick('cai');
+    expect(btn(/^Cai,/).getAttribute('aria-pressed')).toBe('false');
+    btn(new RegExp(`^${JOBS.lab.name}:`)).click();
+    expect(where().Cai).toBe(JOBS.shelter.name);
+  });
+
+  it.each([['a calm sol', makeSky([])], ['a storm sol', makeSky([flare(0, 'X5.0')])]])('a double press of END SOL resolves %s once', async (_, sky) => {
+    await boot(sky);
+    await launch();
+    const exp = model(runFor(sky));
+    place('ana', 'lab');
+    btn('Lift the safety cover over END SOL').click();
+    const end = btn('END SOL');
+    end.click();
+    end.click();
+    await settle();
+    if (onRescue()) { btn('Done').click(); await settle(); }
+    expect(heading()).toBe('Sol 1 done');
+    await nextSol();
+    advance(exp, { ana: 'lab', ben: 'shelter', cai: 'shelter' }, []);
+    expectPlan(exp); // sol 2, not sol 3
+  });
+
+  it('the Labels button sits by the stage toolbar, outside the zoomed overlay, and hides and shows the callouts', async () => {
+    await boot(sky);
+    await launch();
+    const labels = btn('Labels');
+    expect(overlay().contains(labels)).toBe(false);
+    expect(stage().contains(labels)).toBe(false);
+    expect(labels.parentNode).toBe(stage().parentNode); // next to the stage and its toolbar
+    expect(shownCards()).toHaveLength(Object.keys(JOBS).length);
+    labels.click();
+    expect(labels.getAttribute('aria-pressed')).toBe('false');
+    expect(shownCards()).toEqual([]);
+    place('ana', 'lab'); // the hotspots still place
+    expect(where().Ana).toBe(JOBS.lab.name);
+    labels.click();
+    expect(shownCards()).toHaveLength(Object.keys(JOBS).length);
+  });
+
+  it('"?" on a hotspot opens its help card', async () => {
+    await boot(sky);
+    await launch();
+    btn(new RegExp(`^${JOBS.rover.name}:`)).dispatchEvent(new KeyboardEvent('keydown', { key: '?', bubbles: true, cancelable: true }));
+    expect(drawer().hasAttribute('open')).toBe(true);
+    expect(drawer().querySelector('h2').textContent).toBe(JOBS.rover.name);
+  });
+
+  it('the tabs switch between the station and the mission log', async () => {
+    await boot(sky);
+    await launch();
+    const panelOf = (name) => document.getElementById(btn(name).getAttribute('aria-controls'));
+    expect(btn('Station').getAttribute('aria-selected')).toBe('true');
+    expect(panelOf('Mission log').hidden).toBe(true);
+    btn('Mission log').click();
+    expect(btn('Mission log').getAttribute('aria-selected')).toBe('true');
+    expect(panelOf('Mission log').hidden).toBe(false);
+    expect(panelOf('Station').hidden).toBe(true);
+    btn(new RegExp(`^${JOBS.lab.name}:`)).click(); // choosing a station shows it
+    expect(panelOf('Station').hidden).toBe(false);
+  });
+
+  it('the rail: How to play opens its card, Credits opens the credits', async () => {
+    await boot(sky);
+    await launch();
+    btn('How to play').click();
+    expect(drawer().querySelector('h2').textContent).toBe('How to play');
+    expect(drawer().textContent).toContain(`${SCIENCE_GOAL} science in ${SOLS_PER_RUN} sols`);
+    btn('Close', drawer()).click();
+    btn('Home').focus();
+    btn('Home').click();
+    expect(document.activeElement).toBe(app().querySelector('h1'));
+    btn('Credits').click();
+    await settle();
+    expect(heading()).toBe('Credits and data sources');
+  });
+
+  it('phone: one column, no callouts on the stage, the selected station\'s card under it', async () => {
+    await boot(sky, { phone: true });
+    await launch();
+    expect(stage().dataset.layout).toBe('phone');
+    expect(overlay().querySelector('.co-card')).toBeNull();
+    const under = app().querySelector('.plan-selected > .co');
+    expect(under.parentNode.previousElementSibling.contains(stage())).toBe(true); // right under the stage
+    expect(shownCards()).toEqual([]);
+    expect(under.querySelector('.co-hint').hidden).toBe(false);
+    expect(btn('Labels').hidden).toBe(true);
+    btn(new RegExp(`^${JOBS.lab.name}:`)).click();
+    expect(shownCards()).toEqual(['lab']);
+    expect(under.querySelector('.co-hint').hidden).toBe(true);
+    pick('ana');
+    card('lab').click(); // the card under the stage places too
+    expect(where().Ana).toBe(JOBS.lab.name);
+    expect(card('lab').querySelector('.co-who').textContent).toBe('Ana is here');
+  });
+
+  it('a resize across 700 px moves the callouts between the stage and the slot under it, and keeps the selection', async () => {
+    await boot(sky);
+    await launch();
+    btn(new RegExp(`^${JOBS.lab.name}:`)).click();
+    media.resize(true);
+    expect(stage().dataset.layout).toBe('phone');
+    expect(overlay().querySelector('.co')).toBeNull();
+    expect(app().querySelector('.plan-selected > .co')).not.toBeNull();
+    expect(shownCards()).toEqual(['lab']);
+    media.resize(false);
+    expect(stage().dataset.layout).toBe('desktop');
+    expect(overlay().querySelector('.co')).not.toBeNull();
+    expect(shownCards()).toHaveLength(Object.keys(JOBS).length);
+  });
+
+  it('leaving the plan screen leaves no stage, timer or resize listener behind', async () => {
+    await boot(sky, { reducedMotion: false });
+    await launch();
+    const PHONE = '(max-width: 699px)';
+    expect(media.listeners(PHONE)).toBe(1);
+    expect(vi.getTimerCount()).toBeGreaterThan(0); // precondition: the stage turns
+    await pressCovered('END SOL');
+    expect(onCard()).toBe(true);
+    await settle(120_000); // the log finishes typing
+    expect(document.querySelector('.st')).toBeNull();
+    expect(vi.getTimerCount()).toBe(0);
+    expect(media.listeners(PHONE)).toBe(0);
   });
 });
 
@@ -800,7 +1019,7 @@ describe('help cards', () => {
     await launch();
     const j = JOBS[id];
     expect(drawer().hasAttribute('open')).toBe(false);
-    btn(`What is ${j.name}?`).click();
+    btn(`Help: what does the ${j.name} do?`).click();
     expect(drawer().hasAttribute('open')).toBe(true);
     expect(drawer().querySelector('h2').textContent).toBe(j.name);
     const panel = () => drawer().querySelector('[role="tabpanel"]').textContent;
@@ -818,12 +1037,12 @@ describe('help cards', () => {
   it('an open card closes when the screen changes (END SOL, credits)', async () => {
     await boot(makeSky([]));
     await launch();
-    btn('What is Lab?').click();
+    btn('Help: what does the Lab do?').click();
     await pressCovered('END SOL');
     await nextSol();
     expect(heading()).toBe(`Sol 2 of ${SOLS_PER_RUN}`);
     expect(drawer().hasAttribute('open')).toBe(false);
-    btn('What is Lab?').click();
+    btn('Help: what does the Lab do?').click();
     await openCredits();
     expect(drawer().hasAttribute('open')).toBe(false);
   });
@@ -923,6 +1142,7 @@ describe('debrief', () => {
     // Precondition: the old log has seconds of typing left.
     expect(old.lines.join('').length - logLines().join('').length).toBeGreaterThan(400); // > 5.6 s at 14 ms/char
     btn('Try again').click();
+    app().querySelector('.st').dispatchEvent(new Event('pointerdown')); // stop the new plan's turning stage: only old timers could remain
     // 2 s: the new run's one line (~0.7 s) and any in-flight character finish; an old log backlog would still be ticking.
     await settle(2000);
     expect(heading()).toBe(`Sol 1 of ${SOLS_PER_RUN}`);
@@ -1089,9 +1309,9 @@ describe('mute switch', () => {
     const sky = makeSky(Array.from({ length: SOLS_PER_RUN }, (_, i) => flare(i, 'X5.0')));
     await boot(sky);
     const seen = [];
-    // One Sound switch per screen: the title view's own on the title, the top bar's everywhere else.
+    // One Sound switch per screen: the title view's own on the title, the rail's on the plan, the top bar's everywhere else.
     const check = (screen) => {
-      expect(soundSwitch().closest(screen === 'title' ? '.sc-title' : '.top-bar')).not.toBeNull();
+      expect(soundSwitch().closest({ title: '.sc-title', plan: '.plan-rail' }[screen] ?? '.top-bar')).not.toBeNull();
       seen.push(screen);
     };
     check('title');
