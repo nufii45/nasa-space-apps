@@ -27,14 +27,13 @@ button {
 }
 button.primary { background: var(--ok); color: #fff; border-color: var(--ok); min-height: var(--tap); font-size: 20px; }
 button.danger { background: var(--storm); color: #fff; border-color: var(--storm); }
-button:focus-visible { outline: 4px solid var(--warn); outline-offset: 2px; }
 .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .card { background: #fff; border-radius: var(--radius); padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 0 rgba(0,0,0,0.08); }
 #app > * { margin-bottom: 12px; }
 #app :is(h1, h2)[tabindex='-1']:focus { outline: none; }
-.top-bar { display: flex; justify-content: flex-end; width: min(960px, 100%); margin: 0 auto; padding: 8px 16px 0; }
+.top-bar { display: flex; justify-content: flex-end; gap: 12px; width: min(960px, 100%); margin: 0 auto; padding: 8px 16px 0; }
 .top-bar .oc-toggle-wrap { flex-direction: row-reverse; align-items: center; gap: 3px; }
-.top-bar .oc-toggle { min-height: 36px; padding: 0 4px; font-size: 13px; }
+.top-bar .oc-toggle { min-height: 44px; padding: 0 4px; font-size: 13px; }
 .top-bar .oc-toggle-track { width: 30px; height: 34px; border-radius: 7px; }
 .top-bar .oc-toggle-lever { height: 14px; bottom: 3px; }
 .top-bar .oc-toggle.is-on .oc-toggle-lever { bottom: 17px; }
@@ -44,6 +43,10 @@ button:focus-visible { outline: 4px solid var(--warn); outline-offset: 2px; }
 .source-footer a { color: inherit; }
 /* Reduced motion (W14): main.js sets this class from the game's setting, which follows the device by default. */
 .reduced-motion *, .reduced-motion *::before, .reduced-motion *::after { animation: none !important; transition: none !important; }
+
+/* W15: one focus ring on every control, 3 px teal with a 3 px gap (States.dc.html panel F). :root lifts it over the kit's own rings. */
+:root :is(a[href], button, summary, [role='slider'], [tabindex]:not([tabindex='-1'])):focus-visible { outline: 3px solid var(--od-focus); outline-offset: 3px; }
+:root .oc-drawer-panel[tabindex]:focus-visible { outline-offset: -3px; } /* inside its scroll box, or the ring is cut off */
 
 /* Kit test page */
 .kit-section h2 { font-size: 16px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-quiet); }

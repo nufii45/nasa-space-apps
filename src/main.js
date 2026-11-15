@@ -299,9 +299,18 @@ function plan() {
     panels[i].setAttribute('aria-labelledby', id);
     return el('button', { type: 'button', role: 'tab', id, class: 'plan-tab', 'aria-controls': panels[i].id, onclick: () => { tab = i; drawTabs(); } }, label);
   });
+  // One Tab stop for the tabs; the arrow keys, Home and End move between them (States.dc.html panel F).
   function drawTabs() {
-    tabs.forEach((b, i) => b.setAttribute('aria-selected', String(i === tab)));
+    tabs.forEach((b, i) => { b.setAttribute('aria-selected', String(i === tab)); b.tabIndex = i === tab ? 0 : -1; });
     panels.forEach((p, i) => { p.hidden = i !== tab; });
+  }
+  function tabKeys(e) {
+    const next = { ArrowRight: tab + 1, ArrowLeft: tab - 1, Home: 0, End: tabs.length - 1 }[e.key];
+    if (next === undefined) return;
+    e.preventDefault();
+    tab = (next + tabs.length) % tabs.length;
+    drawTabs();
+    tabs[tab].focus();
   }
   function drawStation() {
     shown = selected;
@@ -362,7 +371,8 @@ function plan() {
           el('ol', { class: 'plan-sols', 'aria-label': `Sol progress: ${n - 1} done, today is sol ${n}, ${SOLS_PER_RUN - n} to go` },
             ...Array.from({ length: SOLS_PER_RUN }, (_, i) => i + 1).map((k) =>
               el('li', { class: k < n ? 'is-done' : k === n ? 'is-today' : 'is-next', 'aria-hidden': 'true' }, k < n ? '✓' : String(k))))),
-        el('section', { class: 'plan-card plan-sun', 'aria-label': 'Sun report' }, icon(ICONS.sun, 28),
+        // A Tab stop of its own, so keyboard users read the forecast before choosing jobs (panel F).
+        el('section', { class: 'plan-card plan-sun', 'aria-label': 'Sun report', tabindex: 0 }, icon(ICONS.sun, 28),
           el('div', {},
             el('p', {}, el('strong', {}, 'Sun report'), ' ', forecast),
             game.run.start === sky.featured?.sept2017?.start
@@ -380,7 +390,7 @@ function plan() {
           el('p', { class: 'plan-cap' }, 'Status'), game.lamps.el,
           el('div', { class: 'plan-gauges' }, ...Object.values(game.gauges).map((g) => g.el))),
         el('section', { class: 'plan-card plan-tabs' },
-          el('div', { class: 'plan-tablist', role: 'tablist', 'aria-label': 'Panel' }, ...tabs), ...panels),
+          el('div', { class: 'plan-tablist', role: 'tablist', 'aria-label': 'Panel', onkeydown: tabKeys }, ...tabs), ...panels),
         el('section', { class: 'plan-end', 'aria-label': 'End the sol' },
           endSol.el, el('p', { class: 'plan-quiet' }, 'Lift the cover, then press END SOL.')))),
   );

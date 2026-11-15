@@ -1114,6 +1114,111 @@ describe('motion and the Reduced motion setting', () => {
   });
 });
 
+describe('keyboard and focus', () => {
+  // jsdom has no default actions for keys, so this does what a browser does after the game's own handlers:
+  // Tab and Shift+Tab move focus in DOM order, and Enter or Space on a focused button clicks it,
+  // unless a handler called preventDefault(). The game sees only key events.
+  const tabbables = () => [...document.querySelectorAll('a[href], button, [tabindex]')]
+    .filter((e) => e.tabIndex >= 0 && !e.disabled && !e.closest('[hidden], [inert], dialog:not([open])'));
+  function key(k, { shift = false } = {}) {
+    const t = document.activeElement ?? document.body;
+    if (!t.dispatchEvent(new KeyboardEvent('keydown', { key: k, shiftKey: shift, bubbles: true, cancelable: true }))) return;
+    if (k === 'Tab') {
+      const list = tabbables();
+      const after = list.filter((e) => t.compareDocumentPosition(e) & Node.DOCUMENT_POSITION_FOLLOWING);
+      const before = list.filter((e) => t.compareDocumentPosition(e) & Node.DOCUMENT_POSITION_PRECEDING);
+      (shift ? before.at(-1) ?? list.at(-1) : after[0] ?? list[0])?.focus();
+    } else if ((k === 'Enter' || k === ' ') && t.localName === 'button') t.click();
+  }
+  // Press Tab (or Shift+Tab) until the focused control's name matches.
+  function tabTo(re, opts) {
+    for (let i = 0; i < 80; i++) {
+      key('Tab', opts);
+      if (re.test(nameOf(document.activeElement))) return document.activeElement;
+    }
+    throw new Error(`no Tab stop matches ${re}`);
+  }
+  const focused = () => nameOf(document.activeElement);
+  // Each Tab stop in the app, as its kind (States.dc.html panel F).
+  const kind = (e) => (e.matches('.st-hs') ? 'hotspot' : e.matches('.co-pick') ? 'card' : e.matches('.co-help') ? '?'
+    : e.matches('.st-tool') ? 'stage toolbar' : e.closest('.plan-crew') ? 'crew' : e.getAttribute('role') === 'tab' ? 'tab' : nameOf(e) || e.getAttribute('aria-label'));
+
+  it('the plan screen\'s Tab order follows the board: rail, Sun report, hotspots, callouts, toolbar, crew, tabs, END SOL', async () => {
+    await boot(makeSky([]));
+    await launch();
+    const stations = Object.keys(JOBS).length;
+    expect(tabbables().filter((e) => app().contains(e)).map(kind)).toEqual([
+      'Home', 'How to play', 'Sound', 'Reduced motion', 'Credits',
+      'Sun report',
+      ...Array(stations).fill('hotspot'),
+      ...Array(stations).fill(['card', '?']).flat(),
+      'stage toolbar', 'Labels',
+      ...Array(newGame().crew.length).fill('crew'),
+      'tab',
+      'Lift the safety cover over END SOL',
+    ]);
+  });
+
+  it('arrow keys move between hotspots and between the tabs', async () => {
+    await boot(makeSky([]));
+    await launch();
+    const spot = tabTo(/^Shelter:/);
+    const seen = new Set([spot]);
+    for (const k of ['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'ArrowRight', 'ArrowUp']) {
+      key(k);
+      expect(document.activeElement.matches('.st-hs')).toBe(true);
+      seen.add(document.activeElement);
+    }
+    expect(seen.size).toBeGreaterThan(1);
+    tabTo(/^Station$/);
+    key('ArrowRight');
+    expect(focused()).toBe('Mission log');
+    expect(document.activeElement.getAttribute('aria-selected')).toBe('true');
+    key('ArrowRight');
+    expect(focused()).toBe('Station');
+    key('End');
+    expect(focused()).toBe('Mission log');
+    key('Tab'); // one Tab stop for the tabs: on to END SOL
+    expect(focused()).toBe('Lift the safety cover over END SOL');
+  });
+
+  it('plays a whole sol with key events only: pick, place, lift the cover, END SOL, NEXT SOL', async () => {
+    const sky = makeSky([]);
+    await boot(sky);
+    expect(document.activeElement).toBe(app().querySelector('h1')); // the title's heading
+    tabTo(/^Lift the safety cover over LAUNCH$/);
+    key('Enter');
+    expect(focused()).toBe('LAUNCH');
+    key('Enter');
+    await settle();
+    expect(heading()).toBe(`Sol 1 of ${SOLS_PER_RUN}`);
+    expect(document.activeElement).toBe(app().querySelector('h1')); // focus moved to the plan's heading
+    const exp = model(runFor(sky));
+
+    tabTo(/^Ana,/);
+    key(' '); // Space picks
+    expect(btn(/^Ana,/).getAttribute('aria-pressed')).toBe('true');
+    tabTo(new RegExp(`^${JOBS.lab.name}: .*Send Ana here$`), { shift: true }); // back up to the stage
+    key('Enter'); // Enter on a hotspot places
+    expect(crewOnMap().Ana.at).toBe(JOBS.lab.name);
+    expect(focused()).toMatch(new RegExp(`^${JOBS.lab.name}: Ana is here`)); // focus stays on the hotspot
+
+    tabTo(/^Lift the safety cover over END SOL$/);
+    key('Enter');
+    expect(focused()).toBe('END SOL');
+    key('Enter');
+    await settle();
+    expect(heading()).toBe('Sol 1 done');
+    expect(document.activeElement).toBe(app().querySelector('h2')); // the card's heading
+    key('Enter');
+    await settle();
+    advance(exp, { ana: 'lab', ben: 'shelter', cai: 'shelter' }, []);
+    expect(exp.solLines.some((l) => l.includes('Ana') && l.includes(JOBS.lab.name))).toBe(true); // guard: the placement mattered
+    expectPlan(exp);
+    expect(document.activeElement).toBe(app().querySelector('h1'));
+  });
+});
+
 describe('help cards', () => {
   it.each(Object.keys(JOBS))('"?" for %s opens its card; every number in it comes from JOBS', async (id) => {
     await boot(makeSky([]));
