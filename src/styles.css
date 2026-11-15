@@ -104,7 +104,8 @@ button.danger { background: var(--storm); color: #fff; border-color: var(--storm
 .plan-water-warning.is-danger { border-color: var(--od-orange); background: var(--od-orange); color: #FFFFFF; }
 /* The stage keeps its drawn size; a narrow window scrolls it sideways rather than squashing it. */
 .plan-stage { position: relative; max-width: 100%; overflow-x: auto; }
-.plan-stage > .co-toggle { position: absolute; right: 8px; bottom: 8px; }
+/* In the free strip between the two card columns, clear of every card and hotspot. */
+.plan-stage > .co-toggle { position: absolute; top: 4px; left: 50%; transform: translateX(-50%); }
 
 /* Crew strip: one card per astronaut, lifted while picked. */
 .plan-crew { display: flex; flex-direction: column; gap: 6px; }

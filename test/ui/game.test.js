@@ -453,7 +453,7 @@ describe('plan screen', () => {
     place('ana', 'shelter');
     place('ben', 'shelter');
     expect(where()).toEqual(Object.fromEntries(Object.keys(PLAN).map((id) => [nameOfCrew(id), JOBS.shelter.name])));
-    expect(card('shelter').querySelector('.co-who').textContent).toBe('Ana, Ben and Cai resting here · room for everyone');
+    expect(card('shelter').querySelector('.co-who').textContent).toBe('Ana, Ben and Cai are here');
     pick('cai');
     pick('cai');
     expect(btn(/^Cai,/).getAttribute('aria-pressed')).toBe('false');
