@@ -26,6 +26,15 @@ document.body.prepend(el('header', { class: 'top-bar' }, createMuteSwitch().el))
 let sky = null;
 let game = null; // { state, run, mode, mission, placements, log, gauges, lamps, rescueTimer, tapeLines }
 
+// The run is saved after each sol so a refresh can resume it. Storage can throw (private mode, full,
+// blocked); the game must play on without it. Pass null to clear.
+const SAVE_KEY = 'outpost-dial.save.v1';
+function save(data) {
+  try {
+    if (data) localStorage.setItem(SAVE_KEY, JSON.stringify(data)); else localStorage.removeItem(SAVE_KEY);
+  } catch { /* storage blocked */ }
+}
+
 async function loadSky() {
   const res = await fetch('./data/sky.json');
   sky = await res.json();
@@ -70,6 +79,7 @@ function start({ mode, mission }) {
   const run = buildRun(sky, { mode, featured: mission === 'random' ? null : mission, seed: Date.now() >>> 0 });
   // The instruments live for the whole run: needles move and the log keeps every sol.
   stopGame();
+  save(null);
   game = {
     state: newGame(), run, mode, mission, placements: {},
     log: createMissionLog({ max: 300 }), // the kit keeps 40 lines by default; a full run logs more and must keep every sol
@@ -253,6 +263,7 @@ function resolve(rescued) {
   for (const l of log) game.log.append(l.text, l.type);
   game.state = state;
   if (state.over) return debrief();
+  save({ v: 1, state, run: game.run, mode: game.mode, mission: game.mission, placements: game.placements });
   plan();
 }
 
@@ -274,6 +285,7 @@ function debrief() {
     : s.coldSols ? 'Tip: the Solar Field keeps the heaters on. No power, no science.'
     : s.crew.some((c) => c.home) ? 'Tip: take turns going outside so nobody gets too much radiation.'
     : 'Tip: pump water into the walls when a CME is in the forecast.';
+  save(null);
   const tape = createTickerTape();
   const { mode, mission } = game;
   show(
