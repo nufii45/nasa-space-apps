@@ -18,7 +18,11 @@
   color: var(--ink);
 }
 * { box-sizing: border-box; }
-body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; }
+/* main.js zooms the page (decision 0013) and vh lengths zoom with it, so they are divided back by --zoom
+   (:root lifts the drawer rule over the kit, whose styles load later). */
+body { margin: 0; min-height: calc(100vh / var(--zoom, 1)); display: flex; flex-direction: column; }
+:is(.sc-title, .sc-storm) { min-height: calc(100vh / var(--zoom, 1)); }
+:root .oc-drawer[data-layout='side'] { height: calc(100dvh / var(--zoom, 1)); max-height: calc(100dvh / var(--zoom, 1)); }
 main { flex: 1; width: min(960px, 100%); margin: 0 auto; padding: 16px; }
 h1, h2 { margin: 0 0 12px; letter-spacing: 0.02em; }
 button {
@@ -58,7 +62,9 @@ button.danger { background: var(--storm); color: #fff; border-color: var(--storm
 /* Plan screen (W9): left rail, main column (header, Sun report, stage, crew strip) and right panel
    (status, Station / Mission log tabs, END SOL). Boards: Main.dc.html and, below 700 px, PhonePlan.dc.html. */
 #app.is-plan { width: 100%; max-width: 1600px; padding: 0; }
-/* Below 1280 px the side panel stacks under the main column; three columns from 1280 px (see below). */
+/* Zoomed (main.js sets .is-zoomed): the plan is the 1280 px canvas, so the stage keeps its drawn size. */
+.is-zoomed #app.is-plan { max-width: 1280px; }
+/* The side panel stacks under the main column; three columns when main.js sets .is-wide (see below). */
 .plan { display: grid; grid-template-columns: 64px minmax(0, 1fr); align-items: start; color: var(--od-ink); font-family: var(--od-font-body); }
 .plan h1, .plan h2 { margin: 0; font-family: var(--od-font-head); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
 .plan h1 { font-size: 30px; line-height: 1; }
@@ -100,7 +106,8 @@ button.danger { background: var(--storm); color: #fff; border-color: var(--storm
 .plan-water-warning.is-danger { border-color: var(--od-orange); background: var(--od-orange); color: #FFFFFF; }
 /* The stage keeps its drawn size; a narrow window scrolls it sideways rather than squashing it. */
 .plan-stage { position: relative; max-width: 100%; overflow-x: auto; }
-.plan-stage > .co-toggle { position: absolute; right: 8px; bottom: 8px; }
+/* In the free strip between the two card columns, clear of every card and hotspot. */
+.plan-stage > .co-toggle { position: absolute; top: 4px; left: 50%; transform: translateX(-50%); }
 
 /* Crew strip: one card per astronaut, lifted while picked. */
 .plan-crew { display: flex; flex-direction: column; gap: 6px; }
@@ -119,12 +126,12 @@ button.danger { background: var(--storm); color: #fff; border-color: var(--storm
 
 /* Right panel */
 .plan-side { grid-column: 2; min-width: 0; display: flex; flex-direction: column; gap: 10px; padding: 0 12px 12px; }
-/* The main column never gets narrower than the 860 px desktop stage plus its padding; the side panel gives way first. */
-@media (min-width: 1280px) {
-  .plan { grid-template-columns: 64px minmax(884px, 1fr) minmax(260px, 332px); }
-  .plan-rail { grid-row: auto; }
-  .plan-side { grid-column: auto; padding: 12px 16px 12px 0; }
-}
+/* Three columns when the zoomed layout box is at least 1280 px wide (main.js sets .is-wide on <html>; a width media
+   query would see the real window). The main column never gets narrower than the 860 px desktop stage plus its
+   padding; the side panel gives way first. */
+.is-wide .plan { grid-template-columns: 64px minmax(884px, 1fr) minmax(260px, 332px); }
+.is-wide .plan-rail { grid-row: auto; }
+.is-wide .plan-side { grid-column: auto; padding: 12px 16px 12px 0; }
 .plan-status { display: flex; flex-direction: column; gap: 10px; padding: 12px; }
 .plan .oc-lamps { flex-wrap: nowrap; gap: 4px; }
 .plan .oc-lamp { flex: 1; min-width: 0; }
