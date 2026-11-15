@@ -4,7 +4,7 @@ import { newGame, step, needsRescue, normalisePlacements } from './sim/sim.js';
 import { buildRun } from './sim/sky.js';
 import {
   JOBS, LIMITS, RESCUE_SECONDS, RESCUE_TIME_UP_MS, SCIENCE_GOAL, SOLS_PER_RUN, HEATER_COST, DRINK_PER_SOL, CME_DOSE,
-  THIRSTY_SOLS_TO_GO_HOME,
+  THIRSTY_SOLS_TO_GO_HOME, CREW,
 } from './sim/constants.js';
 import {
   createKnob, createToggle, createCoverButton, createGauge, createLamps,
@@ -46,9 +46,11 @@ function loadSave() {
     const s = d?.state;
     const ok = d?.v === 1 && Object.hasOwn(MODES, d.mode) && Object.hasOwn(MISSIONS, d.mission) && s && !s.over
       && ['sol', 'power', 'tank', 'wall', 'science', 'thirstyStreak', 'coldSols', 'thirstySols'].every((k) => Number.isFinite(s[k]))
-      && Array.isArray(s.crew) && s.crew.every((c) => typeof c?.id === 'string' && typeof c.name === 'string' && Number.isFinite(c.dose))
+      && Array.isArray(s.crew) && s.crew.length === CREW.length
+      && s.crew.every((c, i) => c?.id === CREW[i].id && typeof c.name === 'string' && Number.isFinite(c.dose))
       && typeof d.run?.start === 'string' && Array.isArray(d.run.sols) && d.run.sols.length === SOLS_PER_RUN
-      && d.run.sols.every((x) => typeof x?.date === 'string' && Array.isArray(x.forecast))
+      && d.run.sols.every((x, i) => x?.sol === i + 1 && typeof x.date === 'string' && typeof x.storm === 'object'
+        && Array.isArray(x.forecast) && x.forecast.every((f) => Number.isFinite(f?.inSols)))
       && Number.isInteger(s.sol) && s.sol >= 1 && s.sol <= SOLS_PER_RUN;
     if (ok) return d;
   } catch { /* storage blocked, or not JSON */ }
@@ -127,7 +129,11 @@ function start({ mode, mission, state, run, placements }) {
 function resumePrompt(saved) {
   show(resumeView(
     { sol: saved.state.sol, totalSols: SOLS_PER_RUN, missionLabel: MISSIONS[saved.mission], modeLabel: MODES[saved.mode] },
-    { onResume: () => start(saved), onStartOver: () => { save(null); title(); } },
+    {
+      // A save the checks missed must not leave a dead Resume button: drop it and start fresh.
+      onResume: () => { try { start(saved); } catch { save(null); title(); } },
+      onStartOver: () => { save(null); title(); },
+    },
   ).el);
 }
 
@@ -296,25 +302,26 @@ function resolve(rescued) {
   game.state = state;
   if (state.over) return debrief();
   save({ v: 1, state, run: game.run, mode: game.mode, mission: game.mission, placements: game.placements });
-  solResult(before, sol, log);
+  solResult(before, sol);
 }
 
 // ---------- Sol result ----------
-// Each gauge's word on the card, and the step() log types that explain its change.
+// Each gauge's word on the card, and a why for each direction. The card shows net changes and step()'s log
+// gives gross amounts, so a why never quotes a number: it is a fixed sentence true whenever its line shows.
+// Empty when that direction cannot happen (walls and science never go down).
 const CHANGES = {
-  power: { word: 'power', why: ['power'] },
-  tank: { word: 'water', why: ['water', 'shield'] },
-  wall: { word: 'shield', why: ['shield'] },
-  science: { word: 'science', why: ['science'] },
+  power: { word: 'power', up: 'The Solar Field made more power than the base used.', down: 'The base used more power than it made.' },
+  tank: { word: 'water', up: 'The Recycler made more water than the base used.', down: 'The base used more water than it made.' },
+  wall: { word: 'shield', up: 'Water was pumped into the shelter walls.', down: '' },
+  science: { word: 'science', up: 'The crew did science.', down: '' },
 };
 // Only what changed, read from the states before and after step(); the rules are never re-run here.
-function solResult(before, sol, log) {
+function solResult(before, sol) {
   const after = game.state;
   const changes = Object.entries(CHANGES).filter(([k]) => after[k] !== before[k]).map(([k, c]) => {
     const d = after[k] - before[k];
-    const text = `${d > 0 ? '+' : '−'}${Math.abs(d)} ${c.word}`;
-    const why = log.filter((l) => c.why.includes(l.type) && l.text !== text).map((l) => `${l.text}.`).join(' ');
-    return { text, why, dir: d > 0 ? 'up' : 'down' };
+    const dir = d > 0 ? 'up' : 'down';
+    return { text: `${d > 0 ? '+' : '−'}${Math.abs(d)} ${c.word}`, why: c[dir], dir };
   });
   const doses = after.crew.map((c, i) => ({ name: c.name, before: before.crew[i].dose, after: c.dose, limit: LIMITS.dose }))
     .filter((d) => d.after > d.before);

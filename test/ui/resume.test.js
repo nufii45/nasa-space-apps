@@ -215,6 +215,46 @@ describe('resume after a refresh', () => {
     expect(app().querySelector('[role="timer"]')).not.toBeNull(); // Commander came back too
   });
 
+  it('Random week resumed after the clock moved plays on from the save: same sols and report as an unbroken run', async () => {
+    // A 60-day sky with a particle M flare every 4 days, so the week the seed picks matters.
+    const wide = makeSky(Array.from({ length: 15 }, (_, i) => flare(i * 4, 'M1.0')), { range: [day(0), day(60)] });
+    // Ana on the Solar Field, Ben in the Lab, Cai on the Recycler; a rescue brings nobody in.
+    const cards = [];
+    async function play({ stopAt } = {}) {
+      while (!onReport()) {
+        if (heading() === `Sol ${stopAt} of ${SOLS_PER_RUN}`) return;
+        await pressCovered('END SOL');
+        if (onRescue()) { btn('Done').click(); await settle(); }
+        if (onCard()) { cards.push(text(app())); await nextSol(); }
+      }
+      return text(app().querySelector('.sc-report'));
+    }
+    const setUp = async () => {
+      vi.setSystemTime(NOW); // the same seed for both runs
+      await boot(wide);
+      await pressCovered('LAUNCH');
+      place('ana', NEAR); place('ben', 'lab'); place('cai', 'recycler');
+    };
+    await setUp();
+    const unbroken = { report: await play(), cards: cards.splice(0) };
+    expect(unbroken.cards.length).toBeGreaterThan(4);
+
+    freshPage();
+    localStorage.clear();
+    await setUp();
+    await play({ stopAt: 4 });
+    const later = NOW + 9 * 86_400_000;
+    vi.setSystemTime(later);
+    // Precondition: rebuilding from the clock would give another week.
+    expect(buildRun(wide, { mode: 'cadet', featured: null, seed: later >>> 0 }).start).not.toBe(saved().run.start);
+    await refresh(wide);
+    btn('Resume').click();
+    await settle();
+    const report = await play();
+    expect(cards).toEqual(unbroken.cards);
+    expect(report).toEqual(unbroken.report);
+  });
+
   it('saved placements are normalised again, never trusted', async () => {
     const save = await saveAtSol4();
     localStorage.setItem(KEY, JSON.stringify({ ...save, placements: { ana: 'lab', ben: 'lab', cai: 'no-such-job' } }));
@@ -265,6 +305,14 @@ describe('resume after a refresh', () => {
     ['crew not a list', (s) => JSON.stringify({ ...s, state: { ...s.state, crew: 'Ana' } })],
     ['a gauge not a number', (s) => JSON.stringify({ ...s, state: { ...s.state, power: 'lots' } })],
     ['run too short', (s) => JSON.stringify({ ...s, run: { ...s.run, sols: s.run.sols.slice(0, 3) } })],
+    ['a bad forecast entry', (s) => JSON.stringify({ ...s, run: { ...s.run, sols: s.run.sols.map((x) => ({ ...x, forecast: [null] })) } })],
+    ['a forecast without inSols', (s) => JSON.stringify({ ...s, run: { ...s.run, sols: s.run.sols.map((x) => ({ ...x, forecast: [{ kind: 'cme' }] })) } })],
+    ['sols without their number', (s) => JSON.stringify({ ...s, run: { ...s.run, sols: s.run.sols.map(({ sol, ...x }) => x) } })],
+    ['sols out of order', (s) => JSON.stringify({ ...s, run: { ...s.run, sols: [...s.run.sols].reverse() } })],
+    ['a storm that is not an object', (s) => JSON.stringify({ ...s, run: { ...s.run, sols: s.run.sols.map((x) => ({ ...x, storm: 'X9' })) } })],
+    ['no crew', (s) => JSON.stringify({ ...s, state: { ...s.state, crew: [] } })],
+    ['a crew member missing', (s) => JSON.stringify({ ...s, state: { ...s.state, crew: s.state.crew.slice(1) } })],
+    ['a stranger in the crew', (s) => JSON.stringify({ ...s, state: { ...s.state, crew: s.state.crew.map((c, i) => (i ? c : { ...c, id: 'zed' })) } })],
   ])('a broken save (%s) is cleared and the title shows', async (_, make) => {
     const valid = { ...good, state: newGame(), run: buildRun(makeSky([]), { mode: 'cadet', featured: null, seed: 1 }) };
     localStorage.setItem(KEY, JSON.stringify(valid));

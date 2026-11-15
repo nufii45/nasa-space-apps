@@ -97,6 +97,15 @@ async function nextSol() {
   btn('NEXT SOL →').click();
   await settle();
 }
+// Sol result card: { '+5 power': its why text } for each change line (not the radiation lines).
+const whys = () => Object.fromEntries([...app().querySelectorAll('.sc-line:not(.sc-dose)')].map((l) => {
+  const badge = l.querySelector('.sc-badge').textContent;
+  return [badge, l.textContent.slice(badge.length).trim()];
+}));
+// The card shows net changes and the sim's log gross ones, so a why must never quote an amount.
+function expectWhysWithoutAmounts() {
+  for (const [line, why] of Object.entries(whys())) expect(why, line).not.toMatch(/[\d+−]/);
+}
 // Map tokens: "Ana, radiation 12/100, at Lab" or "..., went home".
 function crewOnMap() {
   const out = {};
@@ -213,7 +222,10 @@ async function playSol(exp, placements, { commander }) {
   }
   advance(exp, placements, rescued);
   expect(onCard()).toBe(!exp.state.over); // a card after every sol, except the one that ends the run
-  if (onCard()) await nextSol();
+  if (onCard()) {
+    expectWhysWithoutAmounts();
+    await nextSol();
+  }
 }
 
 // =====================================================================================
@@ -378,11 +390,70 @@ describe('sol result card', () => {
     expect(want.doses).toContain(`Ana +${exp.state.crew[0].dose} radiation`);
     expect(cardLines()).toEqual(want);
     expect(app().querySelector('.sc-dose').textContent).toContain(`0 → ${exp.state.crew[0].dose}/${LIMITS.dose}`);
-    const power = [...app().querySelectorAll('.sc-line')].find((l) => / power/.test(l.querySelector('.sc-badge').textContent));
-    expect(power.textContent).toContain(JOBS[NEAR].name); // the why comes from the sol's log
     expect(allButtons(app()).map(nameOf)).toEqual(['NEXT SOL →']);
     await nextSol();
     expectPlan(exp);
+  });
+
+  it('each why agrees with its line, also when a job ran but its gauge went the other way', async () => {
+    // The card's sentence for each gauge and direction (walls and science never go down).
+    const WHY = {
+      power: { up: 'The Solar Field made more power than the base used.', down: 'The base used more power than it made.' },
+      water: { up: 'The Recycler made more water than the base used.', down: 'The base used more water than it made.' },
+      shield: { up: 'Water was pumped into the shelter walls.' },
+      science: { up: 'The crew did science.' },
+    };
+    const sky = makeSky([]);
+    await boot(sky);
+    await launch();
+    const exp = model(runFor(sky));
+    const ran = (job) => exp.solLines.some((l) => l.includes(JOBS[job].name));
+    // Each sol: its jobs, and a precondition from the sim that makes it the case under test.
+    const sols = [
+      [{ ana: NEAR, ben: 'lab', cai: INSIDE }, (b, a) => ran(NEAR) && a.power < b.power], // power falls although the Solar Field ran
+      [{ ana: NEAR, ben: 'pump', cai: INSIDE }, (b, a) => ran(INSIDE) && a.tank < b.tank && a.wall > b.wall], // water falls although the Recycler ran
+      [{ ana: NEAR, ben: 'lab', cai: INSIDE }, (b, a) => ran(INSIDE) && a.tank > b.tank], // an ordinary Recycler sol
+    ];
+    const KEY = { power: 'power', tank: 'water', wall: 'shield', science: 'science' };
+    for (const [p, isCase] of sols) {
+      for (const [id, job] of Object.entries(p)) place(id, job);
+      const b = exp.state;
+      await pressCovered('END SOL');
+      advance(exp, p, []);
+      expect(isCase(b, exp.state), `precondition for ${JSON.stringify(p)}`).toBe(true);
+      const want = Object.fromEntries(Object.entries(KEY).filter(([k]) => exp.state[k] !== b[k]).map(([k, word]) => {
+        const d = exp.state[k] - b[k];
+        return [`${d > 0 ? '+' : '−'}${Math.abs(d)} ${word}`, WHY[word][d > 0 ? 'up' : 'down']];
+      }));
+      expect(whys()).toEqual(want);
+      expectWhysWithoutAmounts();
+      await nextSol();
+    }
+  });
+
+  it('an astronaut already home gets no radiation line', async () => {
+    // A particle M flare every day; Ana stays outside and is never brought in, so she goes home first.
+    const msky = makeSky(Array.from({ length: SOLS_PER_RUN }, (_, i) => flare(i, 'M1.0')));
+    await boot(msky);
+    await launch();
+    const exp = model(runFor(msky));
+    const q = { ana: NEAR, ben: 'shelter', cai: INSIDE };
+    place('ana', NEAR); place('cai', INSIDE);
+    let checked = 0;
+    while (true) {
+      const home = exp.state.crew.filter((c) => c.home).map((c) => c.name);
+      const placed = normalisePlacements(exp.state, q);
+      await pressCovered('END SOL');
+      btn('Done').click(); // a rescue every sol; nobody is brought in
+      await settle();
+      advance(exp, placed, []);
+      if (exp.state.over) break;
+      const names = cardLines().doses.map((d) => d.split(' ')[0]);
+      expect(names).toEqual(exp.state.crew.filter((c) => !home.includes(c.name)).map((c) => c.name)); // all still here, nobody home
+      if (home.length) checked += 1;
+      await nextSol();
+    }
+    expect(checked).toBeGreaterThan(0); // precondition: a card was shown after Ana went home
   });
 
   it('Enter on the card goes to the next plan', async () => {
