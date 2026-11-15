@@ -174,7 +174,7 @@ function expectDebrief(exp, { story }) {
   const text = app().textContent;
   for (const x of r.sols.filter((x) => x.sol > s.sol)) expect(text).not.toContain(x.date);
   expect(tape.some((l) => /^Tip: /.test(l))).toBe(true);
-  expect(has(/^Try again$/, app()) && has(/^Title$/, app())).toBe(true);
+  expect(has(/^Try again$/, app()) && has(/^Change mission$/, app()) && has(/^Title$/, app())).toBe(true);
   const link = [...app().querySelectorAll('a')].find((a) => a.textContent === 'Read the NASA story');
   if (story) expect(link?.href).toMatch(/nasa\.gov/);
   else expect(link).toBeUndefined();
@@ -580,6 +580,55 @@ describe('debrief', () => {
     await settle(120_000);
     expect(app().innerHTML).toBe(html);
     expect(document.querySelector('[role="log"][aria-label="Mission report"]')).toBeNull();
+  });
+});
+
+describe('mission report: Try again and Change mission keep the mission and mode', () => {
+  // A particle X flare every day of both weeks: random = day(0..), Sept 2017 = day(30..). Two outside, never rescued, ends early.
+  const xWeek = (from) => Array.from({ length: SOLS_PER_RUN }, (_, i) => flare(from + i, 'X5.0'));
+  const sky = makeSky([...xWeek(0), ...xWeek(30)], { featured: { sept2017: { start: day(30), seed: 1 } } });
+  async function toReport() {
+    place('ana', NEAR); place('ben', FAR);
+    while (heading() !== 'Mission report') {
+      await pressCovered('END SOL');
+      if (onRescue()) { btn(/^(Done|Ready)$/).click(); await settle(); }
+    }
+  }
+  const knob = () => app().querySelector('[role="slider"][aria-label="Mission"]').getAttribute('aria-valuetext');
+  const commanderOn = () => btn('Commander mode').getAttribute('aria-checked') === 'true';
+
+  it.each([
+    ['SEPT 2017', true, day(30)], ['RANDOM WEEK', false, day(0)],
+  ])('%s, commander=%s: Try again starts the same mission in the same mode', async (mission, commander, start) => {
+    await boot(sky);
+    await launch({ mission, commander });
+    await toReport();
+    btn('Try again').click();
+    await settle();
+    expect(heading()).toBe(`Sol 1 of ${SOLS_PER_RUN}`);
+    expect(logLines()).toEqual([`Mission start. Your sky begins on ${start}.`]);
+    await pressCovered('END SOL');
+    expect(onRescue()).toBe(true);
+    expect(timer() !== null).toBe(commander); // Commander keeps its countdown
+  });
+
+  it('Change mission returns to the title with the last mission and mode set; Title resets them', async () => {
+    await boot(sky);
+    await launch({ mission: 'SEPT 2017', commander: true });
+    await toReport();
+    btn('Change mission').click();
+    await settle();
+    expect(heading()).toBe('Outpost Dial');
+    expect(knob()).toBe('SEPT 2017');
+    expect(commanderOn()).toBe(true);
+    await pressCovered('LAUNCH'); // launches what the controls show
+    expect(logLines()).toEqual([`Mission start. Your sky begins on ${day(30)}.`]);
+    await toReport();
+    btn('Title').click();
+    await settle();
+    expect(heading()).toBe('Outpost Dial');
+    expect(knob()).toBe('RANDOM WEEK');
+    expect(commanderOn()).toBe(false);
   });
 });
 
