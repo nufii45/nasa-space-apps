@@ -32,9 +32,9 @@ to D are the owners named in `README.md`. Requirements: `docs/PRD.md`. Plan that
 
 ## Still to do
 
-- [ ] **7. Deploy** (you, in the Cloudflare dashboard). Build command `npm run build`, output
-  directory `dist`. Agents do not deploy. Then write the staging URL into `CLAUDE.md` under
-  Project facts.
+- [x] **7. Deploy.** Live at https://nasa-space-apps.bufiimman45.workers.dev. Cloudflare builds
+  and deploys on every push to `main`. Checked 2026-11-15: the page, the game bundle and the
+  real storm data all load.
 - [x] **8. Merge.** Merged into `main` and pushed 2026-11-15; CI and the Cloudflare build passed.
 - [ ] **9. Play it on a real phone and with a keyboard only.** No agent has done either. Check
   that the map and END SOL are easy to reach on a small screen: the four gauges fill most of

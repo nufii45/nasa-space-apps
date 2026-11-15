@@ -27,15 +27,15 @@ and the wireframe board to match.
 ## Decisions needed from the user before starting
 
 - [ ] **D1. Help tab name.** The wireframes say "Numbers". The live game says "How much" (changed
-  tonight after the Grok test). Pick one.
+  tonight after the Grok test). Pick one. (numbers)
 - [ ] **D2. Storm lamp word.** The wireframes say COMING (storm forecast) and ALERT (storm now).
-  The live game says WATCH OUT. Pick one.
+  The live game says WATCH OUT. Pick one. (watch out)
 - [ ] **D3. Isometric SVG, not WebGL** (record as a proposed decision in Obsidian). Reason: same
   look as the reference, works on school Chromebooks, no new dependency, every hotspot stays a
-  real button.
+  real button. (approved)
 - [ ] **D4. Fonts.** Barlow, Barlow Semi Condensed and JetBrains Mono need either a Google Fonts
   link (a network request on every load) or self-hosted files in `public/fonts/` (no
-  dependency, about 200 KB). Recommended: self-host.
+  dependency, about 200 KB). Recommended: self-host. (approved)
 
 ## Tier 1: small, safe, existing UI (OK before the freeze)
 
