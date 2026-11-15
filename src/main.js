@@ -15,6 +15,7 @@ import { jobCard } from './ui/jobInfo.js';
 import { createOutpostMap } from './ui/map/index.js';
 import { render as solResultView } from './ui/screens/solResult.js';
 import { render as reportView } from './ui/screens/report.js';
+import { render as resumeView } from './ui/screens/resume.js';
 
 // Warning thresholds for gauges and lamps, derived from the rules so retuning keeps them meaningful.
 const LOW = { power: HEATER_COST, tank: DRINK_PER_SOL };
@@ -35,6 +36,24 @@ function save(data) {
   try {
     if (data) localStorage.setItem(SAVE_KEY, JSON.stringify(data)); else localStorage.removeItem(SAVE_KEY);
   } catch { /* storage blocked */ }
+}
+const MISSIONS = { random: 'Random week', sept2017: 'Sept 2017' };
+const MODES = { cadet: 'Cadet', commander: 'Commander' };
+// The save is untrusted input: anything broken, old or from another version is cleared, never half-loaded.
+function loadSave() {
+  try {
+    const d = JSON.parse(localStorage.getItem(SAVE_KEY));
+    const s = d?.state;
+    const ok = d?.v === 1 && Object.hasOwn(MODES, d.mode) && Object.hasOwn(MISSIONS, d.mission) && s && !s.over
+      && ['sol', 'power', 'tank', 'wall', 'science', 'thirstyStreak', 'coldSols', 'thirstySols'].every((k) => Number.isFinite(s[k]))
+      && Array.isArray(s.crew) && s.crew.every((c) => typeof c?.id === 'string' && typeof c.name === 'string' && Number.isFinite(c.dose))
+      && typeof d.run?.start === 'string' && Array.isArray(d.run.sols) && d.run.sols.length === SOLS_PER_RUN
+      && d.run.sols.every((x) => typeof x?.date === 'string' && Array.isArray(x.forecast))
+      && Number.isInteger(s.sol) && s.sol >= 1 && s.sol <= SOLS_PER_RUN;
+    if (ok) return d;
+  } catch { /* storage blocked, or not JSON */ }
+  save(null);
+  return null;
 }
 
 async function loadSky() {
@@ -62,7 +81,7 @@ function stopGame() {
 // last: { mode, mission } from "Change mission", so the knob and switch keep the previous choice.
 function title(last = {}) {
   stopGame();
-  const mission = createKnob({ label: 'Mission', value: last.mission, options: [{ value: 'random', label: 'RANDOM WEEK' }, { value: 'sept2017', label: 'SEPT 2017' }] });
+  const mission = createKnob({ label: 'Mission', value: last.mission, options: Object.entries(MISSIONS).map(([value, label]) => ({ value, label: label.toUpperCase() })) });
   const mode = createToggle({ label: 'Commander mode', on: last.mode === 'commander', onLabel: 'COMMANDER', offLabel: 'CADET' });
   const launch = createCoverButton({
     label: 'LAUNCH',
@@ -76,13 +95,16 @@ function title(last = {}) {
   ));
 }
 
-function start({ mode, mission }) {
-  const run = buildRun(sky, { mode, featured: mission === 'random' ? null : mission, seed: Date.now() >>> 0 });
+// A new run, or with a save { state, run, placements } the run it holds (its placements are normalised again in plan()).
+function start({ mode, mission, state, run, placements }) {
+  if (!run) {
+    run = buildRun(sky, { mode, featured: mission === 'random' ? null : mission, seed: Date.now() >>> 0 });
+    save(null);
+  }
   // The instruments live for the whole run: needles move and the log keeps every sol.
   stopGame();
-  save(null);
   game = {
-    state: newGame(), run, mode, mission, placements: {},
+    state: state ?? newGame(), run, mode, mission, placements: { ...placements },
     log: createMissionLog({ max: 300 }), // the kit keeps 40 lines by default; a full run logs more and must keep every sol
     gauges: {
       power: createGauge({ label: 'Power', icon: '⚡', max: LIMITS.power, low: LOW.power }),
@@ -97,8 +119,16 @@ function start({ mode, mission }) {
       { id: 'crew', label: 'Crew', icon: '👩‍🚀' },
     ] }),
   };
-  game.log.append(`Mission start. Your sky begins on ${run.start}.`, 'info');
+  game.log.append(state ? `Mission resumed on sol ${state.sol}. Your sky began on ${run.start}.` : `Mission start. Your sky begins on ${run.start}.`, 'info');
   plan();
+}
+
+// ---------- Resume (after a refresh mid-run) ----------
+function resumePrompt(saved) {
+  show(resumeView(
+    { sol: saved.state.sol, totalSols: SOLS_PER_RUN, missionLabel: MISSIONS[saved.mission], modeLabel: MODES[saved.mode] },
+    { onResume: () => start(saved), onStartOver: () => { save(null); title(); } },
+  ).el);
 }
 
 // ---------- Shared pieces ----------
@@ -350,5 +380,7 @@ function credits() {
 window.addEventListener('hashchange', () => { if (location.hash === '#credits') credits(); });
 
 loadSky().then(() => {
-  if (location.hash === '#credits') credits(); else title();
+  if (location.hash === '#credits') return credits();
+  const saved = loadSave();
+  if (saved) resumePrompt(saved); else title();
 }).catch(() => show(el('section', { class: 'card' }, heading('h2', 'Could not load the storm data.'), el('p', {}, 'Please reload the page.'))));
