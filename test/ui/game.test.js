@@ -7,7 +7,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { newGame, step, needsRescue, normalisePlacements } from '../../src/sim/sim.js';
 import { buildRun } from '../../src/sim/sky.js';
-import { JOBS, LIMITS, RESCUE_SECONDS, RESCUE_TIME_UP_MS, SCIENCE_GOAL, SOLS_PER_RUN, THIRSTY_SOLS_TO_GO_HOME } from '../../src/sim/constants.js';
+import { JOBS, LIMITS, RESCUE_SECONDS, RESCUE_TIME_UP_MS, SCIENCE_GOAL, SOLS_PER_RUN, THIRSTY_SOLS_TO_GO_HOME, DRINK_PER_SOL } from '../../src/sim/constants.js';
 
 const ROOT = resolve(import.meta.dirname, '../..'); // jsdom env: import.meta.url is not a file: URL
 const read = (p) => readFileSync(join(ROOT, p), 'utf8');
@@ -56,28 +56,30 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-// A matchMedia stand-in: the device's reduced-motion wish and a phone-wide window (below 700 px).
-// media.resize(phone) flips the width and fires 'change' like a real resize; media.listeners counts who listens.
+// A matchMedia stand-in: the device's reduced-motion wish and the window width, read from (max|min-width: N px).
+// media.resize(width) changes the width and fires 'change' like a real resize; media.listeners(re) counts who
+// listens to the queries matching re.
 let media;
-function stubMedia({ reduce, phone }) {
+function stubMedia({ reduce, width }) {
   const listeners = new Map(); // query -> Set of handlers
-  const matches = (q) => (/reduce/.test(q) ? reduce : /max-width: 699px/.test(q) ? phone : /min-width: 700px/.test(q) ? !phone : false);
+  const px = (q, kind) => Number(new RegExp(`${kind}-width: (\\d+)px`).exec(q)?.[1] ?? NaN);
+  const matches = (q) => (/reduce/.test(q) ? reduce : /max-width/.test(q) ? width <= px(q, 'max') : /min-width/.test(q) ? width >= px(q, 'min') : false);
   window.matchMedia = (q) => ({
     get matches() { return matches(q); }, media: q,
     addEventListener: (t, f) => { if (!listeners.has(q)) listeners.set(q, new Set()); listeners.get(q).add(f); },
     removeEventListener: (t, f) => listeners.get(q)?.delete(f),
   });
   return {
-    resize(p) { phone = p; for (const [q, fs] of listeners) for (const f of [...fs]) f({ matches: matches(q), media: q }); },
-    listeners: (q) => listeners.get(q)?.size ?? 0,
+    resize(w) { width = w; for (const [q, fs] of listeners) for (const f of [...fs]) f({ matches: matches(q), media: q }); },
+    listeners: (re) => [...listeners].filter(([q]) => re.test(q)).reduce((n, [, fs]) => n + fs.size, 0),
   };
 }
 
 // reducedMotion: the log and ticker tape print instantly (a real user setting); false types with timers.
-// phone: the window is narrower than 700 px.
-async function boot(sky, { reducedMotion = true, phone = false, fetchImpl } = {}) {
+// width: the window's width in px (a phone is 390).
+async function boot(sky, { reducedMotion = true, width = 1280, fetchImpl } = {}) {
   vi.stubGlobal('fetch', vi.fn(fetchImpl ?? (async () => ({ ok: true, json: async () => structuredClone(sky) }))));
-  media = stubMedia({ reduce: reducedMotion, phone });
+  media = stubMedia({ reduce: reducedMotion, width });
   await import('../../src/main.js');
   await settle();
 }
@@ -459,7 +461,9 @@ describe('plan screen', () => {
     btn('Lift the safety cover over END SOL').click();
     const end = btn('END SOL');
     end.click();
+    const next = app().firstElementChild; // the Sol result card, or the storm screen
     end.click();
+    expect(app().firstElementChild).toBe(next); // the second press changed nothing: no second sol, no second storm
     await settle();
     if (onRescue()) { btn('Done').click(); await settle(); }
     expect(heading()).toBe('Sol 1 done');
@@ -523,7 +527,7 @@ describe('plan screen', () => {
   });
 
   it('phone: one column, no callouts on the stage, the selected station\'s card under it', async () => {
-    await boot(sky, { phone: true });
+    await boot(sky, { width: 390 });
     await launch();
     expect(stage().dataset.layout).toBe('phone');
     expect(overlay().querySelector('.co-card')).toBeNull();
@@ -541,33 +545,150 @@ describe('plan screen', () => {
     expect(card('lab').querySelector('.co-who').textContent).toBe('Ana is here');
   });
 
-  it('a resize across 700 px moves the callouts between the stage and the slot under it, and keeps the selection', async () => {
+  it('a resize to a phone moves the callouts between the stage and the slot under it, and keeps the selection', async () => {
     await boot(sky);
     await launch();
     btn(new RegExp(`^${JOBS.lab.name}:`)).click();
-    media.resize(true);
+    media.resize(390);
     expect(stage().dataset.layout).toBe('phone');
     expect(overlay().querySelector('.co')).toBeNull();
     expect(app().querySelector('.plan-selected > .co')).not.toBeNull();
     expect(shownCards()).toEqual(['lab']);
-    media.resize(false);
+    media.resize(1280);
     expect(stage().dataset.layout).toBe('desktop');
     expect(overlay().querySelector('.co')).not.toBeNull();
     expect(shownCards()).toHaveLength(Object.keys(JOBS).length);
   });
 
+  // The stage needs room for its 860 px desktop drawing beside the rail; narrower windows get its phone drawing.
+  it.each([[1280, 'desktop'], [1024, 'desktop'], [768, 'phone'], [390, 'phone']])('%i px wide: the %s stage, with the callouts where that layout puts them', async (width, layout) => {
+    await boot(sky, { width });
+    await launch();
+    expect(stage().dataset.layout).toBe(layout);
+    expect(!!overlay().querySelector('.co')).toBe(layout === 'desktop');
+    expect(!!app().querySelector('.plan-selected > .co')).toBe(layout === 'phone');
+  });
+
+  it('the phone page layout (bottom nav, END SOL bar) is only below 700 px, and three columns only from 1280 px', () => {
+    const css = read('src/styles.css');
+    const media = [...css.matchAll(/@media \((max|min)-width: (\d+)px\) \{([\s\S]*?)\n\}/g)].map(([, kind, n, body]) => ({ kind, n: Number(n), body }));
+    const phone = media.filter((m) => /\.plan-rail \{[^}]*position: fixed/.test(m.body) && /\.plan-end \{[^}]*position: fixed/.test(m.body));
+    expect(phone.map((m) => [m.kind, m.n])).toEqual([['max', 699]]);
+    expect([390 <= 699, 768 <= 699, 1024 <= 699]).toEqual([true, false, false]); // so only the 390 px phone gets it
+    const wide = media.filter((m) => /\.plan \{ grid-template-columns: 64px minmax\(\d+px, 1fr\) minmax\(\d+px, 332px\); \}/.test(m.body));
+    expect(wide.map((m) => [m.kind, m.n])).toEqual([['min', 1280]]);
+  });
+
+  it('kit.html, which never runs main.js, still honours the device: the media rule stays next to the class rule', () => {
+    const css = read('src/styles.css');
+    expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\) \{ \* \{ animation: none !important; transition: none !important; \} \}/);
+    expect(css).toMatch(/\.reduced-motion \*, \.reduced-motion \*::before, \.reduced-motion \*::after \{ animation: none !important; transition: none !important; \}/);
+    expect(read('kit.html')).toMatch(/src\/styles\.css/); // guard: the kit page loads these styles
+  });
+
+  it('focus stays on a callout or a hotspot when a resize swaps the stage layout', async () => {
+    await boot(sky);
+    await launch();
+    btn(new RegExp(`^${JOBS.lab.name}:`)).click(); // Lab selected, so its card shows on the phone too
+    const pickLab = card('lab').querySelector('.co-pick');
+    pickLab.focus();
+    media.resize(390);
+    await settle();
+    expect(document.activeElement).toBe(pickLab);
+    media.resize(1280);
+    await settle();
+    expect(document.activeElement).toBe(pickLab);
+    const spot = btn(new RegExp(`^${JOBS.lab.name}:`));
+    spot.focus();
+    media.resize(390);
+    await settle();
+    expect(document.activeElement).toBe(spot);
+  });
+
+  it('the water warning follows the simulator: low, almost gone, then the last-chance danger', async () => {
+    const calm = makeSky([]);
+    await boot(calm);
+    await launch();
+    const exp = model(runFor(calm));
+    // What the plan screen must say for a state (rules from the sim's constants, numbers from its state).
+    const expected = (s) => (THIRSTY_SOLS_TO_GO_HOME - s.thirstyStreak === 1 ? 'danger'
+      : s.tank < DRINK_PER_SOL ? 'gone' : s.tank < 2 * DRINK_PER_SOL ? 'low' : 'none');
+    const seen = [];
+    while (!exp.state.over) {
+      const s = exp.state;
+      const w = app().querySelector('.plan-water-warning');
+      const kind = expected(s);
+      seen.push(kind);
+      if (kind === 'none') expect(w).toBeNull();
+      else {
+        expect(w.getAttribute('role')).toBe('alert');
+        expect(w.classList.contains('is-danger')).toBe(kind === 'danger');
+        if (kind === 'danger') expect(w.textContent).toMatch(/^Danger! .*One more thirsty sol and everyone goes home/);
+        if (kind === 'gone') expect(w.textContent).toContain(`almost gone (${s.tank} left)`);
+        if (kind === 'low') expect(w.textContent).toContain(`low (${s.tank} left, the crew drink ${DRINK_PER_SOL} each sol)`);
+      }
+      await playSol(exp, normalisePlacements(s, {}), { commander: false }); // nobody on the Recycler
+    }
+    expect(seen).toEqual(expect.arrayContaining(['none', 'low', 'gone', 'danger'])); // every case came up
+  });
+
+  it.each([['the rail', async () => { btn('Credits').click(); await settle(); }], ['the footer link', () => openCredits()]])('Credits from %s, then Back, keeps the run and its placements on sol 1 and on sol 2', async (_, toCredits) => {
+    await boot(sky);
+    await launch();
+    const exp = model(runFor(sky));
+    const p = { ana: 'lab', ben: 'shelter', cai: 'shelter' };
+    place('ana', 'lab'); // sol 1: nothing is saved yet
+    for (const sol of [1, 2]) {
+      await toCredits();
+      expect(heading()).toBe('Credits and data sources');
+      btn('Back').click();
+      await settle();
+      expect(location.hash).toBe('');
+      expect(heading()).toBe(`Sol ${sol} of ${SOLS_PER_RUN}`);
+      expect(where()).toEqual(Object.fromEntries(Object.entries(p).map(([id, job]) => [nameOfCrew(id), JOBS[job].name])));
+      expectPlan(exp);
+      if (sol === 1) {
+        await pressCovered('END SOL');
+        await nextSol();
+        advance(exp, p, []);
+        place('ben', INSIDE);
+        p.ben = INSIDE;
+      }
+    }
+    await pressCovered('END SOL'); // sol 2 plays on with the placements made before the credits
+    advance(exp, p, []);
+    await nextSol();
+    expectPlan(exp);
+  });
+
+  it('Credits, then Back, after the run is over goes to the title', async () => {
+    const stormy = makeSky(Array.from({ length: SOLS_PER_RUN }, (_, i) => flare(i, 'X5.0')));
+    await boot(stormy);
+    await launch();
+    place('ana', NEAR); place('ben', FAR);
+    while (!onReport()) {
+      await pressCovered('END SOL');
+      if (onRescue()) { btn('Done').click(); await settle(); }
+      if (onCard()) await nextSol();
+    }
+    await openCredits();
+    btn('Back').click();
+    await settle();
+    expect(heading()).toBe('Outpost Dial');
+  });
+
   it('leaving the plan screen leaves no stage, timer or resize listener behind', async () => {
     await boot(sky, { reducedMotion: false });
     await launch();
-    const PHONE = '(max-width: 699px)';
-    expect(media.listeners(PHONE)).toBe(1);
+    const WIDTH = /max-width/; // the help drawer listens to a min-width query for the whole page
+    expect(media.listeners(WIDTH)).toBe(1);
     expect(vi.getTimerCount()).toBeGreaterThan(0); // precondition: the stage turns
     await pressCovered('END SOL');
     expect(onCard()).toBe(true);
     await settle(120_000); // the log finishes typing
     expect(document.querySelector('.st')).toBeNull();
     expect(vi.getTimerCount()).toBe(0);
-    expect(media.listeners(PHONE)).toBe(0);
+    expect(media.listeners(WIDTH)).toBe(0);
   });
 });
 
@@ -1010,6 +1131,22 @@ describe('storm takeover', () => {
     expect(stage()).toBeNull();
     await settle(RESCUE_TIME_UP_MS * 2);
     expect(heading()).toBe('Credits and data sources');
+  });
+
+  it('Back from those credits replays the same sol, and an old Time\'s up note does not stick to it', async () => {
+    await toStorm(makeSky([flare(0, 'X5.0')]), true);
+    await settle(RESCUE_SECONDS * 1000); // Time's up with Ana outside: a rescue note is written
+    await openCredits();
+    btn('Back').click();
+    await settle();
+    expect(heading()).toBe(`Sol 1 of ${SOLS_PER_RUN}`); // the sol never resolved
+    expect(crewOnMap().Ana.at).toBe(JOBS[NEAR].name);
+    await pressCovered('END SOL');
+    btn('Bring Ana inside').click();
+    btn('Ready').click();
+    await settle();
+    await nextSol();
+    expect(app().querySelector('.plan-last-sol').textContent).not.toContain('Time ran out');
   });
 });
 

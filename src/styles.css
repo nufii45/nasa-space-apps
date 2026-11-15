@@ -41,7 +41,9 @@ button.danger { background: var(--storm); color: #fff; border-color: var(--storm
 .banner { background: var(--warn); color: #000; padding: 8px 12px; border-radius: var(--radius); margin-bottom: 12px; font-weight: 700; }
 .source-footer { text-align: center; padding: 8px 16px; font-size: 13px; color: var(--ink-quiet); }
 .source-footer a { color: inherit; }
-/* Reduced motion (W14): main.js sets this class from the game's setting, which follows the device by default. */
+/* Reduced motion (W14). The device's wish always wins (kit.html needs this rule: it never runs main.js); the game's
+   setting can add reduced motion through the class, but switching it off cannot bring motion back on such a device. */
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 .reduced-motion *, .reduced-motion *::before, .reduced-motion *::after { animation: none !important; transition: none !important; }
 
 /* W15: one focus ring on every control, 3 px teal with a 3 px gap (States.dc.html panel F). :root lifts it over the kit's own rings. */
@@ -56,7 +58,8 @@ button.danger { background: var(--storm); color: #fff; border-color: var(--storm
 /* Plan screen (W9): left rail, main column (header, Sun report, stage, crew strip) and right panel
    (status, Station / Mission log tabs, END SOL). Boards: Main.dc.html and, below 700 px, PhonePlan.dc.html. */
 #app.is-plan { width: 100%; max-width: 1280px; padding: 0; }
-.plan { display: grid; grid-template-columns: 64px minmax(0, 1fr) 332px; align-items: start; color: var(--od-ink); font-family: var(--od-font-body); }
+/* Below 1280 px the side panel stacks under the main column; three columns from 1280 px (see below). */
+.plan { display: grid; grid-template-columns: 64px minmax(0, 1fr); align-items: start; color: var(--od-ink); font-family: var(--od-font-body); }
 .plan h1, .plan h2 { margin: 0; font-family: var(--od-font-head); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
 .plan h1 { font-size: 30px; line-height: 1; }
 .plan h2 { font-size: 20px; }
@@ -66,12 +69,12 @@ button.danger { background: var(--storm); color: #fff; border-color: var(--storm
 .plan-card { background: var(--od-card); border: 1px solid var(--od-line); border-radius: var(--od-radius-card); box-shadow: 0 2px 8px rgba(24, 33, 61, 0.06); }
 
 /* Left rail: one 44 px icon button per item; the word is for screen readers here and shows on the phone. */
-.plan-rail { position: sticky; top: 0; align-self: stretch; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 14px 0; background: var(--od-grid); border-right: 1px solid var(--od-line); }
+.plan-rail { grid-row: 1 / span 2; position: sticky; top: 0; align-self: stretch; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 14px 0; background: var(--od-grid); border-right: 1px solid var(--od-line); }
 .plan-nav { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 44px; min-width: 44px; height: 44px; min-height: 44px; padding: 0; border: 0; border-radius: 10px; background: transparent; color: var(--od-ink); font: 700 10px var(--od-font-head); letter-spacing: 0.08em; text-transform: uppercase; }
 .plan-nav[aria-current='page'] { background: var(--od-ink); color: var(--od-card); }
 .plan-nav-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .plan-rail .oc-toggle-wrap { gap: 0; align-items: center; }
-.plan-rail .oc-toggle { min-height: 44px; padding: 0 4px; gap: 4px; font-size: 11px; }
+.plan-rail .oc-toggle { min-width: 44px; min-height: 44px; justify-content: center; padding: 0 4px; gap: 4px; font-size: 11px; }
 .plan-rail .oc-toggle-track { width: 22px; height: 36px; border-radius: 6px; }
 .plan-rail .oc-toggle-lever { left: 3px; right: 3px; height: 14px; bottom: 3px; }
 .plan-rail .oc-toggle.is-on .oc-toggle-lever { bottom: 19px; }
@@ -115,7 +118,13 @@ button.danger { background: var(--storm); color: #fff; border-color: var(--storm
 .plan-meter > span { display: block; height: 100%; background: var(--od-ink); }
 
 /* Right panel */
-.plan-side { min-width: 0; display: flex; flex-direction: column; gap: 10px; padding: 12px 16px 12px 0; }
+.plan-side { grid-column: 2; min-width: 0; display: flex; flex-direction: column; gap: 10px; padding: 0 12px 12px; }
+/* The main column never gets narrower than the 860 px desktop stage plus its padding; the side panel gives way first. */
+@media (min-width: 1280px) {
+  .plan { grid-template-columns: 64px minmax(884px, 1fr) minmax(260px, 332px); }
+  .plan-rail { grid-row: auto; }
+  .plan-side { grid-column: auto; padding: 12px 16px 12px 0; }
+}
 .plan-status { display: flex; flex-direction: column; gap: 10px; padding: 12px; }
 .plan .oc-lamps { flex-wrap: nowrap; gap: 4px; }
 .plan .oc-lamp { flex: 1; min-width: 0; }
@@ -162,10 +171,12 @@ button.danger { background: var(--storm); color: #fff; border-color: var(--storm
 .plan-end .oc-cover-wrap > .oc-caption { display: none; }
 
 /* Motion (Components.dc.html): cards lift on hover or tap, the tab underline slides. None of it under Reduced motion. */
-html:not(.reduced-motion) .plan-crew-card { transition: transform 0.2s, box-shadow 0.2s; }
-html:not(.reduced-motion) .plan-crew-card:not(.is-home):is(:hover, :active) { transform: translateY(-3px); }
-html:not(.reduced-motion) .plan-crew-card.is-picked { transform: translateY(-4px); box-shadow: 0 6px 14px rgba(24, 33, 61, 0.14); }
-html:not(.reduced-motion) .plan-tab::after { transition: transform 0.25s; }
+@media (prefers-reduced-motion: no-preference) {
+  html:not(.reduced-motion) .plan-crew-card { transition: transform 0.2s, box-shadow 0.2s; }
+  html:not(.reduced-motion) .plan-crew-card:not(.is-home):is(:hover, :active) { transform: translateY(-3px); }
+  html:not(.reduced-motion) .plan-crew-card.is-picked { transform: translateY(-4px); box-shadow: 0 6px 14px rgba(24, 33, 61, 0.14); }
+  html:not(.reduced-motion) .plan-tab::after { transition: transform 0.25s; }
+}
 
 /* Phone: one column, swipeable crew, sideways tabs, END SOL bar and the rail as a bottom nav. */
 @media (max-width: 699px) {
@@ -173,7 +184,7 @@ html:not(.reduced-motion) .plan-tab::after { transition: transform 0.25s; }
   .plan { grid-template-columns: minmax(0, 1fr); }
   .plan h1 { font-size: 22px; }
   .plan-main { padding: 10px 16px 0; gap: 10px; }
-  .plan-side { padding: 10px 16px 16px; }
+  .plan-side { grid-column: 1; padding: 10px 16px 16px; }
   .plan-sols { gap: 4px; }
   .plan-sols li { width: 8px; height: 8px; font-size: 0; border: 2px solid var(--od-ink); }
   .plan-sols .is-today { width: 12px; height: 12px; border-width: 2px; background: var(--od-teal); }

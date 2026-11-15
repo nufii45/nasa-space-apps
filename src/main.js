@@ -101,12 +101,16 @@ function show(...nodes) {
   app.replaceChildren(...nodes.filter(Boolean));
   app.querySelector('h1, h2')?.focus();
 }
-// Same 700 px switch as the help drawer (src/ui/console/infoDrawer.js).
-const phoneQuery = () => window.matchMedia?.('(max-width: 699px)');
-const layoutNow = () => (phoneQuery()?.matches ? 'phone' : 'desktop');
+// Backdrop stages switch at 700 px, like the help drawer (src/ui/console/infoDrawer.js).
+const PHONE_QUERY = '(max-width: 699px)';
+// The plan screen's stage needs its 860 px desktop drawing, the 64 px rail, the column's 2 x 12 px padding
+// and room for a 16 px classic scrollbar; any narrower and it draws its phone layout, so it never scrolls sideways.
+const PLAN_STAGE_MIN = 860 + 64 + 2 * 12 + 16;
+const PLAN_NARROW_QUERY = `(max-width: ${PLAN_STAGE_MIN - 1}px)`;
+const layoutFor = (q) => (window.matchMedia?.(q)?.matches ? 'phone' : 'desktop');
 // The stage behind the title and storm screens is a picture: never focusable, never read out.
 function backdropStage(opts) {
-  const stage = createStage({ jobs: JOBS, layout: layoutNow(), ...opts });
+  const stage = createStage({ jobs: JOBS, layout: layoutFor(PHONE_QUERY), ...opts });
   stage.el.setAttribute('inert', '');
   stage.el.setAttribute('aria-hidden', 'true');
   return stage;
@@ -239,7 +243,7 @@ function plan() {
   let selected = null; // station id
   let shown; // the station the Station tab shows
   let tab = 0;
-  let layout = layoutNow();
+  let layout = layoutFor(PLAN_NARROW_QUERY);
   let ended = false; // a double press on END SOL must resolve the sol once
 
   const help = (id) => drawer.open(jobCard(id));
@@ -400,10 +404,10 @@ function plan() {
   app.className = 'is-plan';
   updateInstruments();
 
-  // Phone and desktop swap live; the phone card goes back under the stage in the same task as the update.
-  const mq = phoneQuery();
+  // The stage layout swaps live; the phone card goes back under the stage in the same task as the update.
+  const mq = window.matchMedia?.(PLAN_NARROW_QUERY);
   const relayout = () => {
-    layout = layoutNow();
+    layout = layoutFor(PLAN_NARROW_QUERY);
     stage.update({ layout });
     callouts.update({ layout });
     if (layout === 'phone') selectedSlot.append(callouts.el);
@@ -426,6 +430,7 @@ function waterWarning(s) {
 
 // ---------- Rescue ----------
 function rescue() {
+  game.rescueNote = null; // a storm left for the credits and played again must not keep the old note
   const s = game.state;
   const sol = today();
   const outside = s.crew.filter((c) => !c.home && JOBS[game.placements[c.id]]?.where === 'outside');
@@ -585,7 +590,8 @@ function credits() {
       <li>Water as both life support and shielding: <a href="https://www.nasa.gov/general/water-walls-highly-reliable-and-massively-redundant-life-support-architecture" target="_blank" rel="noopener">NASA Water Walls</a>.</li>
     </ul>`;
   card.querySelector('.fetched').textContent = sky?.fetched ? `fetched ${sky.fetched}` : '(sample placeholder)';
-  card.append(el('p', {}, button('Back', () => { location.hash = ''; title(); })));
+  // Back to the plan for the same sol while a run is going (its placements kept), else to the title.
+  card.append(el('p', {}, button('Back', () => { location.hash = ''; if (game && !game.state.over) plan(); else title(); })));
   show(card);
 }
 
