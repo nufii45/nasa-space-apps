@@ -187,7 +187,8 @@ export function createStage(opts) {
     if (!dragged && Math.hypot(dx, dy) < 5) return;
     if (!dragged) viewEl.setPointerCapture?.(e.pointerId);
     dragged = true;
-    pan = [start.pan[0] + dx / fit, start.pan[1] + dy / fit];
+    const k = fit * (viewEl.currentCSSZoom ?? 1); // pointer px to drawing px: the stage's fit times the page zoom
+    pan = [start.pan[0] + dx / k, start.pan[1] + dy / k];
     apply();
     changed();
   });
