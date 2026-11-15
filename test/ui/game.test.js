@@ -89,7 +89,7 @@ const reason = () => app().querySelector('.sc-reason')?.textContent;
 const drawer = () => document.querySelector('dialog');
 const onRescue = () => has(/^(Done|Ready)$/, app());
 const rescueNames = () => allButtons(app()).map(nameOf).filter((n) => /^Bring .+ inside$/.test(n)).map((n) => n.slice(6, -7));
-const timer = () => app().querySelector('[role="timer"]');
+const timer = () => app().querySelector('[role="timer"]:not([hidden])'); // Cadet: the view hides its ring
 const soundSwitch = () => btn('Sound');
 const onReport = () => app().querySelector('.sc-kicker')?.textContent === 'Mission report';
 const onCard = () => /^Sol \d+ done$/.test(heading() ?? ''); // the Sol result card after a sol
@@ -581,10 +581,10 @@ describe('rescue', () => {
     await settle(1000);
     expect(timer().textContent).toBe(`${RESCUE_SECONDS - 1} seconds left`);
     btn('Bring Ben inside').click(); // at t = 1 s
-    const benRow = () => [...app().querySelectorAll('.row')].find((r) => r.textContent.startsWith('Ben')).textContent;
-    expect(benRow()).toContain('Walking back...');
+    const benRow = () => [...app().querySelectorAll('.sc-row')].find((r) => r.textContent.startsWith('Ben')).textContent;
+    expect(benRow()).toContain('Walking back…');
     await settle((walk - 1) * 1000);
-    expect(benRow()).toContain('Walking back...');
+    expect(benRow()).toContain('Walking back…');
     await settle(1000);
     expect(benRow()).toContain('Safe in the Shelter');
     expect(onRescue()).toBe(true);
@@ -592,7 +592,7 @@ describe('rescue', () => {
     expect(onRescue()).toBe(true); // just before 0
     expect(timer().textContent).toBe('1 second left');
     await settle(1);
-    expect(timer().textContent).toBe("Time's up! Ana was still outside."); // said on screen before moving on
+    expect(app().querySelector('.sc-timesup').textContent).toBe("Time's up! Ana was still outside."); // said on screen before moving on
     expect(btn('Ready').disabled).toBe(true);
     await settle(RESCUE_TIME_UP_MS);
     await nextSol();
@@ -608,7 +608,7 @@ describe('rescue', () => {
     btn('Bring Ana inside').click();
     await settle((RESCUE_SECONDS - 1) * 1000);
     btn('Bring Ben inside').click();
-    expect(app().textContent).toContain('Walking back...');
+    expect(app().textContent).toContain('Walking back…');
     await settle(1000 + RESCUE_TIME_UP_MS);
     await nextSol();
     advance(exp, crewAt, ['ana']);
@@ -627,6 +627,85 @@ describe('rescue', () => {
     expectPlan(exp);
     await settle(RESCUE_SECONDS * 2000); // a countdown still running would resolve the sol again
     expectPlan(exp);
+  });
+});
+
+describe('storm takeover', () => {
+  const stage = () => app().querySelector('.st');
+  const timesUp = () => app().querySelector('.sc-timesup');
+  // Ana on the Solar Field (outside); a storm on sol 1.
+  async function toStorm(sky, commander, opts) {
+    await boot(sky, opts);
+    await launch({ commander });
+    place('ana', NEAR);
+    await pressCovered('END SOL');
+    expect(onRescue()).toBe(true);
+  }
+
+  it('a flare: kid words, the real class, focus on the heading, over an inert storm stage', async () => {
+    await toStorm(makeSky([flare(0, 'X5.0')]), false);
+    expect(heading()).toBe('Big flash from the Sun!');
+    expect(document.activeElement).toBe(app().querySelector('h2'));
+    expect(app().querySelector('.sc-class').textContent).toContain('class X5.0');
+    expect(stage().dataset.mode).toBe('storm');
+    expect(stage().hasAttribute('inert')).toBe(true);
+    expect(stage().getAttribute('aria-hidden')).toBe('true');
+    expect(app().textContent).not.toMatch(/sunburn/i);
+  });
+
+  it('a CME: the storm cloud title and a CME line, no flare class', async () => {
+    await toStorm(makeSky([cme(0)]), false);
+    expect(heading()).toBe('Storm cloud from the Sun is here!');
+    const line = app().querySelector('.sc-class').textContent;
+    expect(line).toContain('CME');
+    expect(line).toContain('cloud of Sun material');
+    expect(line).not.toMatch(/class/);
+    expect(app().textContent).not.toMatch(/sunburn/i);
+  });
+
+  it('Cadet: Done and no timer, however long it waits', async () => {
+    await toStorm(makeSky([flare(0, 'X5.0')]), false);
+    expect(timer()).toBeNull();
+    expect(has(/^Ready$/)).toBe(false);
+    await settle(RESCUE_SECONDS * 3000);
+    expect(btn('Done').disabled).toBe(false);
+    expect(timesUp().hidden).toBe(true);
+  });
+
+  it('Commander: "1 second left", then Time\'s up names who was caught and stays on screen', async () => {
+    await toStorm(makeSky([flare(0, 'X5.0')]), true);
+    await settle((RESCUE_SECONDS - 1) * 1000);
+    expect(timer().textContent).toBe('1 second left');
+    expect(timesUp().hidden).toBe(true);
+    await settle(1000);
+    expect(timesUp().textContent).toBe("Time's up! Ana was still outside.");
+    expect(btn('Bring Ana inside').disabled).toBe(true);
+    await settle(RESCUE_TIME_UP_MS - 1);
+    expect(onRescue()).toBe(true); // still on screen just before RESCUE_TIME_UP_MS
+    await settle(1);
+    expect(onCard()).toBe(true);
+  });
+
+  it('leaving by Ready leaves no timer or stage running', async () => {
+    await toStorm(makeSky([flare(0, 'X5.0')]), true, { reducedMotion: false });
+    expect(vi.getTimerCount()).toBeGreaterThan(1); // precondition: the countdown and the turning stage
+    btn('Ready').click();
+    await settle();
+    expect(onCard()).toBe(true);
+    expect(stage()).toBeNull();
+    await settle(120_000); // the log finishes typing
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('opening #credits during Time\'s up cancels the pending sol and stops everything', async () => {
+    await toStorm(makeSky([flare(0, 'X5.0')]), true);
+    await settle(RESCUE_SECONDS * 1000);
+    expect(timesUp().hidden).toBe(false);
+    await openCredits();
+    expect(vi.getTimerCount()).toBe(0);
+    expect(stage()).toBeNull();
+    await settle(RESCUE_TIME_UP_MS * 2);
+    expect(heading()).toBe('Credits and data sources');
   });
 });
 
