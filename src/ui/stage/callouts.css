@@ -1,0 +1,76 @@
+/* Callout cards, leader lines and the Labels toggle on the isometric stage (callouts.js).
+   Layout from docs/wireframes Scene.dc.html; positions are stage px inside stage.overlay. */
+.co { position: absolute; inset: 0; pointer-events: none; font-family: var(--od-font-body, system-ui); color: var(--od-ink, #18213D); }
+.co [hidden] { display: none !important; }
+/* :where keeps this reset weaker than .co-help and .co-toggle. */
+:where(.co) button { font: inherit; color: inherit; cursor: pointer; }
+.co button:focus-visible { outline: 3px solid var(--od-teal, #1AA3A1); outline-offset: 2px; }
+
+.co-lines { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; }
+.co-line { stroke: var(--od-muted, #5A6178); stroke-width: 1.4; fill: none; }
+.co-anchor { fill: var(--od-card, #F9F2E5); stroke: var(--od-muted, #5A6178); stroke-width: 2; }
+
+.co-card {
+  position: absolute; box-sizing: border-box; width: 196px; padding: 8px 8px 10px 10px;
+  display: flex; flex-direction: column; gap: 4px; pointer-events: auto; cursor: pointer;
+  background: var(--od-card, #F9F2E5); border: 1px solid var(--od-line, #CEC0AD); border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(24, 33, 61, .10);
+}
+/* Selected: teal ring plus the "Selected" badge, so colour is not the only sign. */
+.co-card.is-sel { border-color: var(--od-teal, #1AA3A1); box-shadow: 0 0 0 2px var(--od-teal, #1AA3A1), 0 4px 12px rgba(24, 33, 61, .10); }
+.co-card.is-target { border-style: dashed; border-color: var(--od-teal, #1AA3A1); }
+.co-head { display: flex; align-items: center; gap: 8px; }
+.co-pick {
+  flex: 1; min-width: 0; min-height: 44px; display: flex; align-items: center; gap: 8px;
+  padding: 0; border: 0; background: none; text-align: left;
+}
+.co-ic {
+  width: 32px; height: 32px; flex: none; display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--od-line, #CEC0AD); border-radius: 8px; background: var(--od-paper, #F6EDDD);
+}
+.co-ic svg, .co-toggle svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.co-title { font: 700 15px/1.1 var(--od-font-head, system-ui); letter-spacing: .06em; text-transform: uppercase; }
+.co-help {
+  width: 44px; height: 44px; flex: none; border: 1px solid var(--od-line, #CEC0AD); border-radius: 10px;
+  background: var(--od-card-hi, #FFFDF8); font: 700 18px var(--od-font-head, system-ui);
+}
+.co-text { margin: 0; font-size: 13px; line-height: 1.35; }
+.co-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.co-who {
+  padding: 2px 8px; border: 1px solid var(--od-line, #CEC0AD); border-radius: 999px;
+  background: var(--od-card-hi, #FFFDF8); font: 500 11px/1.5 var(--od-font-mono, ui-monospace, monospace);
+}
+.co-who.is-free { border-style: dashed; }
+.co-mark {
+  padding: 2px 8px; border-radius: 999px; background: var(--od-teal-text, #0E5F5E); color: var(--od-card, #F9F2E5);
+  font: 700 11px/1.5 var(--od-font-head, system-ui); letter-spacing: .06em; text-transform: uppercase;
+}
+
+/* The toggle may be moved out of .co (into the stage toolbar), so its own rules are not scoped to .co. */
+.co-toggle {
+  box-sizing: border-box; min-width: 44px; min-height: 44px; padding: 0 10px; pointer-events: auto; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--od-line, #CEC0AD); border-radius: 10px;
+  background: var(--od-card, #F9F2E5); color: var(--od-ink, #18213D);
+  font: 600 12px/1 var(--od-font-head, system-ui); letter-spacing: .06em; text-transform: uppercase;
+}
+.co-toggle[hidden] { display: none; }
+.co-toggle:focus-visible { outline: 3px solid var(--od-teal, #1AA3A1); outline-offset: 2px; }
+.co-toggle[aria-pressed="true"] { background: var(--od-teal-soft, #DDF1EF); color: var(--od-teal-text, #0E5F5E); }
+/* Default spot: top centre, between the two card columns (x 200 to 660), above the scene. */
+.co > .co-toggle { position: absolute; top: 4px; left: 50%; transform: translateX(-50%); }
+
+/* Hover lift, off under Reduced motion (system setting or the game's own switch). */
+@media (prefers-reduced-motion: no-preference) {
+  html:not(.reduced-motion) .co-card { transition: transform .2s, box-shadow .2s; }
+  html:not(.reduced-motion) .co-card:hover { transform: translateY(-3px); }
+}
+
+/* Phone: el sits under the stage and shows only the selected card, or the hint. */
+.co.is-phone { position: static; pointer-events: auto; }
+.co.is-phone .co-card { position: static; width: auto; }
+.co.is-phone .co-title { font-size: 18px; }
+.co.is-phone .co-text { font-size: 14px; }
+.co-hint {
+  margin: 0; padding: 10px 12px; font-size: 14px;
+  background: var(--od-card, #F9F2E5); border: 1px dashed var(--od-line, #CEC0AD); border-radius: 12px;
+}
