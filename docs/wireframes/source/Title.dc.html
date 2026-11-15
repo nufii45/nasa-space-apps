@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Title and mission select</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&amp;family=Barlow+Semi+Condensed:wght@600;700&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0E5F5E}a:hover{color:#18213D}
+.h{font-family:'Barlow Semi Condensed',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:0}
+.cap{font:700 12px/1.2 'Barlow Semi Condensed',sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#4A5270}
+.ctl{display:flex;flex-direction:column;align-items:center;gap:8px}
+.knob{width:104px;height:104px;border-radius:50%;border:2px solid #18213D;background:#FFFDF8;box-shadow:0 6px 0 #D8CBB6,inset 0 -6px 0 #EFE4D1;position:relative;cursor:grab;padding:0}
+.knob i{position:absolute;left:50%;top:10px;width:6px;height:34px;margin-left:-3px;border-radius:3px;background:#18213D;transform-origin:3px 42px;transition:transform .3s}
+.pos{font:700 11px 'Barlow Semi Condensed',sans-serif;letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;border-radius:6px}
+.pos.on{background:#18213D;color:#F9F2E5}
+.pos.off{color:#5A6178;border:1px dashed #A99A84}
+.switch{width:120px;height:52px;border-radius:26px;border:2px solid #18213D;background:#EFE4D1;position:relative;cursor:pointer;padding:0}
+.switch i{position:absolute;top:4px;width:56px;height:40px;border-radius:20px;background:#18213D;transition:left .25s}
+.cover{width:150px;height:96px;border:2px solid #18213D;border-radius:16px;background:repeating-linear-gradient(-45deg,#F2C14E 0 14px,#18213D 14px 28px);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.cover span{padding:5px 12px;border-radius:8px;background:#F9F2E5;font:700 14px 'Barlow Semi Condensed',sans-serif;letter-spacing:.1em;color:#18213D}
+.launch{width:150px;height:96px;border:0;border-radius:16px;background:#1AA3A1;color:#FFFFFF;font:700 24px 'Barlow Semi Condensed',sans-serif;letter-spacing:.12em;box-shadow:0 6px 0 #0E5F5E;cursor:pointer}
+.knob:focus-visible,.switch:focus-visible,.cover:focus-visible,.launch:focus-visible,.snd:focus-visible{outline:3px solid #1AA3A1;outline-offset:3px}
+.snd{min-height:44px;padding:0 12px;border:1px solid #CEC0AD;border-radius:10px;background:#F9F2E5;display:flex;align-items:center;gap:6px;font:700 12px 'Barlow Semi Condensed',sans-serif;letter-spacing:.08em;color:#18213D;cursor:pointer}
+</style>
+</helmet>
+<div style="{{rootSt}}">
+<div aria-hidden="true" style="{{stageSt}}">
+<dc-import name="Scene" bare="{{yes}}" layout="{{layout}}" hint-size="860px,440px"></dc-import>
+</div>
+<div style="position: absolute; top: 12px; right: 16px; display: flex; gap: 8px">
+<button type="button" class="snd" aria-pressed="{{soundPressed}}" onClick="{{toggleSound}}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4zM17 9c1.5 1.5 1.5 4.5 0 6"></path></svg>{{soundLabel}}</button>
+</div>
+<sc-if value="{{sample}}" hint-placeholder-val="{{ false }}">
+<p role="status" style="position: absolute; left: 16px; top: 12px; margin: 0; padding: 8px 12px; border-radius: 10px; background: #C0652D; color: #FFFFFF; font: 700 12px 'Barlow Semi Condensed', sans-serif; letter-spacing: .08em; max-width: 200px">SAMPLE DATA · storms are placeholders until the real NASA data loads</p>
+</sc-if>
+<section style="{{cardSt}}">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center">
+<div aria-hidden="true" style="width: 56px; height: 56px; border-radius: 16px; background: #18213D; display: flex; align-items: center; justify-content: center"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#F9F2E5" stroke-width="1.8" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M12 12l4-5"></path></svg></div>
+<h1 class="h" style="{{titleSt}}">Outpost Dial</h1>
+<p style="margin: 0; font-size: 17px">Run a base on Mars for 10 sols.</p>
+<p style="margin: 0; font-size: 14px; color: #4A5270">A sol is a Mars day. Real solar storms, recorded by NASA, are coming.</p>
+</div>
+<div style="{{rowSt}}">
+<div class="ctl">
+<p class="cap" style="margin: 0">Mission</p>
+<button type="button" class="knob" role="slider" aria-label="Mission" aria-valuemin="0" aria-valuemax="1" aria-valuenow="{{missionNow}}" aria-valuetext="{{missionText}}" onClick="{{turn}}"><i style="{{needleSt}}"></i></button>
+<div style="display: flex; gap: 6px"><span class="{{randomCls}}">Random week</span><span class="{{septCls}}">Sept 2017</span></div>
+<p style="margin: 0; font-size: 12px; color: #4A5270; max-width: 170px; text-align: center">{{missionHint}}</p>
+</div>
+<div class="ctl">
+<p class="cap" style="margin: 0">Crew rank</p>
+<button type="button" class="switch" role="switch" aria-checked="{{cmdChecked}}" aria-label="Commander mode" onClick="{{flip}}"><i style="{{switchSt}}"></i></button>
+<div style="display: flex; gap: 6px"><span class="{{cadetCls}}">Cadet</span><span class="{{cmdCls}}">Commander</span></div>
+<p style="margin: 0; font-size: 12px; color: #4A5270; max-width: 170px; text-align: center">{{rankHint}}</p>
+</div>
+<div class="ctl">
+<p class="cap" style="margin: 0">Launch</p>
+<sc-if value="{{closed}}" hint-placeholder-val="{{ true }}">
+<button type="button" class="cover" aria-label="Lift the safety cover over LAUNCH" onClick="{{lift}}"><span>LIFT COVER</span></button>
+</sc-if>
+<sc-if value="{{open}}" hint-placeholder-val="{{ false }}">
+<button type="button" class="launch" onClick="{{go}}">LAUNCH</button>
+</sc-if>
+<p style="margin: 0; font-size: 12px; color: #4A5270; max-width: 170px; text-align: center">{{launchHint}}</p>
+</div>
+</div>
+</section>
+<p style="{{footSt}}">Storm data: NASA DONKI (archived, real dates) · <a href="Credits.dc.html">Credits</a></p>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"size":{"editor":"enum","options":["desktop","phone"],"default":"desktop"},"sample":{"editor":"boolean","default":false},"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { sept: true, cmd: false, open: false, launched: false, sound: true }; }
+  renderVals() {
+    const s = this.state, phone = (this.props.size ?? 'desktop') === 'phone';
+    const W = phone ? 390 : 1280, H = phone ? 844 : 800;
+    return {
+      yes: true, layout: phone ? 'phone' : 'desktop', sample: !!this.props.sample,
+      rootSt: { position: 'relative', width: W + 'px', height: H + 'px', overflow: 'hidden', backgroundColor: '#F6EDDD', backgroundImage: 'linear-gradient(#EDE2CE 1px, transparent 1px), linear-gradient(90deg, #EDE2CE 1px, transparent 1px)', backgroundSize: '32px 32px', fontFamily: 'Barlow, sans-serif', color: '#18213D' },
+      stageSt: phone ? { position: 'absolute', left: 0, top: 60, opacity: 0.55 } : { position: 'absolute', left: 210, top: 330, opacity: 0.5, transform: 'scale(1.05)' },
+      cardSt: phone
+        ? { position: 'absolute', left: 16, right: 16, top: 300, padding: '18px 14px', background: '#F9F2E5', border: '1px solid #CEC0AD', borderRadius: '14px', boxShadow: '0 10px 30px rgba(24,33,61,.12)', display: 'flex', flexDirection: 'column', gap: '18px' }
+        : { position: 'absolute', left: 340, top: 70, width: 600, boxSizing: 'border-box', padding: '28px 32px', background: '#F9F2E5', border: '1px solid #CEC0AD', borderRadius: '14px', boxShadow: '0 10px 30px rgba(24,33,61,.12)', display: 'flex', flexDirection: 'column', gap: '22px' },
+      titleSt: { fontSize: phone ? '34px' : '48px', lineHeight: 1, letterSpacing: '.08em' },
+      rowSt: phone ? { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '16px 8px', justifyItems: 'center' } : { display: 'flex', justifyContent: 'space-around', alignItems: 'flex-start' },
+      footSt: { position: 'absolute', left: 0, right: 0, bottom: phone ? 14 : 18, margin: 0, textAlign: 'center', fontSize: '13px', color: '#4A5270' },
+      missionNow: s.sept ? 1 : 0, missionText: s.sept ? 'Sept 2017, a real giant storm' : 'Random week',
+      needleSt: { transform: 'rotate(' + (s.sept ? 45 : -45) + 'deg)' },
+      randomCls: 'pos ' + (s.sept ? 'off' : 'on'), septCls: 'pos ' + (s.sept ? 'on' : 'off'),
+      missionHint: s.sept ? 'A real giant storm from September 2017.' : 'A surprise week from 2012 to 2025.',
+      turn: () => this.setState({ sept: !s.sept }),
+      cmdChecked: s.cmd ? 'true' : 'false', switchSt: { left: s.cmd ? '60px' : '4px' },
+      cadetCls: 'pos ' + (s.cmd ? 'off' : 'on'), cmdCls: 'pos ' + (s.cmd ? 'on' : 'off'),
+      rankHint: s.cmd ? 'Ages 10 to 12. Race a storm countdown.' : 'Ages 7 to 9. No timer.',
+      flip: () => this.setState({ cmd: !s.cmd }),
+      closed: !s.open, open: s.open, lift: () => this.setState({ open: true }), go: () => this.setState({ launched: true }),
+      launchHint: s.launched ? 'Launching… → Plan a sol' : s.open ? 'Now press LAUNCH. The cover closes after 4 seconds.' : 'Tap once to lift the cover, then press.',
+      soundPressed: s.sound ? 'true' : 'false', soundLabel: s.sound ? 'SOUND ON' : 'SOUND OFF', toggleSound: () => this.setState({ sound: !s.sound }),
+    };
+  }
+}
+</script>
+</body>
+</html>

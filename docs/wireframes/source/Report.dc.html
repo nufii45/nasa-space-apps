@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mission report</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&amp;family=Barlow+Semi+Condensed:wght@600;700&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0E5F5E}a:hover{color:#18213D}
+.h{font-family:'Barlow Semi Condensed',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:0}
+.receipt{background:#FFFDF8;border:1px solid #CEC0AD;border-radius:4px;padding:14px 16px;font:500 13px/1.7 'JetBrains Mono',monospace;color:#18213D;box-shadow:0 3px 0 #E6DCCB}
+.receipt p{margin:0}
+.btn{min-height:52px;padding:0 20px;border-radius:12px;font:700 16px 'Barlow Semi Condensed',sans-serif;letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
+.btn.pri{border:0;background:#18213D;color:#F9F2E5;box-shadow:0 4px 0 #0B1022}
+.btn.sec{border:2px solid #18213D;background:#FFFDF8;color:#18213D}
+.btn:focus-visible,summary:focus-visible{outline:3px solid #1AA3A1;outline-offset:3px}
+summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font:700 13px 'Barlow Semi Condensed',sans-serif;letter-spacing:.08em;text-transform:uppercase}
+</style>
+</helmet>
+<div style="{{rootSt}}">
+<div aria-hidden="true" style="{{artSt}}">
+<svg width="{{artW}}" height="{{artH}}" viewBox="0 0 300 300">
+<circle cx="150" cy="150" r="130" fill="#F9F2E5" stroke="{{tone}}" stroke-width="6"></circle>
+<path d="M60 205 L150 160 L240 205 L150 250 Z" fill="#EED7C0" stroke="#18213D" stroke-width="3" stroke-linejoin="round"></path>
+<path d="M110 200 C110 160 170 160 170 200 Z" fill="#FDFBF6" stroke="#18213D" stroke-width="3"></path>
+<sc-if value="{{isWin}}" hint-placeholder-val="{{ true }}">
+<path d="M190 195 V120 M190 120 L230 132 L190 144" fill="#1AA3A1" stroke="#18213D" stroke-width="3" stroke-linejoin="round"></path>
+<path d="M95 95 l7 15 16 2 -12 11 3 16 -14 -8 -14 8 3 -16 -12 -11 16 -2z" fill="#F2C14E" stroke="#18213D" stroke-width="2.5" stroke-linejoin="round"></path>
+<path d="M150 70 l7 15 16 2 -12 11 3 16 -14 -8 -14 8 3 -16 -12 -11 16 -2z" fill="#F2C14E" stroke="#18213D" stroke-width="2.5" stroke-linejoin="round"></path>
+<path d="M205 95 l7 15 16 2 -12 11 3 16 -14 -8 -14 8 3 -16 -12 -11 16 -2z" fill="#F9F2E5" stroke="#18213D" stroke-width="2.5" stroke-linejoin="round"></path>
+</sc-if>
+<sc-if value="{{isHome}}" hint-placeholder-val="{{ false }}">
+<path d="M205 60 C225 80 228 110 220 135 L190 135 C182 110 185 80 205 60 Z" fill="#FDFBF6" stroke="#18213D" stroke-width="3" stroke-linejoin="round"></path>
+<path d="M192 135 L205 165 L218 135" fill="#C0652D" stroke="#18213D" stroke-width="3" stroke-linejoin="round"></path>
+<circle cx="205" cy="98" r="9" fill="#C0652D" stroke="#18213D" stroke-width="3"></circle>
+<path d="M120 120 C110 100 120 85 130 85 C140 85 150 100 140 120 C150 125 150 135 140 140 L120 140 C110 135 110 125 120 120 Z" fill="#E3EEF9" stroke="#18213D" stroke-width="2.5"></path>
+</sc-if>
+<sc-if value="{{isTime}}" hint-placeholder-val="{{ false }}">
+<path d="M150 50 L185 95 L170 95 L170 140 L130 140 L130 95 L115 95 Z" fill="#FDFBF6" stroke="#18213D" stroke-width="3" stroke-linejoin="round"></path>
+<path d="M130 140 L120 160 M170 140 L180 160" stroke="#18213D" stroke-width="3" stroke-linecap="round"></path>
+<circle cx="150" cy="110" r="10" fill="#18213D"></circle>
+</sc-if>
+</svg>
+</div>
+<section style="{{mainSt}}">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<p class="h" style="font-size: 13px; color: #4A5270">Mission report</p>
+<h1 class="h" style="{{headSt}}">{{headline}}</h1>
+<p style="{{reasonSt}}">{{reason}}</p>
+</div>
+<div class="receipt" aria-label="Mission receipt">
+<p>SCIENCE ........ {{science}}/100</p>
+<p>YOUR SKY ....... 2017-09-05 to 2017-09-14,</p>
+<p>                 recorded by NASA</p>
+<p>STORMS THAT REACHED THE BASE:</p>
+<p>· Sun flash (flare class X9.3) · 2017-09-06</p>
+<p>· Sun flash (flare class X8.2) · 2017-09-10</p>
+<p>TIP: {{tip}}</p>
+</div>
+<div style="padding: 12px 14px; border: 1px solid #CEC0AD; border-radius: 12px; background: #F9F2E5; font-size: 14px; line-height: 1.45">
+<p class="h" style="font-size: 14px; margin-bottom: 4px">What really happened in Sept 2017</p>
+<p style="margin: 0">A big storm from the Sun hit Mars. Curiosity, NASA's robot car on Mars, measured more than twice as much radiation as ever before. MAVEN, a spacecraft flying around Mars, saw the whole sky glow (like the northern lights). <a href="https://www.jpl.nasa.gov/news/large-solar-storm-sparks-global-aurora-and-doubles-radiation-levels-on-the-martian-surface/" target="_blank" rel="noopener">Read the NASA story</a></p>
+</div>
+<div style="display: flex; gap: 10px; flex-wrap: wrap">
+<button type="button" class="btn pri">Try again</button>
+<button type="button" class="btn sec">Change mission</button>
+<button type="button" class="btn sec">Title</button>
+</div>
+<details style="border-top: 1px solid #CEC0AD">
+<summary>Mission log · all 10 sols ▾</summary>
+<p style="margin: 0; font-size: 13px; color: #3B4460">— Sol 1 · 5 Sep 2017 — Ana ran the Solar Field: +5 power …</p>
+</details>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"ending":{"editor":"enum","options":["win","home","time"],"default":"win"},"size":{"editor":"enum","options":["desktop","phone"],"default":"desktop"},"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const e = this.props.ending ?? 'win', phone = (this.props.size ?? 'desktop') === 'phone';
+    const E = {
+      win: { tone: '#1AA3A1', bg: '#E4F3F1', headline: 'Mission complete! ★★☆', reason: 'You reached 100 science, and the whole crew stayed safe.', science: 100, tip: 'Keep the tank full to earn the third star.' },
+      home: { tone: '#C0652D', bg: '#F8E6DA', headline: 'The crew had to go home', reason: 'The water ran out 2 sols in a row.', science: 42, tip: 'Keep someone on the Recycler before the water gets low.' },
+      time: { tone: '#18213D', bg: '#E3E6EF', headline: "Time's up: the supply ship is here", reason: 'You got 72 of 100 science. So close!', science: 72, tip: 'Rover trips earn the most science. Share them out.' },
+    }[e];
+    const W = phone ? 390 : 1280, H = phone ? 844 : 800;
+    return {
+      isWin: e === 'win', isHome: e === 'home', isTime: e === 'time', tone: E.tone, headline: E.headline, reason: E.reason, science: E.science, tip: E.tip,
+      artW: phone ? 150 : 400, artH: phone ? 150 : 400,
+      rootSt: { position: 'relative', width: W + 'px', height: H + 'px', overflow: 'hidden', background: E.bg, fontFamily: 'Barlow, sans-serif', color: '#18213D', display: 'flex', flexDirection: phone ? 'column' : 'row', alignItems: phone ? 'stretch' : 'center', gap: phone ? '0' : '40px', padding: phone ? '12px 16px' : '0 64px', boxSizing: 'border-box' },
+      artSt: phone ? { alignSelf: 'center', flex: 'none' } : { flex: 'none' },
+      mainSt: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: phone ? '10px' : '14px', overflowY: phone ? 'auto' : 'visible' },
+      headSt: { fontSize: phone ? '28px' : '44px', lineHeight: 1.02, color: E.tone === '#1AA3A1' ? '#0E5F5E' : E.tone === '#C0652D' ? '#8A3E12' : '#18213D' },
+      reasonSt: { margin: 0, fontSize: phone ? '19px' : '24px', fontWeight: 600, lineHeight: 1.25 },
+    };
+  }
+}
+</script>
+</body>
+</html>

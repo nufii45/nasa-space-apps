@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Component sheet and design language</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&amp;family=Barlow+Semi+Condensed:wght@600;700&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.h{font-family:'Barlow Semi Condensed',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:0}
+.cap{font:700 11px/1.2 'Barlow Semi Condensed',sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#4A5270;margin:0}
+.box{background:#F9F2E5;border:1px solid #CEC0AD;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.sw{display:flex;flex-direction:column;gap:4px;font-size:12px}
+.sw i{display:block;height:44px;border-radius:10px;border:1px solid #CEC0AD}
+.sw b{font:500 11px 'JetBrains Mono',monospace}
+.row{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.lab{font-size:11px;color:#4A5270;text-align:center;margin:0}
+.knob{width:72px;height:72px;border-radius:50%;border:2px solid #18213D;background:#FFFDF8;box-shadow:0 4px 0 #D8CBB6;position:relative;padding:0;cursor:pointer}
+.knob i{position:absolute;left:50%;top:7px;width:5px;height:24px;margin-left:-2.5px;border-radius:3px;background:#18213D;transform-origin:2.5px 29px;transition:transform .3s}
+.switch{width:96px;height:44px;border-radius:22px;border:2px solid #18213D;background:#EFE4D1;position:relative;padding:0;cursor:pointer}
+.switch i{position:absolute;top:4px;width:44px;height:32px;border-radius:16px;background:#18213D;transition:left .25s}
+.cov{width:104px;height:64px;border:2px solid #18213D;border-radius:12px;background:repeating-linear-gradient(-45deg,#F2C14E 0 10px,#18213D 10px 20px);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.cov span{padding:3px 8px;border-radius:6px;background:#F9F2E5;font:700 11px 'Barlow Semi Condensed',sans-serif;letter-spacing:.08em}
+.go{width:104px;height:64px;border:0;border-radius:12px;background:#18213D;color:#F9F2E5;font:700 16px 'Barlow Semi Condensed',sans-serif;letter-spacing:.1em;box-shadow:0 4px 0 #0B1022}
+.lamp{display:flex;flex-direction:column;align-items:center;gap:3px;font:700 10px 'Barlow Semi Condensed',sans-serif;letter-spacing:.08em}
+.lamp span{width:22px;height:22px;border-radius:50%;border:2px solid #18213D}
+.g{width:150px;padding:8px 10px;border:1px solid #CEC0AD;border-radius:10px;background:#FFFDF8;display:flex;flex-direction:column;gap:5px;font-size:13px;box-sizing:border-box}
+.bar{position:relative;height:8px;border-radius:4px;background:#E6DCCB}
+.bar span{position:absolute;left:0;top:0;bottom:0;border-radius:4px}
+.hs{width:14px;height:14px;border-radius:50%;background:#1AA3A1;border:3px solid #F9F2E5;box-shadow:0 0 0 2px #18213D,0 0 14px 4px rgba(26,163,161,.55)}
+.crew{width:200px;display:flex;gap:8px;align-items:center;padding:8px 10px;border:1px solid #CEC0AD;border-radius:12px;background:#F9F2E5;font-size:12px;box-sizing:border-box}
+.tab{height:40px;padding:0 4px;border:0;background:none;font:700 12px 'Barlow Semi Condensed',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#5A6178;border-bottom:3px solid transparent}
+.tab.on{color:#18213D;border-bottom-color:#1AA3A1}
+ul.l{margin:0;padding-left:18px;font-size:13px;line-height:1.55}
+.knob:focus-visible,.switch:focus-visible,.cov:focus-visible,.rm:focus-visible{outline:3px solid #1AA3A1;outline-offset:3px}
+</style>
+</helmet>
+<div style="width: 1280px; height: 1100px; box-sizing: border-box; padding: 28px 32px; background-color: #F6EDDD; background-image: linear-gradient(#EDE2CE 1px, transparent 1px), linear-gradient(90deg, #EDE2CE 1px, transparent 1px); background-size: 32px 32px; font-family: Barlow, sans-serif; color: #18213D; display: flex; flex-direction: column; gap: 18px">
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px">
+<section class="box">
+<h2 class="h" style="font-size: 18px">Colour</h2>
+<div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px">
+<div class="sw"><i style="background: #F6EDDD"></i>Paper<b>#F6EDDD</b></div>
+<div class="sw"><i style="background: #F9F2E5"></i>Card<b>#F9F2E5</b></div>
+<div class="sw"><i style="background: #CEC0AD"></i>Border<b>#CEC0AD</b></div>
+<div class="sw"><i style="background: #18213D"></i>Navy ink<b>#18213D</b></div>
+<div class="sw"><i style="background: #1AA3A1"></i>Active / selected<b>#1AA3A1</b></div>
+<div class="sw"><i style="background: #C0652D"></i>Storm / warning<b>#C0652D</b></div>
+<div class="sw"><i style="background: #E2B23F"></i>Power lines<b>#E2B23F</b></div>
+<div class="sw"><i style="background: #6E9FD0"></i>Water lines<b>#6E9FD0</b></div>
+<div class="sw"><i style="background: #3E9B6A"></i>Lamp OK<b>#3E9B6A</b></div>
+<div class="sw"><i style="background: #0E5F5E"></i>Teal text<b>#0E5F5E</b></div>
+</div>
+<p class="cap" style="text-transform: none; letter-spacing: 0; font: 400 12px Barlow, sans-serif">Teal #1AA3A1 is for dots, rings and fills only. Teal text uses #0E5F5E so it passes 4.5:1 on cream.</p>
+</section>
+<section class="box">
+<h2 class="h" style="font-size: 18px">Type</h2>
+<p class="h" style="font-size: 30px">Solar Field</p>
+<p class="cap" style="text-transform: none; letter-spacing: 0; font: 400 12px Barlow, sans-serif">Barlow Semi Condensed 700, uppercase, +0.05em · headings, buttons, callout titles</p>
+<p style="margin: 0; font-size: 16px; line-height: 1.5">Makes power from sunlight. Out here you get more radiation.</p>
+<p class="cap" style="text-transform: none; letter-spacing: 0; font: 400 12px Barlow, sans-serif">Barlow 400, 16 px body (13 px minimum) · short sentences a 7-year-old can read</p>
+<p style="margin: 0; font: 500 18px 'JetBrains Mono', monospace">36/100 · +5 power · X9.3</p>
+<p class="cap" style="text-transform: none; letter-spacing: 0; font: 400 12px Barlow, sans-serif">JetBrains Mono 500 · numbers, gauges, the report receipt</p>
+</section>
+</div>
+
+<section class="box">
+<h2 class="h" style="font-size: 18px">Console controls</h2>
+<div class="row" style="gap: 36px; align-items: flex-start">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 6px"><button type="button" class="knob" role="slider" aria-label="Mission knob" aria-valuemin="0" aria-valuemax="1" aria-valuenow="{{knobNow}}" onClick="{{turn}}"><i style="{{needle}}"></i></button><p class="lab">Knob · 2 stops<br>tap, drag or ←/→</p></div>
+<div style="display: flex; flex-direction: column; align-items: center; gap: 6px"><button type="button" class="switch" role="switch" aria-label="Commander mode" aria-checked="{{swOn}}" onClick="{{flip}}"><i style="{{swSt}}"></i></button><p class="lab">Toggle · Cadet / Commander<br>Sound on / off</p></div>
+<div style="display: flex; flex-direction: column; align-items: center; gap: 6px"><sc-if value="{{covClosed}}" hint-placeholder-val="{{ true }}"><button type="button" class="cov" onClick="{{lift}}" aria-label="Lift the cover"><span>LIFT COVER</span></button></sc-if><sc-if value="{{covOpen}}" hint-placeholder-val="{{ false }}"><button type="button" class="go" onClick="{{shut}}">END SOL</button></sc-if><p class="lab">Cover button · tap to lift,<br>tap to press, closes after 4 s</p></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><div class="row" style="gap: 14px"><div class="lamp"><span style="background: #3E9B6A"></span>POWER<b>OK</b></div><div class="lamp"><span style="background: #E2A33A"></span>WATER<b>LOW</b></div><div class="lamp"><span style="background: #C0652D"></span>STORM<b>ALERT</b></div><div class="lamp"><span style="background: #F9F2E5; border-style: dashed"></span>CREW<b>OFF</b></div></div><p class="lab">Lamp · always a word, never colour alone</p></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><div class="row" style="gap: 8px"><div class="g"><span style="display: flex; justify-content: space-between"><span>Power</span><b style="font-family: 'JetBrains Mono', monospace">6/10</b></span><span class="bar"><span style="width: 60%; background: #E2B23F"></span></span></div><div class="g" style="border-color: #C0652D"><span style="display: flex; justify-content: space-between"><span>Water tank</span><b style="font-family: 'JetBrains Mono', monospace; color: #9A4A1C">2 LOW</b></span><span class="bar"><span style="width: 20%; background: #C0652D"></span></span></div></div><p class="lab">Gauge · label + icon + number; low = orange border + word</p></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><div role="tablist" style="display: flex; gap: 14px; border-bottom: 1px solid #CEC0AD"><button type="button" role="tab" class="tab on" aria-selected="true">Station</button><button type="button" role="tab" class="tab" aria-selected="false">Log</button></div><p class="lab">Tabs · underline slides 250 ms</p></div>
+</div>
+</section>
+
+<section class="box">
+<h2 class="h" style="font-size: 18px">Stage pieces</h2>
+<div class="row" style="gap: 36px; align-items: flex-start">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div class="row" style="gap: 22px">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px"><span class="hs"></span><p class="lab">idle</p></div>
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px"><span class="hs" style="width: 20px; height: 20px; box-shadow: 0 0 0 2px #18213D, 0 0 0 8px rgba(26,163,161,.25), 0 0 18px 6px rgba(26,163,161,.6)"></span><p class="lab">free target</p></div>
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px"><span class="hs" style="background: #18213D; border-color: #1AA3A1; box-shadow: 0 0 0 3px #1AA3A1"></span><p class="lab">selected</p></div>
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px"><span class="hs" style="background: #F9F2E5; box-shadow: 0 0 0 2px #18213D"></span><p class="lab">taken</p></div>
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px"><span class="hs" style="background: #C0652D; box-shadow: 0 0 0 2px #18213D, 0 0 16px 6px rgba(192,101,45,.65)"></span><p class="lab">storm</p></div>
+</div>
+<p class="lab" style="text-align: left">Hotspot · 14 px dot inside a 44 px button · breathes every 2.4 s</p>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="width: 196px; box-sizing: border-box; padding: 8px 8px 10px 10px; background: #F9F2E5; border: 1px solid #CEC0AD; border-radius: 12px; box-shadow: 0 4px 12px rgba(24,33,61,.1); display: flex; flex-direction: column; gap: 4px">
+<div style="display: flex; align-items: center; gap: 8px"><span style="width: 32px; height: 32px; border: 1px solid #CEC0AD; border-radius: 8px; background: #F6EDDD; display: flex; align-items: center; justify-content: center" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#18213D" stroke-width="1.8" stroke-linecap="round"><path d="M9 3h6M10 3v6l-5 10a1 1 0 0 0 1 2h12a1 1 0 0 0 1-2l-5-10V3"></path></svg></span><span class="h" style="flex: 1; font-size: 15px">Lab</span><span style="width: 44px; height: 44px; border: 1px solid #CEC0AD; border-radius: 10px; background: #FFFDF8; display: flex; align-items: center; justify-content: center; font-weight: 700">?</span></div>
+<p style="margin: 0; font-size: 13px; color: #3B4460">Do experiments to earn science.</p>
+<span style="align-self: flex-start; padding: 2px 8px; border-radius: 999px; border: 1px dashed #CEC0AD; font: 500 11px 'JetBrains Mono', monospace">Free · 1 astronaut</span>
+</div>
+<p class="lab" style="text-align: left">Callout · ① icon tile ② TITLE ③ ? help (44 px)<br>④ one sentence ⑤ who is here · lifts 3 px on hover</p>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div class="crew"><span style="width: 32px; height: 32px; border-radius: 50%; background: #7C6BD6; border: 2px solid #18213D"></span><span><b>ANA</b> · at Solar Field<br><span style="font-family: 'JetBrains Mono', monospace">radiation 26/100</span></span></div>
+<div class="crew" style="border: 2px solid #1AA3A1; background: #E9F6F4"><span style="width: 32px; height: 32px; border-radius: 50%; background: #3F86C9; border: 2px solid #18213D"></span><span><b>BEN</b> · Picked! Tap a station</span></div>
+<div class="crew" style="border-style: dashed; background: #EFE9DE; color: #5A6178"><span style="width: 32px; height: 32px; border-radius: 50%; background: #C9C3B6; border: 2px solid #5A6178"></span><span><b>CAI</b> · went home</span></div>
+<p class="lab" style="text-align: left">Crew card · placed / picked / went home</p>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; width: 240px">
+<svg width="160" height="120" viewBox="0 0 160 120" role="img" aria-label="Isometric box showing light top, middle left face, dark right face"><path d="M80 10 L140 40 L80 70 L20 40 Z" fill="#FBF7EF" stroke="#18213D" stroke-width="2" stroke-linejoin="round"></path><path d="M20 40 L80 70 L80 110 L20 80 Z" fill="#E6DCCB" stroke="#18213D" stroke-width="2" stroke-linejoin="round"></path><path d="M80 70 L140 40 L140 80 L80 110 Z" fill="#D2C5AF" stroke="#18213D" stroke-width="2" stroke-linejoin="round"></path></svg>
+<p class="lab" style="text-align: left">Iso recipe · 30° projection · navy 1.4 px outline · 3 tones: top light, left mid, right dark · no gradients</p>
+<div class="row" style="gap: 10px"><span style="width: 40px; height: 6px; border-radius: 3px; background: #E2B23F; box-shadow: 0 0 0 1.5px #18213D"></span><span class="lab">power</span><span style="width: 40px; height: 6px; border-radius: 3px; background: #6E9FD0; box-shadow: 0 0 0 1.5px #18213D"></span><span class="lab">water · dots flow along</span></div>
+</div>
+</div>
+</section>
+
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px">
+<section class="box">
+<h2 class="h" style="font-size: 18px">Toasts</h2>
+<p style="margin: 0; padding: 8px 12px; border-radius: 12px; background: #C0652D; color: #FFFFFF; font-size: 14px"><b>Water is low!</b> Put someone on the Recycler or the crew goes home after 2 thirsty sols.</p>
+<p style="margin: 0; padding: 8px 12px; border-radius: 12px; background: #8E2A17; color: #FFFFFF; font-size: 14px"><b>Danger!</b> The crew were thirsty last sol. One more and everyone goes home.</p>
+</section>
+<section class="box">
+<h2 class="h" style="font-size: 18px">Motion</h2>
+<ul class="l">
+<li>Cards lift 3–4 px on hover or tap (200 ms).</li>
+<li>Tab underline slides (250 ms).</li>
+<li>Stage turns slowly when idle (1 turn per 60 s); stops on any input.</li>
+<li>Dots flow along power and water lines while a job runs.</li>
+<li>Storm: one sun flash, then the orange takeover.</li>
+</ul>
+<button type="button" class="rm" role="switch" aria-checked="{{rmOn}}" onClick="{{toggleRm}}" style="align-self: flex-start; min-height: 44px; padding: 0 14px; border: 2px solid #18213D; border-radius: 10px; background: #FFFDF8; font: 700 13px 'Barlow Semi Condensed', sans-serif; letter-spacing: .08em; color: #18213D; cursor: pointer">{{rmLabel}}</button>
+<p class="cap" style="text-transform: none; letter-spacing: 0; font: 400 12px Barlow, sans-serif">On by default when the device asks for reduced motion. Turns off spin, flow dots, flash and the breathing dots.</p>
+</section>
+<section class="box">
+<h2 class="h" style="font-size: 18px">Taken from the reference</h2>
+<ul class="l">
+<li>Cream paper, faint grid and circuit traces.</li>
+<li>Isometric objects with dark outlines, flat 3-tone faces.</li>
+<li>Glowing dot → dashed line → small callout card.</li>
+<li>Right panel: tabs, title, short text, icon rows, one action card.</li>
+<li>Bottom strip of cards (lessons → our crew), header status (progress + clock → sol track + real sky date).</li>
+</ul>
+<p class="cap" style="text-transform: none; letter-spacing: 0; font: 400 12px Barlow, sans-serif">Not taken: Arduino content, code panel, branding.</p>
+</section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { k: 1, sw: false, cov: false, rm: false }; }
+  renderVals() {
+    const s = this.state;
+    return {
+      knobNow: s.k, needle: { transform: 'rotate(' + (s.k ? 45 : -45) + 'deg)' }, turn: () => this.setState({ k: s.k ? 0 : 1 }),
+      swOn: s.sw ? 'true' : 'false', swSt: { left: s.sw ? '48px' : '4px' }, flip: () => this.setState({ sw: !s.sw }),
+      covClosed: !s.cov, covOpen: s.cov, lift: () => this.setState({ cov: true }), shut: () => this.setState({ cov: false }),
+      rmOn: s.rm ? 'true' : 'false', rmLabel: s.rm ? 'REDUCED MOTION: ON' : 'REDUCED MOTION: OFF', toggleRm: () => this.setState({ rm: !s.rm }),
+    };
+  }
+}
+</script>
+</body>
+</html>

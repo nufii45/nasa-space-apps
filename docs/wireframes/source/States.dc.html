@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>States and edge cases</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&amp;family=Barlow+Semi+Condensed:wght@600;700&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.h{font-family:'Barlow Semi Condensed',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:0}
+.cap{font:700 11px/1.2 'Barlow Semi Condensed',sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#4A5270;margin:0}
+.panel{display:flex;flex-direction:column;gap:8px;min-width:0}
+.frame{flex:1;border:1px solid #CEC0AD;border-radius:14px;background:#F6EDDD;padding:14px;display:flex;flex-direction:column;gap:10px;box-sizing:border-box;position:relative;overflow:hidden}
+.card{background:#F9F2E5;border:1px solid #CEC0AD;border-radius:12px}
+.btn{min-height:48px;padding:0 18px;border-radius:12px;font:700 15px 'Barlow Semi Condensed',sans-serif;letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
+.pri{border:0;background:#18213D;color:#F9F2E5}
+.sec{border:2px solid #18213D;background:#FFFDF8;color:#18213D}
+.sk{height:12px;border-radius:6px;background:#E6DCCB}
+.tile{border:1px solid #CEC0AD;border-radius:10px;background:#FFFDF8;padding:8px;display:flex;align-items:center;gap:8px;font:700 12px 'Barlow Semi Condensed',sans-serif;letter-spacing:.06em;text-transform:uppercase;min-height:44px;box-sizing:border-box}
+.dot{width:12px;height:12px;border-radius:50%;background:#1AA3A1;box-shadow:0 0 0 2px #18213D;flex:none}
+.note{margin:0;font-size:12px;line-height:1.4;color:#4A5270}
+ol.k{margin:0;padding-left:20px;font-size:13px;line-height:1.6}
+</style>
+</helmet>
+<div style="width: 1280px; height: 800px; box-sizing: border-box; padding: 28px 32px; background: #EFE4D1; font-family: Barlow, sans-serif; color: #18213D; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 24px">
+
+<div class="panel">
+<p class="cap">A · Loading the storm data</p>
+<div class="frame" style="align-items: center; justify-content: center">
+<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#18213D" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M12 12l4-5"></path></svg>
+<p role="status" style="margin: 0; font-size: 16px">Loading the storm records…</p>
+<div style="width: 70%; display: flex; flex-direction: column; gap: 6px"><span class="sk"></span><span class="sk" style="width: 70%"></span></div>
+</div>
+<p class="note">The dial needle turns while loading. Reduced motion: it stays still and three dots fill in.</p>
+</div>
+
+<div class="panel">
+<p class="cap">B · Could not load</p>
+<div class="frame" style="align-items: center; justify-content: center; text-align: center">
+<svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#C0652D" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 16H3zM12 10v4M12 17v.5"></path></svg>
+<h2 class="h" style="font-size: 20px">Couldn't load the storm data.</h2>
+<p style="margin: 0; font-size: 15px">Please reload the page.</p>
+<button type="button" class="btn pri">Reload</button>
+</div>
+<p class="note">Shown if the saved NASA file fails to load. No retry loop; one clear button.</p>
+</div>
+
+<div class="panel">
+<p class="cap">C · 3D unavailable: flat map</p>
+<div class="frame">
+<p role="status" style="margin: 0; padding: 6px 10px; border-radius: 8px; background: #FFFDF8; border: 1px solid #CEC0AD; font-size: 12px">Simple map: your device can't show the 3D view. The game works the same.</p>
+<p class="cap" style="font-size: 10px">Outside</p>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px"><div class="tile"><span class="dot"></span>Solar Field</div><div class="tile"><span class="dot"></span>Rover trip</div></div>
+<p class="cap" style="font-size: 10px">Inside the base</p>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px"><div class="tile"><span class="dot"></span>Recycler</div><div class="tile"><span class="dot"></span>Water Wall pump</div><div class="tile"><span class="dot"></span>Lab</div><div class="tile" style="border-color: #18213D"><span class="dot"></span>Shelter</div></div>
+</div>
+<p class="note">Same 6 hotspots and callouts as the stage, so nothing else changes. Also used when the player turns 3D off in settings.</p>
+</div>
+
+<div class="panel">
+<p class="cap">D · Refresh in the middle of a run</p>
+<div class="frame" style="justify-content: center">
+<div class="card" role="dialog" aria-labelledby="resume-t" style="padding: 18px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 10px 24px rgba(24,33,61,.15)">
+<h2 id="resume-t" class="h" style="font-size: 20px">Resume your mission?</h2>
+<p style="margin: 0; font-size: 15px">Sol 4 of 10 · Sept 2017 · Commander</p>
+<div style="display: flex; gap: 8px"><button type="button" class="btn pri">Resume</button><button type="button" class="btn sec">Start over</button></div>
+</div>
+</div>
+<p class="note">Saved in this browser after every sol (no account). At minimum, keep the mission and rank choices.</p>
+</div>
+
+<div class="panel">
+<p class="cap">E · Astronaut went home</p>
+<div class="frame" style="justify-content: center">
+<div class="card" aria-disabled="true" style="padding: 12px; display: flex; gap: 12px; align-items: center; border-style: dashed; background: #EFE9DE; color: #5A6178">
+<svg width="44" height="44" viewBox="0 0 46 46" aria-hidden="true"><circle cx="23" cy="23" r="20" fill="#C9C3B6" stroke="#5A6178" stroke-width="2"></circle><ellipse cx="26" cy="22" rx="11" ry="8" fill="#5A6178"></ellipse></svg>
+<span style="flex: 1; display: flex; flex-direction: column; gap: 4px"><span style="display: flex; justify-content: space-between"><b class="h" style="font-size: 16px">Ana</b><span style="font: 500 12px 'JetBrains Mono', monospace">radiation 100/100</span></span><span style="font-size: 13px">Went home to Earth. She is safe, but can't be picked.</span></span>
+</div>
+<p style="margin: 0; font-size: 13px">Her figure leaves the stage on a small rocket. The hotspot she held becomes free.</p>
+</div>
+<p class="note">Greyed, dashed, aria-disabled. Tapping it says why instead of doing nothing.</p>
+</div>
+
+<div class="panel">
+<p class="cap">F · Keyboard order and focus</p>
+<div class="frame">
+<ol class="k">
+<li>Left rail: Home, How to play, Sound, Credits</li>
+<li>Sun report</li>
+<li>Stage hotspots (arrow keys move between the 6)</li>
+<li>Callout ? buttons, then stage toolbar</li>
+<li>Crew cards (Space picks, then Enter on a hotspot places)</li>
+<li>Status tabs (arrow keys)</li>
+<li>END SOL cover, then END SOL</li>
+</ol>
+<div style="display: flex; gap: 12px; align-items: center"><button type="button" class="btn sec" style="outline: 3px solid #1AA3A1; outline-offset: 3px">Focused</button><span class="note">3 px teal ring, 3 px gap, on every control. Targets 44 px minimum.</span></div>
+</div>
+<p class="note">A new screen moves focus to its heading. Esc closes drawers and returns focus.</p>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

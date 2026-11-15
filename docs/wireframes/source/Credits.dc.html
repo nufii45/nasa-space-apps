@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Credits and data sources</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&amp;family=Barlow+Semi+Condensed:wght@600;700&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0E5F5E}a:hover{color:#18213D}
+.h{font-family:'Barlow Semi Condensed',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:0}
+.src{display:flex;gap:14px;align-items:flex-start;padding:14px 0;border-bottom:1px solid #E6DCCB}
+.src p{margin:0;font-size:15px;line-height:1.45}
+.tag{flex:none;width:44px;height:44px;border:1px solid #CEC0AD;border-radius:10px;background:#F6EDDD;display:flex;align-items:center;justify-content:center}
+.back{min-height:52px;padding:0 24px;border:2px solid #18213D;border-radius:12px;background:#FFFDF8;font:700 16px 'Barlow Semi Condensed',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#18213D;cursor:pointer}
+.back:focus-visible{outline:3px solid #1AA3A1;outline-offset:3px}
+</style>
+</helmet>
+<div style="{{rootSt}}">
+<section style="{{cardSt}}">
+<h1 class="h" style="font-size: 30px">Credits and data sources</h1>
+<p style="margin: 0; font-size: 15px; color: #3B4460">Every storm in this game really happened. We use a saved copy of NASA's records, not live data.</p>
+<div>
+<div class="src"><span class="tag" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#18213D" stroke-width="1.8" stroke-linecap="round"><path d="M8 12a4 4 0 1 0 8 0a4 4 0 1 0-8 0M12 2v3M12 19v3M2 12h3M19 12h3"></path></svg></span><div><p><b>Solar flares, particle storms and CMEs:</b> <a href="https://ccmc.gsfc.nasa.gov/tools/DONKI" target="_blank" rel="noopener">NASA CCMC DONKI</a>, archived copy fetched <span style="font-family: 'JetBrains Mono', monospace">[FETCHED DATE]</span>.</p><p style="color: #4A5270">One sol in the game is one real calendar day, 2012 to 2025.</p></div></div>
+<div class="src"><span class="tag" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#18213D" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h16l-2-5H8zM4 17a3 3 0 1 0 6 0a3 3 0 1 0-6 0M14 17a3 3 0 1 0 6 0a3 3 0 1 0-6 0"></path></svg></span><div><p><b>Mars surface radiation</b> (about 0.67 mSv a day): Curiosity RAD, <a href="https://www.swri.org/press-release/swri-scientists-publish-first-radiation-measurements-surface-mars" target="_blank" rel="noopener">SwRI</a>.</p></div></div>
+<div class="src"><span class="tag" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#18213D" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5c3-1 6-1 9 1 3-2 6-2 9-1v14c-3-1-6-1-9 1-3-2-6-2-9-1zM12 6v14"></path></svg></span><div><p><b>The September 2017 storm at Mars:</b> <a href="https://www.jpl.nasa.gov/news/large-solar-storm-sparks-global-aurora-and-doubles-radiation-levels-on-the-martian-surface/" target="_blank" rel="noopener">NASA JPL</a>.</p></div></div>
+<div class="src"><span class="tag" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#18213D" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c4 5 6 8 6 11a6 6 0 0 1-12 0c0-3 2-6 6-11z"></path></svg></span><div><p><b>Water for drinking and for shielding:</b> <a href="https://www.nasa.gov/general/water-walls-highly-reliable-and-massively-redundant-life-support-architecture" target="_blank" rel="noopener">NASA Water Walls</a>.</p></div></div>
+</div>
+<p style="margin: 0; font-size: 13px; color: #4A5270">Made for NASA Space Apps 2026 by [TEAM NAME]. Not made or endorsed by NASA.</p>
+<div><button type="button" class="back">← Back</button></div>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"size":{"editor":"enum","options":["desktop","phone"],"default":"desktop"},"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const phone = (this.props.size ?? 'desktop') === 'phone';
+    return {
+      rootSt: { position: 'relative', width: phone ? '390px' : '1280px', height: phone ? '844px' : '800px', overflow: phone ? 'auto' : 'hidden', backgroundColor: '#F6EDDD', backgroundImage: 'linear-gradient(#EDE2CE 1px, transparent 1px), linear-gradient(90deg, #EDE2CE 1px, transparent 1px)', backgroundSize: '32px 32px', fontFamily: 'Barlow, sans-serif', color: '#18213D', padding: phone ? '16px 12px' : '48px 0', boxSizing: 'border-box' },
+      cardSt: { maxWidth: '760px', margin: '0 auto', padding: phone ? '18px 14px' : '32px 36px', background: '#F9F2E5', border: '1px solid #CEC0AD', borderRadius: '14px', boxShadow: '0 6px 18px rgba(24,33,61,.08)', display: 'flex', flexDirection: 'column', gap: '12px' },
+    };
+  }
+}
+</script>
+</body>
+</html>

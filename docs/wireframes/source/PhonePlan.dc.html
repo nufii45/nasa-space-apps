@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Plan a sol, phone</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&amp;family=Barlow+Semi+Condensed:wght@600;700&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.cap{font:700 11px/1.2 'Barlow Semi Condensed',sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#4A5270}
+.h{font-family:'Barlow Semi Condensed',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:0}
+.mono{font-family:'JetBrains Mono',monospace}
+.card{background:#F9F2E5;border:1px solid #CEC0AD;border-radius:12px;box-shadow:0 2px 8px rgba(24,33,61,.06)}
+.crew{flex:none;width:236px;display:flex;gap:10px;align-items:center;padding:10px;text-align:left;cursor:pointer;color:#18213D;font:inherit;scroll-snap-align:start}
+.crew.is-picked{border:2px solid #1AA3A1;background:#E9F6F4}
+.meter{height:7px;border-radius:4px;background:#E6DCCB;overflow:hidden}
+.meter>span{display:block;height:100%;background:#18213D}
+.nav{flex:1;min-height:56px;border:0;background:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:#4A5270;font:700 10px 'Barlow Semi Condensed',sans-serif;letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
+.nav[aria-current="page"]{color:#18213D}
+.nav[aria-current="page"] svg{stroke:#1AA3A1}
+.tab{flex:none;height:44px;padding:0 4px;border:0;background:none;font:700 13px 'Barlow Semi Condensed',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#5A6178;border-bottom:3px solid transparent}
+.tab[aria-selected="true"]{color:#18213D;border-bottom-color:#1AA3A1}
+.gauge{padding:7px 9px;border:1px solid #CEC0AD;border-radius:10px;background:#FFFDF8;display:flex;flex-direction:column;gap:5px;font-size:13px}
+.bar{position:relative;height:7px;border-radius:4px;background:#E6DCCB}
+.bar>span{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:#18213D}
+.num i{font-style:normal;padding:1px 7px;border-radius:6px;background:#E3F1EF;color:#0E5F5E;font:500 12px 'JetBrains Mono',monospace}
+.crew:focus-visible,.nav:focus-visible,.tab:focus-visible,.cover:focus-visible{outline:3px solid #1AA3A1;outline-offset:2px}
+.cover{flex:1;height:52px;border:2px solid #18213D;border-radius:12px;background:repeating-linear-gradient(-45deg,#F2C14E 0 12px,#18213D 12px 24px);cursor:pointer}
+.cover span{padding:4px 10px;border-radius:7px;background:#F9F2E5;font:700 14px 'Barlow Semi Condensed',sans-serif;letter-spacing:.1em;color:#18213D}
+.go{flex:1;height:52px;border:0;border-radius:12px;background:#18213D;color:#F9F2E5;font:700 19px 'Barlow Semi Condensed',sans-serif;letter-spacing:.12em;box-shadow:0 4px 0 #0B1022;cursor:pointer}
+</style>
+</helmet>
+<div style="position: relative; width: 390px; height: 844px; display: flex; flex-direction: column; overflow: hidden; background-color: #F6EDDD; background-image: linear-gradient(#EDE2CE 1px, transparent 1px), linear-gradient(90deg, #EDE2CE 1px, transparent 1px); background-size: 24px 24px; font-family: Barlow, sans-serif; color: #18213D">
+<header style="flex: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 16px 8px; background: #F6EDDD; border-bottom: 1px solid #CEC0AD">
+<div>
+<h1 class="h" style="font-size: 22px; line-height: 1">Sol 3 of 10</h1>
+<p style="margin: 2px 0 0; font-size: 12px; color: #4A5270">A sol is a Mars day · sky: 6 Sep 2017</p>
+</div>
+<ol aria-label="Sol progress: 2 done, today is sol 3" style="list-style: none; margin: 0; padding: 0; display: flex; gap: 4px; align-items: center">
+<sc-for list="{{sols}}" as="s" hint-placeholder-count="10"><li style="{{s.st}}"></li></sc-for>
+</ol>
+</header>
+
+<div style="flex: 1; min-height: 0; overflow-y: auto; padding: 10px 16px 16px; display: flex; flex-direction: column; gap: 10px">
+<section class="card" aria-label="Sun report" style="padding: 8px 12px; font-size: 14px; line-height: 1.4">
+<p style="margin: 0"><strong class="h" style="font-size: 13px; margin-right: 6px">Sun report</strong>A cloud of Sun material (CME) is coming, about 2 sols away.</p>
+</section>
+<p role="alert" style="margin: 0; padding: 8px 12px; border-radius: 12px; background: #C0652D; color: #FFFFFF; font-size: 14px; line-height: 1.35"><strong>Water is low!</strong> Put someone on the Recycler or the crew goes home after 2 thirsty sols.</p>
+
+<div style="margin: 0 -16px; position: relative">
+<dc-import name="Scene" layout="phone" placements="{{placements}}" picked="{{picked}}" selected="{{selected}}" on-station="{{onStation}}" on-help="{{onHelp}}" hint-size="390px,300px"></dc-import>
+<p class="cap" style="position: absolute; left: 16px; bottom: 6px; margin: 0; padding: 3px 8px; border-radius: 6px; background: #F9F2E5; border: 1px solid #CEC0AD">Pinch to zoom · drag to move</p>
+</div>
+
+<section class="card" aria-label="Selected station" style="padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; border-color: #1AA3A1; border-width: 2px">
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 8px">
+<h2 class="h" style="font-size: 18px">{{info.title}}</h2>
+<button type="button" aria-label="{{helpLabel}}" style="width: 44px; height: 44px; border: 1px solid #CEC0AD; border-radius: 10px; background: #FFFDF8; font: 700 18px 'Barlow Semi Condensed', sans-serif; color: #18213D">?</button>
+</div>
+<p style="margin: 0; font-size: 14px; line-height: 1.4">{{info.text}}</p>
+<p class="num" style="margin: 0; font-size: 13px"><i>{{info.chip}}</i> {{info.who}}</p>
+</section>
+
+<section aria-label="Your crew" style="display: flex; flex-direction: column; gap: 6px">
+<p class="cap" style="margin: 0">Your crew · tap one, then tap a station</p>
+<div style="display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 -16px; padding: 2px 16px 6px">
+<sc-for list="{{crew}}" as="c" hint-placeholder-count="3">
+<button type="button" class="{{c.cls}}" aria-pressed="{{c.pressed}}" onClick="{{c.pick}}">
+<svg width="40" height="40" viewBox="0 0 46 46" aria-hidden="true"><circle cx="23" cy="23" r="20" fill="{{c.color}}" stroke="#18213D" stroke-width="2"></circle><ellipse cx="26" cy="22" rx="11" ry="8" fill="#18213D"></ellipse></svg>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px">
+<span style="display: flex; justify-content: space-between"><span class="h" style="font-size: 16px">{{c.name}}</span><span class="mono" style="font-size: 11px">{{c.dose}}/100</span></span>
+<span class="meter"><span style="{{c.meterSt}}"></span></span>
+<span style="font-size: 12px; color: #3B4460">{{c.status}}</span>
+</span>
+</button>
+</sc-for>
+</div>
+</section>
+
+<section class="card" aria-label="Status" style="padding: 10px; display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; justify-content: space-between; font-size: 11px">
+<span class="cap" style="color: #18213D">● Power OK</span><span class="cap" style="color: #9A4A1C">● Water LOW</span><span class="cap" style="color: #9A4A1C">● Storm COMING</span><span class="cap" style="color: #18213D">● Crew OK</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px">
+<div class="gauge"><span style="display: flex; justify-content: space-between"><span>Power</span><b class="mono">6/10</b></span><span class="bar"><span style="width: 60%; background: #E2B23F"></span></span></div>
+<div class="gauge" style="border-color: #C0652D"><span style="display: flex; justify-content: space-between"><span>Water tank</span><b class="mono" style="color: #9A4A1C">2/10</b></span><span class="bar"><span style="width: 20%; background: #C0652D"></span></span></div>
+<div class="gauge"><span style="display: flex; justify-content: space-between"><span>Shield water</span><b class="mono">0/6</b></span><span class="bar"><span style="width: 0%"></span></span></div>
+<div class="gauge"><span style="display: flex; justify-content: space-between"><span>Science</span><b class="mono">36/100</b></span><span class="bar"><span style="width: 36%; background: #1AA3A1"></span></span></div>
+</div>
+</section>
+
+<section class="card" style="padding: 0 12px 10px">
+<div role="tablist" aria-label="More" style="display: flex; gap: 16px; overflow-x: auto; border-bottom: 1px solid #CEC0AD">
+<button type="button" role="tab" class="tab" aria-selected="true">Mission log</button>
+<button type="button" role="tab" class="tab" aria-selected="false">Numbers</button>
+<button type="button" role="tab" class="tab" aria-selected="false">Sun report</button>
+</div>
+<div style="padding-top: 8px; font-size: 13px; line-height: 1.5">
+<p style="margin: 0; font-weight: 700">— Sol 2 · 5 Sep 2017 —</p>
+<p style="margin: 0">Cai ran the Recycler: +4 water</p>
+<p style="margin: 0">Ben drove the Rover: +10 science</p>
+<p style="margin: 0; color: #4A5270">Show all sols ▾</p>
+</div>
+</section>
+</div>
+
+<div style="flex: none; display: flex; align-items: center; gap: 10px; padding: 8px 16px; background: #F9F2E5; border-top: 1px solid #CEC0AD; box-shadow: 0 -6px 16px rgba(24,33,61,.08)">
+<sc-if value="{{coverClosed}}" hint-placeholder-val="{{ true }}">
+<button type="button" class="cover" aria-label="Lift the safety cover over END SOL" onClick="{{lift}}"><span>1 · LIFT COVER</span></button>
+</sc-if>
+<sc-if value="{{coverOpen}}" hint-placeholder-val="{{ false }}">
+<button type="button" class="go" onClick="{{endSol}}">2 · END SOL</button>
+</sc-if>
+</div>
+<nav aria-label="Main menu" style="flex: none; display: flex; background: #EFE4D1; border-top: 1px solid #CEC0AD; padding-bottom: 6px">
+<button type="button" class="nav" aria-current="page"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9h-6v-6H9v6H3z"></path></svg>Home</button>
+<button type="button" class="nav"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5c3-1 6-1 9 1 3-2 6-2 9-1v14c-3-1-6-1-9 1-3-2-6-2-9-1zM12 6v14"></path></svg>How to play</button>
+<button type="button" class="nav" aria-pressed="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4zM17 9c1.5 1.5 1.5 4.5 0 6"></path></svg>Sound on</button>
+<button type="button" class="nav"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M12 11v6M12 7.5v.5"></path></svg>Credits</button>
+</nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { placements: { ana: 'solar', ben: null, cai: 'shelter' }, picked: 'ben', selected: 'rover', cover: false }; }
+  renderVals() {
+    const s = this.state;
+    const INFO = {
+      solar: ['Solar Field', 'Makes power from sunlight. Outside: more radiation.', '+5 power'],
+      rover: ['Rover trip', 'Drive far to study rocks. Lots of science, but far from home.', '+10 science'],
+      recycler: ['Recycler', 'Cleans water so the crew can drink it again.', '+4 water'],
+      pump: ['Water Wall pump', 'Moves water into the Shelter walls to block storms.', 'up to 4 water'],
+      lab: ['Lab', 'Do experiments to earn science.', '+6 science'],
+      shelter: ['Shelter', 'Safest place in a storm. Rest here.', 'room for all'],
+    };
+    const CREW = [{ id: 'ana', name: 'Ana', color: '#7C6BD6', dose: 26 }, { id: 'ben', name: 'Ben', color: '#3F86C9', dose: 12 }, { id: 'cai', name: 'Cai', color: '#3E9B6A', dose: 8 }];
+    const who = CREW.filter((c) => s.placements[c.id] === s.selected).map((c) => c.name);
+    const i = INFO[s.selected];
+    const crew = CREW.map((c) => {
+      const job = s.placements[c.id], picked = s.picked === c.id;
+      return {
+        name: c.name, color: c.color, dose: c.dose, meterSt: { width: c.dose + '%' }, cls: 'card crew' + (picked ? ' is-picked' : ''), pressed: picked ? 'true' : 'false',
+        status: picked ? 'Picked! Now tap a station.' : job ? (job === 'shelter' ? 'Resting in the Shelter' : 'At the ' + INFO[job][0]) : 'Not placed: rests in the Shelter',
+        pick: () => this.setState({ picked: picked ? null : c.id }),
+      };
+    });
+    const onStation = (id) => {
+      if (!s.picked) return this.setState({ selected: id });
+      const taken = id !== 'shelter' && Object.keys(s.placements).some((k) => k !== s.picked && s.placements[k] === id);
+      if (taken) return this.setState({ selected: id });
+      this.setState({ placements: Object.assign({}, s.placements, { [s.picked]: id }), picked: null, selected: id });
+    };
+    const sols = [];
+    for (let n = 1; n <= 10; n++) sols.push({ st: { width: n === 3 ? '12px' : '8px', height: n === 3 ? '12px' : '8px', borderRadius: '50%', boxSizing: 'border-box', background: n < 3 ? '#18213D' : n === 3 ? '#1AA3A1' : 'transparent', border: n > 3 ? '1px solid #A99A84' : '2px solid #18213D' } });
+    return {
+      sols, crew, placements: s.placements, picked: s.picked, selected: s.selected, onStation, onHelp: () => {},
+      info: { title: i[0], text: i[1], chip: i[2], who: who.length ? who.join(', ') + ' here' : s.selected === 'shelter' ? '' : 'Free: tap an astronaut, then here' },
+      helpLabel: 'Help: what does the ' + i[0] + ' do?',
+      coverClosed: !s.cover, coverOpen: s.cover, lift: () => this.setState({ cover: true }), endSol: () => this.setState({ cover: false }),
+    };
+  }
+}
+</script>
+</body>
+</html>

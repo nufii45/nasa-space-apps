@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Isometric outpost stage</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&amp;family=Barlow+Semi+Condensed:wght@600;700&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.st-hs{position:absolute;width:44px;height:44px;margin:-22px 0 0 -22px;padding:0;border:0;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.st-hs .dot{width:14px;height:14px;border-radius:50%;background:#1AA3A1;border:3px solid #F9F2E5;box-shadow:0 0 0 2px #18213D,0 0 14px 4px rgba(26,163,161,.55);animation:st-breathe 2.4s ease-in-out infinite}
+.st-hs.is-target .dot{width:20px;height:20px;box-shadow:0 0 0 2px #18213D,0 0 0 8px rgba(26,163,161,.25),0 0 18px 6px rgba(26,163,161,.6)}
+.st-hs.is-sel .dot{background:#18213D;border-color:#1AA3A1;box-shadow:0 0 0 3px #1AA3A1,0 0 16px 6px rgba(26,163,161,.5)}
+.st-hs.is-storm .dot{background:#C0652D;box-shadow:0 0 0 2px #18213D,0 0 16px 6px rgba(192,101,45,.65);animation-duration:.8s}
+.st-hs.is-full .dot{background:#F9F2E5;box-shadow:0 0 0 2px #18213D}
+.st-hs:focus-visible{outline:3px solid #18213D;outline-offset:2px;border-radius:50%}
+.st-call{position:absolute;box-sizing:border-box;width:196px;padding:8px 8px 10px 10px;background:#F9F2E5;border:1px solid #CEC0AD;border-radius:12px;box-shadow:0 4px 12px rgba(24,33,61,.10);display:flex;flex-direction:column;gap:4px;transition:transform .2s}
+.st-call:hover{transform:translateY(-3px);box-shadow:0 8px 18px rgba(24,33,61,.16)}
+.st-call.is-sel{border:2px solid #1AA3A1}
+.st-call.is-storm{border:2px solid #C0652D;background:#FBEADF}
+.st-call-head{display:flex;align-items:center;gap:8px}
+.st-call-pick{flex:1;min-width:0;min-height:44px;display:flex;align-items:center;gap:8px;padding:0;border:0;background:none;text-align:left;cursor:pointer;color:#18213D}
+.st-ic{width:32px;height:32px;flex:none;border:1px solid #CEC0AD;border-radius:8px;background:#F6EDDD;display:flex;align-items:center;justify-content:center}
+.st-title{font:700 15px/1.1 'Barlow Semi Condensed',sans-serif;letter-spacing:.06em;text-transform:uppercase}
+.st-help{width:44px;height:44px;flex:none;border:1px solid #CEC0AD;border-radius:10px;background:#FFFDF8;font:700 18px 'Barlow Semi Condensed',sans-serif;color:#18213D;cursor:pointer}
+.st-help:focus-visible,.st-call-pick:focus-visible,.st-tool:focus-visible{outline:3px solid #1AA3A1;outline-offset:2px}
+.st-text{margin:0;font:400 13px/1.35 Barlow,sans-serif;color:#3B4460}
+.st-chip{align-self:flex-start;padding:2px 8px;border-radius:999px;border:1px solid #CEC0AD;background:#FFFDF8;font:500 11px/1.5 'JetBrains Mono',monospace;color:#18213D}
+.st-chip.is-free{border-style:dashed;color:#5A6178}
+.st-tag{position:absolute;transform:translate(-50%,0);padding:1px 6px;border-radius:6px;background:#18213D;color:#F9F2E5;font:700 10px/1.5 'JetBrains Mono',monospace;letter-spacing:.04em;white-space:nowrap}
+.st-tag.is-warn{background:#C0652D}
+.st-tool{min-width:44px;height:44px;padding:0 10px;border:0;border-radius:10px;background:transparent;color:#18213D;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;font:600 12px 'Barlow Semi Condensed',sans-serif;letter-spacing:.06em;text-transform:uppercase}
+.st-tool[aria-pressed="true"]{background:#DDF1EF;color:#0E5F5E}
+.st-flow{animation:none}
+@keyframes st-breathe{50%{transform:scale(1.18)}}
+@media (prefers-reduced-motion: reduce){.st-hs .dot{animation:none}.st-moving{display:none}}
+</style>
+</helmet>
+<div style="position: relative; width: {{w}}px; height: {{h}}px; overflow: hidden; font-family: Barlow, sans-serif; color: #18213D">
+<svg width="{{w}}" height="{{h}}" viewBox="{{vb}}" aria-hidden="true" style="position: absolute; left: 0; top: 0">
+<sc-for list="{{shapes}}" as="s" hint-placeholder-count="60">
+<path d="{{s.d}}" fill="{{s.fill}}" stroke="{{s.stroke}}" stroke-width="{{s.sw}}" stroke-dasharray="{{s.dash}}" opacity="{{s.op}}" stroke-linejoin="round" stroke-linecap="round"></path>
+</sc-for>
+<sc-for list="{{flows}}" as="f" hint-placeholder-count="6">
+<circle class="st-moving" r="3.2" fill="{{f.color}}" stroke="#18213D" stroke-width="1">
+<animateMotion dur="{{f.dur}}" begin="{{f.begin}}" repeatCount="indefinite" path="{{f.d}}"></animateMotion>
+</circle>
+</sc-for>
+<sc-for list="{{leaders}}" as="l" hint-placeholder-count="6">
+<line x1="{{l.ax}}" y1="{{l.ay}}" x2="{{l.hx}}" y2="{{l.hy}}" stroke="{{l.color}}" stroke-width="1.4" stroke-dasharray="3 4"></line>
+<circle cx="{{l.ax}}" cy="{{l.ay}}" r="4" fill="#F9F2E5" stroke="{{l.color}}" stroke-width="2"></circle>
+</sc-for>
+<sc-if value="{{dim}}" hint-placeholder-val="{{ false }}">
+<rect x="0" y="0" width="{{w}}" height="{{h}}" fill="#18213D" opacity="0.35"></rect>
+</sc-if>
+</svg>
+<sc-for list="{{tags}}" as="t" hint-placeholder-count="3">
+<span class="{{t.cls}}" style="{{t.st}}">{{t.name}}</span>
+</sc-for>
+<sc-for list="{{hotspots}}" as="h" hint-placeholder-count="6">
+<button type="button" class="{{h.cls}}" style="{{h.st}}" aria-label="{{h.label}}" onClick="{{h.pick}}"><span class="dot"></span></button>
+</sc-for>
+<sc-for list="{{callouts}}" as="c" hint-placeholder-count="6">
+<div class="{{c.cls}}" style="{{c.st}}">
+<div class="st-call-head">
+<button type="button" class="st-call-pick" onClick="{{c.pick}}" aria-label="{{c.aria}}">
+<span class="st-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#18213D" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{c.icon}}"></path></svg></span>
+<span class="st-title">{{c.title}}</span>
+</button>
+<button type="button" class="st-help" aria-label="{{c.helpLabel}}" onClick="{{c.help}}">?</button>
+</div>
+<p class="st-text">{{c.text}}</p>
+<span class="{{c.chipCls}}">{{c.chip}}</span>
+</div>
+</sc-for>
+<sc-if value="{{toolbar}}" hint-placeholder-val="{{ true }}">
+<div role="toolbar" aria-label="Stage controls" style="position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%); display: flex; align-items: center; gap: 2px; padding: 3px 6px; background: #F9F2E5; border: 1px solid #CEC0AD; border-radius: 12px; box-shadow: 0 4px 12px rgba(24,33,61,.10)">
+<button type="button" class="st-tool" aria-label="Rotate left"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 3-6.2M4 4v4h4"></path></svg></button>
+<button type="button" class="st-tool" aria-label="Rotate right"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-3-6.2M20 4v4h-4"></path></svg></button>
+<span style="width: 1px; height: 24px; background: #CEC0AD; margin: 0 4px"></span>
+<button type="button" class="st-tool" aria-label="Zoom out"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path></svg></button>
+<button type="button" class="st-tool" aria-label="Zoom in"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5v14"></path></svg></button>
+<span style="width: 1px; height: 24px; background: #CEC0AD; margin: 0 4px"></span>
+<button type="button" class="st-tool" aria-label="How the stage works"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M12 11v6M12 7.5v.5"></path></svg></button>
+<button type="button" class="st-tool" aria-pressed="{{labelsPressed}}" onClick="{{toggleLabels}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v10H9l-5 4z"></path></svg>Labels</button>
+</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"mode":{"editor":"enum","options":["plan","storm"],"default":"plan"},"layout":{"editor":"enum","options":["desktop","phone"],"default":"desktop"},"placements":{"editor":null},"picked":{"editor":null},"selected":{"editor":null},"onStation":{"editor":null},"onHelp":{"editor":null},"bare":{"editor":"boolean","default":false},"dim":{"editor":"boolean","default":false},"$preview":{"width":860,"height":440}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { labels: true }; }
+  renderVals() {
+    const p = this.props;
+    const storm = (p.mode ?? 'plan') === 'storm';
+    const phone = (p.layout ?? 'desktop') === 'phone';
+    const W = phone ? 390 : 860, H = phone ? 300 : 440;
+    const U = phone ? 10.4 : 16, OX = phone ? 186 : 386, OY = phone ? 26 : 60;
+    const placements = p.placements ?? { ana: 'solar', ben: null, cai: 'shelter' };
+    const picked = p.picked === undefined ? 'ben' : p.picked;
+    const selected = p.selected ?? 'rover';
+    const bare = !!p.bare;
+    const labels = this.state.labels && !phone && !bare;
+    const INK = '#18213D';
+    const r1 = (n) => Math.round(n * 10) / 10;
+    const P = (x, y, z) => [r1(OX + (x - y) * 0.866 * U), r1(OY + (x + y) * 0.5 * U - (z || 0) * U)];
+    const poly = (a) => 'M' + a.map((q) => q[0] + ',' + q[1]).join(' L') + ' Z';
+    const line = (a) => 'M' + a.map((q) => q[0] + ',' + q[1]).join(' L');
+    const ell = (c, rx, ry) => 'M' + r1(c[0] - rx) + ',' + c[1] + ' a' + r1(rx) + ',' + r1(ry) + ' 0 1 0 ' + r1(2 * rx) + ',0 a' + r1(rx) + ',' + r1(ry) + ' 0 1 0 ' + r1(-2 * rx) + ',0 Z';
+    const shapes = [];
+    const add = (d, fill, o) => shapes.push(Object.assign({ d, fill: fill || 'none', stroke: INK, sw: phone ? 1.1 : 1.4, dash: '', op: 1 }, o || {}));
+    const box = (x, y, z, w, d, h, c) => {
+      add(poly([P(x + w, y, z), P(x + w, y + d, z), P(x + w, y + d, z + h), P(x + w, y, z + h)]), c[2]);
+      add(poly([P(x, y + d, z), P(x + w, y + d, z), P(x + w, y + d, z + h), P(x, y + d, z + h)]), c[1]);
+      add(poly([P(x, y, z + h), P(x + w, y, z + h), P(x + w, y + d, z + h), P(x, y + d, z + h)]), c[0]);
+    };
+    const K = 1.2247, Q = 0.7071;
+    const side = (x, y, z, r, h, fill, o) => {
+      const B = P(x, y, z), T = P(x, y, z + h), rx = r1(r * U * K), ry = r1(r * U * Q);
+      add('M' + r1(B[0] - rx) + ',' + T[1] + ' L' + r1(B[0] - rx) + ',' + B[1] + ' A' + rx + ',' + ry + ' 0 0 0 ' + r1(B[0] + rx) + ',' + B[1] + ' L' + r1(B[0] + rx) + ',' + T[1] + ' Z', fill, o);
+    };
+    const top = (x, y, z, r, fill, o) => add(ell(P(x, y, z), r * U * K, r * U * Q), fill, o);
+    const band = (x, y, z0, z1, r, fill, o) => {
+      const A = P(x, y, z1), B = P(x, y, z0), rx = r1(r * U * K), ry = r1(r * U * Q);
+      add('M' + r1(A[0] - rx) + ',' + A[1] + ' A' + rx + ',' + ry + ' 0 0 0 ' + r1(A[0] + rx) + ',' + A[1] + ' L' + r1(B[0] + rx) + ',' + B[1] + ' A' + rx + ',' + ry + ' 0 0 1 ' + r1(B[0] - rx) + ',' + B[1] + ' Z', fill, o);
+    };
+    const dome = (x, y, z, r, fill) => {
+      const B = P(x, y, z), rx = r1(r * U * K), ry = r1(r * U * Q), Hh = r * U * 1.05;
+      add('M' + r1(B[0] - rx) + ',' + B[1] + ' C' + r1(B[0] - rx) + ',' + r1(B[1] - Hh * 1.33) + ' ' + r1(B[0] + rx) + ',' + r1(B[1] - Hh * 1.33) + ' ' + r1(B[0] + rx) + ',' + B[1] + ' A' + rx + ',' + ry + ' 0 0 1 ' + r1(B[0] - rx) + ',' + B[1] + ' Z', fill);
+      add('M' + B[0] + ',' + r1(B[1] + ry) + ' Q' + r1(B[0] - rx * 0.1) + ',' + r1(B[1] - Hh * 0.6) + ' ' + B[0] + ',' + r1(B[1] - Hh), 'none', { stroke: '#8B93AA', sw: 1 });
+      add('M' + r1(B[0] - rx * 0.6) + ',' + r1(B[1] + ry * 0.8) + ' Q' + r1(B[0] - rx * 0.62) + ',' + r1(B[1] - Hh * 0.5) + ' ' + B[0] + ',' + r1(B[1] - Hh), 'none', { stroke: '#8B93AA', sw: 1 });
+      add('M' + r1(B[0] - rx * 0.88) + ',' + r1(B[1] - Hh * 0.45) + ' A' + r1(rx * 0.88) + ',' + r1(ry * 0.88) + ' 0 0 0 ' + r1(B[0] + rx * 0.88) + ',' + r1(B[1] - Hh * 0.45), 'none', { stroke: '#8B93AA', sw: 1 });
+      add(ell([r1(B[0] - rx * 0.42), r1(B[1] - Hh * 0.68)], U * 0.45, U * 0.26), '#FFFFFF', { stroke: 'none', op: 0.8 });
+    };
+    const METAL = ['#FBF7EF', '#E6DCCB', '#D2C5AF'];
+    const GROUND = ['#EED7C0', '#DDBB9C', '#C99F7E'];
+    const FLOOR = ['#F7F1E6', '#E2D8C6', '#D0C4AE'];
+    const POWER = '#E2B23F', WATER = '#6E9FD0';
+
+    box(0, 0, -0.8, 20, 14, 0.8, GROUND);
+    top(17.6, 8.2, 0, 0.9, '#E3C4A6', { sw: 1 });
+    top(13.0, 12.4, 0, 0.55, '#E3C4A6', { sw: 1 });
+    top(18.6, 12.2, 0, 0.4, '#E3C4A6', { sw: 1 });
+    if (storm) add(poly([P(11.4, 0.2, 0.01), P(19.8, 0.2, 0.01), P(19.8, 13.8, 0.01), P(11.4, 13.8, 0.01)]), '#C0652D', { op: 0.25, stroke: 'none' });
+    add(line([P(12.4, 7.0, 0), P(13.2, 8.4, 0), P(14.3, 9.5, 0)]), 'none', { stroke: '#B98966', sw: 2, dash: '2 6' });
+    box(0.6, 0.6, 0, 10.4, 12.8, 0.25, FLOOR);
+    box(11.0, 6.2, 0, 1.3, 1.6, 0.25, FLOOR);
+    const pipes = [
+      { pts: [P(12.5, 4.6, 0.3), P(11.4, 4.6, 0.3), P(11.4, 13.0, 0.3), P(2.6, 13.0, 0.3), P(2.6, 12.4, 0.6)], color: POWER, dur: '5s' },
+      { pts: [P(4.0, 2.6, 0.6), P(6.3, 2.6, 0.6)], color: WATER, dur: '2.5s' },
+      { pts: [P(7.8, 2.75, 0.5), P(7.8, 3.4, 0.5), P(5.6, 3.4, 0.5), P(5.6, 4.3, 0.5)], color: WATER, dur: '3s' },
+    ];
+    pipes.forEach((c) => { add(line(c.pts), 'none', { sw: phone ? 4.5 : 6.5 }); add(line(c.pts), 'none', { stroke: c.color, sw: phone ? 2.6 : 4 }); });
+    const flows = [];
+    pipes.forEach((c) => { for (let i = 0; i < 2; i++) flows.push({ d: line(c.pts), color: c.color === POWER ? '#FFF3C4' : '#E3F0FF', dur: c.dur, begin: (i * parseFloat(c.dur) / 2) + 's' }); });
+
+    box(2, 1.6, 0.25, 2, 2, 1.4, METAL);
+    top(3, 2.6, 1.65, 0.55, '#CFE0F2', { sw: 1 });
+    box(6.3, 1.0, 0.25, 0.8, 0.8, 0.9, METAL);
+    side(7.8, 1.6, 0.25, 1.1, 2.2, '#F3F6FA');
+    band(7.8, 1.6, 0.25, 0.25 + 2.2 * 0.25, 1.1, WATER, { op: 0.75, stroke: 'none' });
+    top(7.8, 1.6, 2.45, 1.1, '#E6EEF7');
+    side(5.6, 7, 0.25, 2.7, 0.8, storm ? '#A8C6E6' : '#EEF3F8');
+    top(5.6, 7, 1.05, 2.7, storm ? '#C7DAEE' : '#F6F8FB');
+    dome(5.6, 7, 1.05, 2.3, '#FDFBF6');
+    box(1.8, 10.8, 0.25, 1.6, 1.6, 1.0, METAL);
+    for (let i = 0; i < 3; i++) { const x0 = 2.0 + i * 0.42; add(poly([P(x0, 12.4, 0.45), P(x0 + 0.3, 12.4, 0.45), P(x0 + 0.3, 12.4, 0.95), P(x0, 12.4, 0.95)]), i < 2 ? POWER : '#FFFFFF', { sw: 1 }); }
+    [[12.6, 0.8], [15.8, 0.8], [12.6, 3.2], [15.8, 3.2]].forEach((q) => {
+      const x = q[0], y = q[1], z = 0.69;
+      box(x + 1.2, y + 0.8, 0, 0.25, 0.25, 0.55, METAL);
+      box(x, y, 0.55, 2.7, 1.9, 0.14, ['#DCE4F0', '#B7C3D8', '#A3B1CA']);
+      add(line([P(x + 0.9, y, z), P(x + 0.9, y + 1.9, z)]), 'none', { stroke: '#7F8DAA', sw: 1 });
+      add(line([P(x + 1.8, y, z), P(x + 1.8, y + 1.9, z)]), 'none', { stroke: '#7F8DAA', sw: 1 });
+      add(line([P(x, y + 0.95, z), P(x + 2.7, y + 0.95, z)]), 'none', { stroke: '#7F8DAA', sw: 1 });
+    });
+    box(7.8, 10.6, 0.25, 2.4, 2, 1.8, METAL);
+    add(poly([P(8.2, 12.6, 0.8), P(8.9, 12.6, 0.8), P(8.9, 12.6, 1.6), P(8.2, 12.6, 1.6)]), '#CFE0F2', { sw: 1 });
+    add(poly([P(9.2, 12.6, 0.8), P(9.9, 12.6, 0.8), P(9.9, 12.6, 1.6), P(9.2, 12.6, 1.6)]), '#CFE0F2', { sw: 1 });
+    side(9.4, 11.2, 2.05, 0.12, 0.5, METAL[1]);
+    top(9.4, 11.2, 2.6, 0.5, '#FBF7EF');
+    box(14, 9.6, 0.4, 2.8, 1.8, 0.8, ['#F4E8CF', '#E3D2AE', '#CDB98F']);
+    [14.6, 16.2].forEach((wx) => { const c = P(wx, 11.4, 0.4); add(ell(c, U * 0.42, U * 0.42), INK); add(ell(c, U * 0.16, U * 0.16), '#D2C5AF', { stroke: 'none' }); });
+    box(16.2, 10.0, 1.2, 0.22, 0.22, 0.9, METAL);
+    box(16.0, 9.85, 2.1, 0.6, 0.5, 0.32, METAL);
+
+    const CREW = { ana: { name: 'ANA', color: '#7C6BD6' }, ben: { name: 'BEN', color: '#3F86C9' }, cai: { name: 'CAI', color: '#3E9B6A' } };
+    const SPOT = { solar: [14.3, 5.5, 0], rover: [13.5, 11.8, 0], recycler: [3.0, 4.1, 0.25], pump: [6.8, 2.5, 0.25], lab: [8.6, 13.1, 0.25] };
+    const shelterSlots = [[4.3, 10.0, 0.25], [5.3, 10.2, 0.25], [6.3, 10.1, 0.25]];
+    const tags = [];
+    let slot = 0;
+    Object.keys(bare ? {} : CREW).forEach((id) => {
+      let job = placements[id];
+      const unplaced = !job;
+      if (storm && id === 'ana') job = 'run';
+      let pos = job === 'run' ? [12.4, 7.0, 0.25] : job && job !== 'shelter' ? SPOT[job] : shelterSlots[slot++];
+      const B = P(pos[0], pos[1], pos[2]), s = U / 16;
+      add(ell(B, 7 * s, 3 * s), '#18213D', { stroke: 'none', op: 0.2 });
+      add('M' + r1(B[0] - 5 * s) + ',' + B[1] + ' L' + r1(B[0] - 5 * s) + ',' + r1(B[1] - 10 * s) + ' Q' + r1(B[0] - 5 * s) + ',' + r1(B[1] - 15 * s) + ' ' + B[0] + ',' + r1(B[1] - 15 * s) + ' Q' + r1(B[0] + 5 * s) + ',' + r1(B[1] - 15 * s) + ' ' + r1(B[0] + 5 * s) + ',' + r1(B[1] - 10 * s) + ' L' + r1(B[0] + 5 * s) + ',' + B[1] + ' Z', '#FDFBF6', { dash: unplaced ? '2 2' : '' });
+      add(ell([B[0], r1(B[1] - 19 * s)], 6 * s, 6 * s), CREW[id].color, { op: unplaced ? 0.55 : 1 });
+      add(ell([r1(B[0] + 1.5 * s), r1(B[1] - 19.5 * s)], 3.4 * s, 2.4 * s), INK, { stroke: 'none' });
+      if (!phone || picked === id) tags.push({ name: job === 'run' ? 'ANA · OUTSIDE!' : CREW[id].name + (unplaced ? ' ?' : ''), cls: 'st-tag' + (job === 'run' ? ' is-warn' : ''), st: { left: B[0], top: r1(B[1] + 3) } });
+    });
+    if (p.dimAll) {}
+
+    const STN = {
+      recycler: { title: 'Recycler', at: [3, 2.6, 1.95], icon: 'M4 12a8 8 0 0 1 14-5l2-2v6h-6l2-2a5 5 0 0 0-9 3M20 12a8 8 0 0 1-14 5l-2 2v-6h6l-2 2a5 5 0 0 0 9-3', text: 'Cleans water so the crew can drink it again.', card: [4, 4], out: false },
+      shelter: { title: 'Shelter', at: [5.6, 7, 3.77], icon: 'M12 3l8 3v6c0 5-4 8-8 9-4-1-8-4-8-9V6z', text: 'Safest place in a storm. Rest here.', card: [4, 148], out: false },
+      lab: { title: 'Lab', at: [9, 11.6, 2.35], icon: 'M9 3h6M10 3v6l-5 10a1 1 0 0 0 1 2h12a1 1 0 0 0 1-2l-5-10V3', text: 'Do experiments to earn science.', card: [4, 292], out: false },
+      pump: { title: 'Water Wall pump', at: [7.8, 1.6, 2.75], icon: 'M12 3c4 5 6 8 6 11a6 6 0 0 1-12 0c0-3 2-6 6-11z', text: 'Moves water into the Shelter walls to block storms.', card: [660, 4], out: false },
+      solar: { title: 'Solar Field', at: [13.95, 1.75, 0.99], icon: 'M8 12a4 4 0 1 0 8 0a4 4 0 1 0-8 0M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1', text: 'Makes power from sunlight.', card: [660, 136], out: true },
+      rover: { title: 'Rover trip', at: [15.4, 10.5, 1.5], icon: 'M4 14h16l-2-5H8zM4 17a3 3 0 1 0 6 0a3 3 0 1 0-6 0M14 17a3 3 0 1 0 6 0a3 3 0 1 0-6 0', text: 'Drive far to study rocks. Lots of science, but far from home.', card: [660, 268], out: true },
+    };
+    const who = {};
+    Object.keys(placements).forEach((c) => { if (placements[c]) (who[placements[c]] = who[placements[c]] || []).push(CREW[c].name); });
+    const hotspots = [], leaders = [], callouts = [];
+    Object.keys(bare ? {} : STN).forEach((id) => {
+      const s = STN[id], h = P(s.at[0], s.at[1], s.at[2]);
+      const busy = id !== 'shelter' && who[id];
+      const target = !storm && picked && !busy;
+      const warn = storm && s.out;
+      const cls = 'st-hs' + (selected === id ? ' is-sel' : '') + (target ? ' is-target' : '') + (warn ? ' is-storm' : '') + (busy && !target && selected !== id && !warn ? ' is-full' : '');
+      const pick = () => { if (p.onStation) p.onStation(id); };
+      const occupant = who[id] ? who[id].join(', ') : '';
+      hotspots.push({ cls, st: { left: h[0], top: h[1] }, pick, label: s.title + (occupant ? ': ' + occupant + ' here' : ': free') + (target ? '. Tap to place ' + CREW[picked].name : '') });
+      if (labels) {
+        const cx = s.card[0], cy = s.card[1], cw = 196, chh = 112;
+        const ax = h[0] > cx + cw ? cx + cw : cx, ay = cy + 30;
+        leaders.push({ ax, ay, hx: h[0], hy: h[1], color: warn ? '#C0652D' : '#5A6178' });
+        callouts.push({
+          cls: 'st-call' + (selected === id ? ' is-sel' : '') + (warn ? ' is-storm' : ''), st: { left: cx, top: cy },
+          title: s.title, text: warn ? (id === 'solar' ? 'Ana is still out here! Bring her in.' : 'Nobody out here. Good.') : s.text, icon: s.icon,
+          chip: id === 'shelter' ? (occupant ? occupant + ' resting · room for all' : 'Room for everyone') : occupant ? occupant + ' is here' : 'Free · 1 astronaut',
+          chipCls: 'st-chip' + (occupant ? '' : ' is-free'), pick, aria: s.title + (target ? ': place ' + CREW[picked].name + ' here' : ': select'),
+          help: () => { if (p.onHelp) p.onHelp(id); }, helpLabel: 'Help: what does the ' + s.title + ' do?',
+        });
+      }
+    });
+    return {
+      w: W, h: H, vb: '0 0 ' + W + ' ' + H, shapes, flows, leaders, hotspots, callouts, tags, dim: !!p.dim,
+      toolbar: !phone && !bare, labelsPressed: this.state.labels ? 'true' : 'false', toggleLabels: () => this.setState({ labels: !this.state.labels }),
+    };
+  }
+}
+</script>
+</body>
+</html>

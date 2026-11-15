@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Plan a sol, desktop</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&amp;family=Barlow+Semi+Condensed:wght@600;700&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0E5F5E}a:hover{color:#18213D}
+.cap{font:700 12px/1.2 'Barlow Semi Condensed',sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#4A5270}
+.h{font-family:'Barlow Semi Condensed',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:0}
+.mono{font-family:'JetBrains Mono',monospace}
+.card{background:#F9F2E5;border:1px solid #CEC0AD;border-radius:12px;box-shadow:0 2px 8px rgba(24,33,61,.06)}
+.rail-btn{width:44px;height:44px;border:0;border-radius:10px;background:transparent;color:#18213D;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.rail-btn[aria-current="page"]{background:#18213D;color:#F9F2E5}
+.rail-btn:hover{background:#E9DDC8}
+.sol{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:700 12px 'JetBrains Mono',monospace;box-sizing:border-box}
+.sol.is-done{background:#18213D;color:#F9F2E5}
+.sol.is-today{border:3px solid #1AA3A1;background:#F9F2E5;color:#18213D;width:36px;height:36px}
+.sol.is-next{border:1px dashed #A99A84;color:#6A6F82}
+.crew{flex:1;min-width:0;display:flex;gap:12px;align-items:center;padding:12px;text-align:left;cursor:pointer;color:#18213D;font:inherit;transition:transform .2s}
+.crew:hover{transform:translateY(-3px)}
+.crew.is-picked{border:2px solid #1AA3A1;background:#E9F6F4;transform:translateY(-4px)}
+.crew:focus-visible,.tab:focus-visible,.cover:focus-visible,.go:focus-visible,.rail-btn:focus-visible,.x:focus-visible{outline:3px solid #1AA3A1;outline-offset:2px}
+.meter{height:8px;border-radius:4px;background:#E6DCCB;overflow:hidden}
+.meter>span{display:block;height:100%;background:#18213D}
+.lamp{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+.bulb{width:22px;height:22px;border-radius:50%;border:2px solid #18213D}
+.gauge{padding:8px 10px;border:1px solid #CEC0AD;border-radius:10px;background:#FFFDF8;display:flex;flex-direction:column;gap:5px}
+.bar{position:relative;height:8px;border-radius:4px;background:#E6DCCB}
+.bar>span{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:#18213D}
+.tab{height:44px;padding:0 4px;border:0;background:none;cursor:pointer;font:700 13px 'Barlow Semi Condensed',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#5A6178;border-bottom:3px solid transparent;transition:border-color .25s}
+.tab[aria-selected="true"]{color:#18213D;border-bottom-color:#1AA3A1}
+.num{display:flex;gap:8px;align-items:center;font-size:14px}
+.num i{font-style:normal;padding:1px 7px;border-radius:6px;background:#E3F1EF;color:#0E5F5E;font:500 12px 'JetBrains Mono',monospace}
+.cover{width:100%;height:84px;border:2px solid #18213D;border-radius:14px;cursor:pointer;background:repeating-linear-gradient(-45deg,#F2C14E 0 14px,#18213D 14px 28px);display:flex;align-items:center;justify-content:center}
+.cover span{padding:6px 14px;border-radius:8px;background:#F9F2E5;font:700 15px 'Barlow Semi Condensed',sans-serif;letter-spacing:.1em;color:#18213D}
+.go{width:100%;height:64px;border:0;border-radius:14px;background:#18213D;color:#F9F2E5;font:700 22px 'Barlow Semi Condensed',sans-serif;letter-spacing:.12em;cursor:pointer;box-shadow:0 5px 0 #0B1022}
+.go:active{transform:translateY(3px);box-shadow:0 2px 0 #0B1022}
+.log p{margin:0;font-size:13px;line-height:1.5}
+.x{width:44px;height:44px;border:1px solid #18213D;border-radius:10px;background:#FFFDF8;font-size:18px;cursor:pointer}
+</style>
+</helmet>
+<div style="position: relative; width: 1280px; height: 800px; display: flex; overflow: hidden; background-color: #F6EDDD; background-image: linear-gradient(#EDE2CE 1px, transparent 1px), linear-gradient(90deg, #EDE2CE 1px, transparent 1px); background-size: 32px 32px; font-family: Barlow, sans-serif; color: #18213D">
+<svg width="1280" height="800" aria-hidden="true" style="position: absolute; left: 0; top: 0; pointer-events: none">
+<path d="M64 120 H120 L150 90 H340 M940 40 H1010 L1040 70 V140 M80 700 H140 L170 730 H300 M960 770 H1100 L1130 740" fill="none" stroke="#E0D2BB" stroke-width="2"></path>
+<circle cx="340" cy="90" r="4" fill="none" stroke="#E0D2BB" stroke-width="2"></circle>
+<circle cx="1040" cy="140" r="4" fill="none" stroke="#E0D2BB" stroke-width="2"></circle>
+<circle cx="300" cy="730" r="4" fill="none" stroke="#E0D2BB" stroke-width="2"></circle>
+</svg>
+
+<nav aria-label="Main menu" style="position: relative; width: 64px; flex: none; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 14px 0; background: #EFE4D1; border-right: 1px solid #CEC0AD; box-sizing: border-box">
+<div aria-hidden="true" style="width: 40px; height: 40px; border-radius: 12px; background: #18213D; display: flex; align-items: center; justify-content: center; margin-bottom: 14px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F9F2E5" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M12 12l4-5"></path></svg></div>
+<button type="button" class="rail-btn" aria-current="page" aria-label="Home"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9h-6v-6H9v6H3z"></path></svg></button>
+<button type="button" class="rail-btn" aria-label="How to play"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5c3-1 6-1 9 1 3-2 6-2 9-1v14c-3-1-6-1-9 1-3-2-6-2-9-1zM12 6v14"></path></svg></button>
+<button type="button" class="rail-btn" aria-label="Sound: on" aria-pressed="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4zM17 9c1.5 1.5 1.5 4.5 0 6M19.5 6.5c3 3 3 8 0 11"></path></svg></button>
+<button type="button" class="rail-btn" aria-label="Credits and data sources"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M12 11v6M12 7.5v.5"></path></svg></button>
+</nav>
+
+<main style="position: relative; width: 884px; flex: none; box-sizing: border-box; padding: 12px; display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; align-items: center; justify-content: space-between; height: 52px">
+<div>
+<h1 class="h" style="font-size: 30px; line-height: 1">Sol 3 of 10</h1>
+<p style="margin: 2px 0 0; font-size: 13px; color: #4A5270">A sol is a Mars day. Your sky: real NASA dates, 6 Sep 2017.</p>
+</div>
+<ol aria-label="Sol progress: 2 done, today is sol 3, 7 to go" style="list-style: none; margin: 0; padding: 0; display: flex; align-items: center; gap: 6px">
+<sc-for list="{{sols}}" as="s" hint-placeholder-count="10"><li class="{{s.cls}}">{{s.label}}</li></sc-for>
+</ol>
+</div>
+<section class="card" aria-label="Sun report" style="display: flex; align-items: center; gap: 12px; padding: 8px 14px; min-height: 56px; box-sizing: border-box">
+<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#18213D" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M8 12a4 4 0 1 0 8 0a4 4 0 1 0-8 0M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"></path></svg>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<p style="margin: 0; font-size: 15px"><strong class="h" style="font-size: 14px; margin-right: 8px">Sun report</strong>A cloud of Sun material (CME) is coming, about 2 sols away.</p>
+<p style="margin: 0; font-size: 13px; color: #4A5270">Sept 2017 tip: big flares give no warning. Fill the shelter walls early and take turns going outside.</p>
+</div>
+</section>
+<div style="position: relative; width: 860px; height: 440px">
+<dc-import name="Scene" placements="{{placements}}" picked="{{picked}}" selected="{{selected}}" on-station="{{onStation}}" on-help="{{onHelp}}" hint-size="860px,440px"></dc-import>
+<div role="alert" style="position: absolute; left: 50%; top: 6px; transform: translateX(-50%); max-width: 400px; display: flex; gap: 10px; align-items: center; padding: 8px 14px; border-radius: 12px; background: #C0652D; color: #FFFFFF; box-shadow: 0 6px 16px rgba(24,33,61,.2); font-size: 14px; line-height: 1.3">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M12 3c4 5 6 8 6 11a6 6 0 0 1-12 0c0-3 2-6 6-11z"></path></svg>
+<span><strong>Water is low!</strong> Put someone on the Recycler or the crew goes home after 2 thirsty sols.</span>
+</div>
+<sc-if value="{{hint}}" hint-placeholder-val="{{ false }}">
+<p role="status" style="position: absolute; left: 50%; bottom: 60px; transform: translateX(-50%); margin: 0; padding: 6px 12px; border-radius: 8px; background: #18213D; color: #F9F2E5; font-size: 13px">{{hintText}}</p>
+</sc-if>
+</div>
+<section aria-label="Your crew" style="display: flex; flex-direction: column; gap: 6px">
+<p class="cap" style="margin: 0">Your crew · tap an astronaut, then tap a station</p>
+<div style="display: flex; gap: 10px">
+<sc-for list="{{crew}}" as="c" hint-placeholder-count="3">
+<button type="button" class="{{c.cls}}" aria-pressed="{{c.pressed}}" onClick="{{c.pick}}">
+<svg width="46" height="46" viewBox="0 0 46 46" aria-hidden="true"><circle cx="23" cy="23" r="20" fill="{{c.color}}" stroke="#18213D" stroke-width="2"></circle><ellipse cx="26" cy="22" rx="11" ry="8" fill="#18213D"></ellipse><ellipse cx="22" cy="19" rx="3" ry="2" fill="#FFFFFF" opacity="0.7"></ellipse></svg>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px">
+<span style="display: flex; justify-content: space-between; align-items: baseline"><span class="h" style="font-size: 17px">{{c.name}}</span><span class="mono" style="font-size: 12px">radiation {{c.dose}}/100</span></span>
+<span class="meter" role="meter" aria-label="{{c.meterLabel}}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{c.dose}}"><span style="{{c.meterSt}}"></span></span>
+<span style="font-size: 13px; color: #3B4460">{{c.status}}</span>
+</span>
+</button>
+</sc-for>
+</div>
+</section>
+</main>
+
+<aside aria-label="Status and station" style="position: relative; width: 332px; flex: none; box-sizing: border-box; padding: 12px 16px 12px 0; display: flex; flex-direction: column; gap: 10px">
+<section class="card" style="padding: 12px; display: flex; flex-direction: column; gap: 10px">
+<p class="cap" style="margin: 0">Status</p>
+<div style="display: flex; gap: 4px">
+<div class="lamp"><span class="bulb" style="background: #3E9B6A"></span><span class="cap" style="font-size: 10px; color: #18213D">Power</span><span class="mono" style="font-size: 10px">OK</span></div>
+<div class="lamp"><span class="bulb" style="background: #E2A33A"></span><span class="cap" style="font-size: 10px; color: #18213D">Water</span><span class="mono" style="font-size: 10px">LOW</span></div>
+<div class="lamp"><span class="bulb" style="background: #E2A33A"></span><span class="cap" style="font-size: 10px; color: #18213D">Storm</span><span class="mono" style="font-size: 10px">COMING</span></div>
+<div class="lamp"><span class="bulb" style="background: #3E9B6A"></span><span class="cap" style="font-size: 10px; color: #18213D">Crew</span><span class="mono" style="font-size: 10px">OK</span></div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+<div class="gauge" role="meter" aria-label="Power" aria-valuemin="0" aria-valuemax="10" aria-valuenow="6"><span style="display: flex; justify-content: space-between; font-size: 13px"><span>Power</span><b class="mono">6/10</b></span><span class="bar"><span style="width: 60%; background: #E2B23F"></span></span></div>
+<div class="gauge" role="meter" aria-label="Water tank, low" aria-valuemin="0" aria-valuemax="10" aria-valuenow="2" style="border-color: #C0652D"><span style="display: flex; justify-content: space-between; font-size: 13px"><span>Water tank</span><b class="mono" style="color: #9A4A1C">2/10 LOW</b></span><span class="bar"><span style="width: 20%; background: #C0652D"></span></span></div>
+<div class="gauge" role="meter" aria-label="Shield water in the Shelter walls" aria-valuemin="0" aria-valuemax="6" aria-valuenow="0"><span style="display: flex; justify-content: space-between; font-size: 13px"><span>Shield water</span><b class="mono">0/6</b></span><span class="bar"><span style="width: 0%"></span></span></div>
+<div class="gauge" role="meter" aria-label="Science, goal 100" aria-valuemin="0" aria-valuemax="100" aria-valuenow="36"><span style="display: flex; justify-content: space-between; font-size: 13px"><span>Science</span><b class="mono">36/100</b></span><span class="bar"><span style="width: 36%; background: #1AA3A1"></span><i aria-hidden="true" style="position: absolute; right: -1px; top: -4px; width: 3px; height: 16px; background: #18213D"></i></span></div>
+</div>
+</section>
+
+<section class="card" style="flex: 1; min-height: 0; padding: 0 14px 12px; display: flex; flex-direction: column; overflow: hidden">
+<div role="tablist" aria-label="Panel" style="display: flex; gap: 18px; border-bottom: 1px solid #CEC0AD">
+<button type="button" role="tab" class="tab" aria-selected="{{tabStation}}" onClick="{{showStation}}">Station</button>
+<button type="button" role="tab" class="tab" aria-selected="{{tabLog}}" onClick="{{showLog}}">Mission log</button>
+</div>
+<sc-if value="{{isStation}}" hint-placeholder-val="{{ true }}">
+<div role="tabpanel" style="display: flex; flex-direction: column; gap: 8px; padding-top: 10px">
+<div style="display: flex; justify-content: space-between; align-items: center"><h2 class="h" style="font-size: 20px">{{info.title}}</h2><span class="cap" style="font-size: 11px">{{info.where}}</span></div>
+<p style="margin: 0; font-size: 14px; line-height: 1.45">{{info.what}}</p>
+<sc-for list="{{info.nums}}" as="n" hint-placeholder-count="3"><div class="num"><i>{{n.v}}</i><span>{{n.t}}</span></div></sc-for>
+<button type="button" onClick="{{openHelp}}" style="align-self: flex-start; min-height: 44px; margin-top: 2px; padding: 0 12px; border: 1px solid #CEC0AD; border-radius: 10px; background: #FFFDF8; font: 600 14px Barlow, sans-serif; color: #18213D; cursor: pointer">? Open help card</button>
+</div>
+</sc-if>
+<sc-if value="{{isLog}}" hint-placeholder-val="{{ false }}">
+<div role="tabpanel" class="log" style="padding-top: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px">
+<sc-for list="{{log}}" as="l" hint-placeholder-count="8"><p style="{{l.st}}">{{l.t}}</p></sc-for>
+</div>
+</sc-if>
+</section>
+
+<section aria-label="End the sol" style="display: flex; flex-direction: column; gap: 6px">
+<sc-if value="{{coverClosed}}" hint-placeholder-val="{{ true }}">
+<button type="button" class="cover" aria-label="Lift the safety cover over END SOL" onClick="{{lift}}"><span>1 · LIFT COVER</span></button>
+</sc-if>
+<sc-if value="{{coverOpen}}" hint-placeholder-val="{{ false }}">
+<div style="height: 14px; margin: 0 24px; border: 2px solid #18213D; border-bottom: 0; border-radius: 10px 10px 0 0; background: repeating-linear-gradient(-45deg,#F2C14E 0 8px,#18213D 8px 16px)" aria-hidden="true"></div>
+<button type="button" class="go" onClick="{{endSol}}">2 · END SOL</button>
+</sc-if>
+<p style="margin: 0; text-align: center; font-size: 12px; color: #4A5270">{{endNote}}</p>
+</section>
+</aside>
+
+<sc-if value="{{drawerOpen}}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; inset: 0; background: rgba(24,33,61,.35)" onClick="{{closeHelp}}"></div>
+<section role="dialog" aria-modal="true" aria-label="{{drawer.title}}" style="position: absolute; right: 0; top: 0; bottom: 0; width: 400px; display: flex; flex-direction: column; background: #F9F2E5; border-left: 1px solid #CEC0AD; box-shadow: -10px 0 30px rgba(24,33,61,.2)">
+<div style="flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 16px 8px; border-bottom: 1px solid #CEC0AD">
+<h2 class="h" style="font-size: 22px">{{drawer.title}}</h2>
+<button type="button" class="x" aria-label="Close" onClick="{{closeHelp}}">✕</button>
+</div>
+<div role="tablist" style="flex: none; display: flex; gap: 18px; padding: 0 16px; border-bottom: 1px solid #CEC0AD">
+<button type="button" role="tab" class="tab" aria-selected="{{dWhat}}" onClick="{{dShowWhat}}">What it does</button>
+<button type="button" role="tab" class="tab" aria-selected="{{dNums}}" onClick="{{dShowNums}}">Numbers</button>
+</div>
+<div role="tabpanel" style="flex: 1; min-height: 0; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; font-size: 16px; line-height: 1.5">
+<sc-if value="{{dIsWhat}}" hint-placeholder-val="{{ true }}">
+<div style="height: 150px; border: 1px dashed #A99A84; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #5A6178; font-size: 13px">[ 3D close-up of the station, slowly turning ]</div>
+<p style="margin: 0">{{drawer.what}}</p>
+</sc-if>
+<sc-if value="{{dIsNums}}" hint-placeholder-val="{{ false }}">
+<sc-for list="{{drawer.nums}}" as="n" hint-placeholder-count="3"><div class="num" style="font-size: 16px"><i style="font-size: 14px">{{n.v}}</i><span>{{n.t}}</span></div></sc-for>
+</sc-if>
+</div>
+<p style="flex: none; margin: 0; padding: 12px 16px 16px; font-size: 13px; color: #4A5270; border-top: 1px solid #CEC0AD">Learn more from NASA: <a href="https://www.nasa.gov/general/water-walls-highly-reliable-and-massively-redundant-life-support-architecture" target="_blank" rel="noopener">NASA Water Walls</a></p>
+</section>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+  constructor(p) {
+    super(p);
+    this.state = { placements: { ana: 'solar', ben: null, cai: 'shelter' }, picked: 'ben', selected: 'rover', tab: 'station', cover: false, ended: false, drawer: null, dtab: 'what', hint: '' };
+  }
+  renderVals() {
+    const s = this.state;
+    const INFO = {
+      solar: { title: 'Solar Field', where: 'Outside', what: 'Go outside and clean the solar panels. Clean panels make power for the base.', nums: [['+5', 'power'], ['0', 'power to run'], ['!', 'Outside: more radiation, storms hit hardest']] },
+      rover: { title: 'Rover trip', where: 'Outside', what: 'Drive far away to study rocks. You earn lots of science, but you are far from the Shelter.', nums: [['+10', 'science'], ['2', 'power to run'], ['4 s', 'to walk back in a storm (Commander)']] },
+      recycler: { title: 'Recycler', where: 'Inside', what: 'Clean used water so the crew can drink it again.', nums: [['+4', 'water in the tank'], ['2', 'power to run'], ['1', 'astronaut at a time']] },
+      pump: { title: 'Water Wall pump', where: 'Inside', what: 'Move water from the tank into the Shelter walls. Water in the walls blocks radiation.', nums: [['up to 4', 'water into the walls'], ['1', 'power to run'], ['!', 'Leave some water to drink']] },
+      lab: { title: 'Lab', where: 'Inside', what: 'Do experiments in the Lab to earn science. You need 100 science to win.', nums: [['+6', 'science'], ['1', 'power to run'], ['1', 'astronaut at a time']] },
+      shelter: { title: 'Shelter', where: 'Inside', what: 'Rest in the Shelter. No work gets done, but it is the safest place in a storm.', nums: [['0', 'makes nothing'], ['0', 'power to run'], ['all', 'astronauts can rest here']] },
+    };
+    const toNums = (i) => i.nums.map((n) => ({ v: n[0], t: n[1] }));
+    const info = Object.assign({}, INFO[s.selected], { nums: toNums(INFO[s.selected]) });
+    const CREW = [{ id: 'ana', name: 'Ana', color: '#7C6BD6', dose: 26 }, { id: 'ben', name: 'Ben', color: '#3F86C9', dose: 12 }, { id: 'cai', name: 'Cai', color: '#3E9B6A', dose: 8 }];
+    const crew = CREW.map((c) => {
+      const job = s.placements[c.id];
+      const picked = s.picked === c.id;
+      return {
+        name: c.name, color: c.color, dose: c.dose, meterSt: { width: c.dose + '%' }, meterLabel: c.name + ' radiation',
+        cls: 'card crew' + (picked ? ' is-picked' : ''), pressed: picked ? 'true' : 'false',
+        status: picked ? 'Picked! Now tap a station.' : job ? (job === 'shelter' ? 'Resting in the Shelter' : 'At the ' + INFO[job].title) : 'Not placed: will rest in the Shelter',
+        pick: () => this.setState({ picked: picked ? null : c.id, hint: '' }),
+      };
+    });
+    const onStation = (id) => {
+      if (!s.picked) { this.setState({ selected: id, tab: 'station', hint: '' }); return; }
+      const holder = Object.keys(s.placements).find((k) => k !== s.picked && s.placements[k] === id);
+      if (id !== 'shelter' && holder) { this.setState({ hint: INFO[id].title + ' is taken. One astronaut per job: pick another station.', selected: id }); return; }
+      const placements = Object.assign({}, s.placements, { [s.picked]: id });
+      this.setState({ placements, picked: null, selected: id, tab: 'station', hint: '' });
+    };
+    const sols = [];
+    for (let i = 1; i <= 10; i++) sols.push({ label: i < 3 ? '✓' : String(i), cls: 'sol ' + (i < 3 ? 'is-done' : i === 3 ? 'is-today' : 'is-next') });
+    const log = ['— Sol 1 · 4 Sep 2017 —', 'Ana ran the Solar Field: +5 power', 'Ben worked on the Lab: +6 science', 'A flash from the Sun (flare class M5.5). Radiation arrived!', 'Ana got 20 radiation (outside)', '— Sol 2 · 5 Sep 2017 —', 'Cai ran the Recycler: +4 water', 'Ben drove the Rover: +10 science', 'Clear skies. Nothing from the Sun today.'].map((t) => ({ t, st: t.startsWith('—') ? { fontWeight: 700, marginTop: '6px' } : {} }));
+    const d = s.drawer ? INFO[s.drawer] : INFO.rover;
+    return {
+      sols, crew, log, info, placements: s.placements, picked: s.picked, selected: s.selected, onStation,
+      onHelp: (id) => this.setState({ drawer: id, dtab: 'what' }),
+      openHelp: () => this.setState({ drawer: s.selected, dtab: 'what' }),
+      closeHelp: () => this.setState({ drawer: null }),
+      drawerOpen: !!s.drawer, drawer: Object.assign({}, d, { nums: toNums(d) }),
+      dWhat: s.dtab === 'what' ? 'true' : 'false', dNums: s.dtab === 'nums' ? 'true' : 'false', dIsWhat: s.dtab === 'what', dIsNums: s.dtab === 'nums',
+      dShowWhat: () => this.setState({ dtab: 'what' }), dShowNums: () => this.setState({ dtab: 'nums' }),
+      hint: !!s.hint, hintText: s.hint,
+      tabStation: s.tab === 'station' ? 'true' : 'false', tabLog: s.tab === 'log' ? 'true' : 'false', isStation: s.tab === 'station', isLog: s.tab === 'log',
+      showStation: () => this.setState({ tab: 'station' }), showLog: () => this.setState({ tab: 'log' }),
+      coverClosed: !s.cover, coverOpen: s.cover, lift: () => this.setState({ cover: true }),
+      endSol: () => this.setState({ ended: true, cover: false }),
+      endNote: s.ended ? 'Sol 3 ended. Next: the Sol result card.' : s.cover ? 'Press END SOL. The cover closes again after 4 seconds.' : 'Lift the cover first, so nobody ends the sol by accident.',
+    };
+  }
+}
+</script>
+</body>
+</html>

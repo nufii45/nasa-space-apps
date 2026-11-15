@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Storm alert and rescue</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&amp;family=Barlow+Semi+Condensed:wght@600;700&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.h{font-family:'Barlow Semi Condensed',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:0}
+.mono{font-family:'JetBrains Mono',monospace}
+.row{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid #CEC0AD;border-radius:12px;background:#FFFDF8;flex-wrap:wrap}
+.who{display:flex;align-items:center;gap:8px;min-width:90px}
+.bring{min-height:52px;padding:0 18px;border:0;border-radius:12px;background:#C0652D;color:#FFFFFF;font:700 17px 'Barlow Semi Condensed',sans-serif;letter-spacing:.06em;text-transform:uppercase;box-shadow:0 4px 0 #7C3A14;cursor:pointer;margin-left:auto}
+.ready{min-height:56px;padding:0 32px;border:0;border-radius:12px;background:#18213D;color:#F9F2E5;font:700 20px 'Barlow Semi Condensed',sans-serif;letter-spacing:.1em;box-shadow:0 4px 0 #0B1022;cursor:pointer}
+.ready:disabled{opacity:.5;cursor:default}
+.q{width:44px;height:44px;border:1px solid #CEC0AD;border-radius:10px;background:#FFFDF8;font:700 16px 'Barlow Semi Condensed',sans-serif;color:#18213D}
+.bring:focus-visible,.ready:focus-visible,.q:focus-visible{outline:3px solid #18213D;outline-offset:3px}
+.st{font-size:14px;color:#3B4460}
+.st.safe{color:#1F6B47;font-weight:600}
+.st.walk{color:#8A4A12;font-weight:600}
+@keyframes flash{0%,100%{opacity:.15}8%{opacity:.6}}
+.flash{animation:flash 4s ease-in-out infinite}
+@media (prefers-reduced-motion: reduce){.flash{animation:none}}
+</style>
+</helmet>
+<div style="{{rootSt}}">
+<div aria-hidden="true" style="{{stageSt}}"><dc-import name="Scene" mode="storm" dim="{{yes}}" layout="{{layout}}" placements="{{placements}}" hint-size="860px,440px"></dc-import></div>
+<div aria-hidden="true" style="position: absolute; inset: 0; background: #C0652D; opacity: .55"></div>
+<div aria-hidden="true" class="flash" style="{{flashSt}}"></div>
+<section role="alertdialog" aria-labelledby="storm-title" style="{{cardSt}}">
+<div style="display: flex; gap: 16px; align-items: center">
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px">
+<p class="h" style="font-size: 13px; color: #9A4A1C">Storm alert · Sol 3</p>
+<h1 id="storm-title" class="h" style="{{titleSt}}">Sun storm! A big flash is coming.</h1>
+<p style="margin: 0; font-size: 15px; line-height: 1.4">Tiny, super-fast bits from the Sun are radiation. Get everyone outside back to the Shelter!</p>
+<p style="margin: 0; display: flex; align-items: center; gap: 8px; font-size: 13px; color: #4A5270"><span>Real flare class <b class="mono">X9.3</b>, 6 Sep 2017. C is small, M is medium, X is the biggest.</span><button type="button" class="q" aria-label="What is a flare class?">?</button></p>
+</div>
+<sc-if value="{{timed}}" hint-placeholder-val="{{ true }}">
+<div role="timer" aria-live="off" aria-label="{{timerLabel}}" style="{{ringBoxSt}}">
+<svg width="{{ringSize}}" height="{{ringSize}}" viewBox="0 0 120 120" aria-hidden="true" style="position: absolute; inset: 0"><circle cx="60" cy="60" r="52" fill="#FFFDF8" stroke="#EAD9C6" stroke-width="10"></circle><circle cx="60" cy="60" r="52" fill="none" stroke="{{ringColor}}" stroke-width="10" stroke-linecap="round" stroke-dasharray="{{dash}}" transform="rotate(-90 60 60)"></circle></svg>
+<span class="mono" style="position: relative; font-size: 40px; font-weight: 700; line-height: 1">{{left}}</span>
+<span style="position: relative; font-size: 12px">{{secondsWord}}</span>
+</div>
+</sc-if>
+</div>
+<sc-if value="{{timesUp}}" hint-placeholder-val="{{ false }}">
+<p role="alert" style="margin: 0; padding: 10px 14px; border-radius: 12px; background: #18213D; color: #F9F2E5; font-size: 16px"><b>Time's up!</b> {{caughtText}}</p>
+</sc-if>
+<div style="display: flex; flex-direction: column; gap: 8px" aria-live="polite">
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="3">
+<div class="row">
+<span class="who"><svg width="30" height="30" viewBox="0 0 46 46" aria-hidden="true"><circle cx="23" cy="23" r="20" fill="{{r.color}}" stroke="#18213D" stroke-width="2"></circle><ellipse cx="26" cy="22" rx="11" ry="8" fill="#18213D"></ellipse></svg><b class="h" style="font-size: 17px">{{r.name}}</b></span>
+<span class="{{r.stCls}}">{{r.status}}</span>
+<sc-if value="{{r.canBring}}" hint-placeholder-val="{{ true }}"><button type="button" class="bring" onClick="{{r.bring}}">Bring {{r.name}} inside</button></sc-if>
+</div>
+</sc-for>
+</div>
+<div style="display: flex; justify-content: flex-end; align-items: center; gap: 12px">
+<span style="font-size: 13px; color: #4A5270">{{readyNote}}</span>
+<button type="button" class="ready" disabled="{{readyDisabled}}">{{readyLabel}}</button>
+</div>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"size":{"editor":"enum","options":["desktop","phone"],"default":"desktop"},"variant":{"editor":"enum","options":["commander","timesup","cadet"],"default":"commander"},"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { left: (p.variant === 'timesup') ? 0 : 7, ana: 'out', ben: 'walk', benLeft: 3 }; }
+  componentDidMount() {
+    if ((this.props.variant ?? 'commander') !== 'commander') return;
+    this.t = setInterval(() => {
+      const s = this.state;
+      if (s.left <= 0) return;
+      const benLeft = s.ben === 'walk' ? s.benLeft - 1 : s.benLeft;
+      this.setState({ left: s.left - 1, benLeft, ben: s.ben === 'walk' && benLeft <= 0 ? 'safe' : s.ben, ana: s.ana === 'walk' ? 'safe' : s.ana });
+    }, 1000);
+  }
+  componentWillUnmount() { clearInterval(this.t); }
+  renderVals() {
+    const p = this.props, s = this.state;
+    const phone = (p.size ?? 'desktop') === 'phone', variant = p.variant ?? 'commander';
+    const timed = variant !== 'cadet';
+    const W = phone ? 390 : 1280, H = phone ? 844 : 800;
+    const timesUp = timed && s.left <= 0;
+    const anaState = variant === 'timesup' ? 'out' : s.ana;
+    const benState = variant === 'cadet' ? (s.ben === 'walk' ? 'out' : s.ben) : variant === 'timesup' ? 'safe' : s.ben;
+    const label = (st, where) => st === 'safe' ? 'Safe in the Shelter' : st === 'walk' ? 'Walking back…' : 'Outside at the ' + where;
+    const rows = [
+      { name: 'Ana', color: '#7C6BD6', st: anaState, where: 'Solar Field', bring: () => this.setState({ ana: timed ? 'walk' : 'safe' }) },
+      { name: 'Ben', color: '#3F86C9', st: benState, where: 'Rover trip', extra: benState === 'walk' && timed ? ' ' + s.benLeft + (s.benLeft === 1 ? ' second' : ' seconds') + ' to go (the rover is far)' : '', bring: () => this.setState({ ben: timed ? 'walk' : 'safe', benLeft: 4 }) },
+      { name: 'Cai', color: '#3E9B6A', st: 'safe', where: 'Shelter' },
+    ].map((r) => ({ name: r.name, color: r.color, status: label(r.st, r.where) + (r.extra || ''), stCls: 'st' + (r.st === 'safe' ? ' safe' : r.st === 'walk' ? ' walk' : ''), canBring: r.st === 'out' && !timesUp, bring: r.bring }));
+    const caught = rows.filter((r) => r.status.startsWith('Outside')).map((r) => r.name);
+    const ring = phone ? 96 : 120;
+    const frac = timed ? Math.max(0, s.left) / 10 : 0;
+    return {
+      yes: true, layout: phone ? 'phone' : 'desktop', timed, timesUp, rows, left: Math.max(0, s.left),
+      placements: { ana: 'solar', ben: 'rover', cai: 'shelter' },
+      secondsWord: s.left === 1 ? 'second left' : 'seconds left',
+      timerLabel: Math.max(0, s.left) + (s.left === 1 ? ' second left' : ' seconds left'),
+      dash: (2 * Math.PI * 52 * frac).toFixed(1) + ' 999', ringColor: s.left <= 3 ? '#C0652D' : '#18213D', ringSize: ring,
+      ringBoxSt: { position: 'relative', flex: 'none', width: ring + 'px', height: ring + 'px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' },
+      caughtText: caught.length ? caught.join(' and ') + (caught.length > 1 ? ' were' : ' was') + ' still outside and got extra radiation.' : 'Everyone made it inside. Phew!',
+      readyLabel: timed ? 'READY' : 'DONE', readyDisabled: timesUp,
+      readyNote: timesUp ? 'Moving on in 2 seconds…' : timed ? 'Ready ends the countdown early.' : 'Cadet mode: no timer. Take your time.',
+      rootSt: { position: 'relative', width: W + 'px', height: H + 'px', overflow: 'hidden', background: '#18213D', fontFamily: 'Barlow, sans-serif', color: '#18213D' },
+      stageSt: phone ? { position: 'absolute', left: 0, top: 560 } : { position: 'absolute', left: 210, top: 360 },
+      flashSt: { position: 'absolute', right: phone ? -120 : -160, top: phone ? -120 : -200, width: phone ? 320 : 560, height: phone ? 320 : 560, borderRadius: '50%', background: '#FFF6DA' },
+      cardSt: phone
+        ? { position: 'absolute', left: 12, right: 12, top: 16, padding: '16px 14px', background: '#F9F2E5', borderRadius: '16px', border: '3px solid #18213D', display: 'flex', flexDirection: 'column', gap: '12px', boxShadow: '0 16px 40px rgba(0,0,0,.3)' }
+        : { position: 'absolute', left: 280, top: 36, width: 720, boxSizing: 'border-box', padding: '24px 28px', background: '#F9F2E5', borderRadius: '18px', border: '3px solid #18213D', display: 'flex', flexDirection: 'column', gap: '14px', boxShadow: '0 16px 40px rgba(0,0,0,.3)' },
+      titleSt: { fontSize: phone ? '26px' : '34px', lineHeight: 1.05 },
+    };
+  }
+}
+</script>
+</body>
+</html>

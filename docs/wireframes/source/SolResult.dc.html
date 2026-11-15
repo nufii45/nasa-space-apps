@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sol result</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&amp;family=Barlow+Semi+Condensed:wght@600;700&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.h{font-family:'Barlow Semi Condensed',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:0}
+.mono{font-family:'JetBrains Mono',monospace}
+.line{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #E6DCCB;font-size:16px}
+.d{flex:none;min-width:96px;padding:3px 8px;border-radius:8px;font:700 14px 'JetBrains Mono',monospace;text-align:center}
+.d.up{background:#E3E7F2;color:#18213D}
+.d.down{background:#F7E1D3;color:#8A3E12}
+.next{min-height:56px;padding:0 30px;border:0;border-radius:12px;background:#18213D;color:#F9F2E5;font:700 20px 'Barlow Semi Condensed',sans-serif;letter-spacing:.1em;box-shadow:0 4px 0 #0B1022;cursor:pointer}
+.next:focus-visible{outline:3px solid #1AA3A1;outline-offset:3px}
+</style>
+</helmet>
+<div style="{{rootSt}}">
+<div aria-hidden="true" style="{{stageSt}}"><dc-import name="Scene" bare="{{yes}}" layout="{{layout}}" hint-size="860px,440px"></dc-import></div>
+<section aria-labelledby="r-title" style="{{cardSt}}">
+<div style="display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap">
+<h1 id="r-title" class="h" style="font-size: 28px">Sol 3 done</h1>
+<span class="mono" style="font-size: 13px; color: #4A5270">Real sky: 6 Sep 2017</span>
+</div>
+<p style="margin: 0; font-size: 15px; color: #3B4460">Here is what changed today.</p>
+<div>
+<div class="line"><span class="d up">+5 power</span><span>Ana cleaned the Solar Field.</span></div>
+<div class="line"><span class="d down">−2 power</span><span>The heaters kept the base warm.</span></div>
+<div class="line"><span class="d up">+6 science</span><span>Ben did experiments in the Lab.</span></div>
+<div class="line"><span class="d down">−2 water</span><span>The crew drank.</span></div>
+<div class="line" style="flex-wrap: wrap"><span class="d down">Ana +20</span><span style="flex: 1; min-width: 160px">radiation. A flash from the Sun hit while she was outside.</span>
+<span style="flex-basis: 100%; display: flex; align-items: center; gap: 8px; font-size: 13px"><span style="flex: 1; height: 8px; border-radius: 4px; background: #E6DCCB; position: relative"><span style="position: absolute; left: 0; top: 0; bottom: 0; width: 26%; background: #18213D; border-radius: 4px"></span><span style="position: absolute; left: 26%; top: 0; bottom: 0; width: 20%; background: #C0652D"></span></span><span class="mono">46/100</span></span></div>
+</div>
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap">
+<span style="font-size: 13px; color: #4A5270">Next up: Sol 4 of 10. A CME is still on the way.</span>
+<button type="button" class="next">NEXT SOL →</button>
+</div>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"size":{"editor":"enum","options":["desktop","phone"],"default":"desktop"},"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const phone = (this.props.size ?? 'desktop') === 'phone';
+    return {
+      yes: true, layout: phone ? 'phone' : 'desktop',
+      rootSt: { position: 'relative', width: phone ? '390px' : '1280px', height: phone ? '844px' : '800px', overflow: 'hidden', backgroundColor: '#F6EDDD', backgroundImage: 'linear-gradient(#EDE2CE 1px, transparent 1px), linear-gradient(90deg, #EDE2CE 1px, transparent 1px)', backgroundSize: '32px 32px', fontFamily: 'Barlow, sans-serif', color: '#18213D' },
+      stageSt: phone ? { position: 'absolute', left: 0, top: 20, opacity: 0.45 } : { position: 'absolute', left: 210, top: 180, opacity: 0.35 },
+      cardSt: phone
+        ? { position: 'absolute', left: 12, right: 12, bottom: 16, padding: '18px 16px', background: '#F9F2E5', border: '1px solid #CEC0AD', borderRadius: '16px', boxShadow: '0 10px 30px rgba(24,33,61,.15)', display: 'flex', flexDirection: 'column', gap: '10px' }
+        : { position: 'absolute', left: 360, top: 120, width: 560, boxSizing: 'border-box', padding: '24px 28px', background: '#F9F2E5', border: '1px solid #CEC0AD', borderRadius: '16px', boxShadow: '0 10px 30px rgba(24,33,61,.15)', display: 'flex', flexDirection: 'column', gap: '12px' },
+    };
+  }
+}
+</script>
+</body>
+</html>

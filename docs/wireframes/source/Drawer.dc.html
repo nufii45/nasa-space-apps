@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Job help drawer</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&amp;family=Barlow+Semi+Condensed:wght@600;700&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0E5F5E}a:hover{color:#18213D}
+.h{font-family:'Barlow Semi Condensed',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:0}
+.ph{border:1px dashed #A99A84;border-radius:12px;background:#EFE4D1}
+.tab{height:44px;padding:0 4px;border:0;background:none;cursor:pointer;font:700 13px 'Barlow Semi Condensed',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#5A6178;border-bottom:3px solid transparent}
+.tab[aria-selected="true"]{color:#18213D;border-bottom-color:#1AA3A1}
+.x{width:44px;height:44px;flex:none;border:1px solid #18213D;border-radius:10px;background:#FFFDF8;font-size:18px;cursor:pointer;color:#18213D}
+.tab:focus-visible,.x:focus-visible{outline:3px solid #1AA3A1;outline-offset:2px}
+.num{display:flex;gap:10px;align-items:baseline;font-size:16px;line-height:1.4;padding:8px 0;border-bottom:1px solid #E6DCCB}
+.num i{font-style:normal;flex:none;min-width:64px;text-align:center;padding:2px 8px;border-radius:6px;background:#E3F1EF;color:#0E5F5E;font:500 14px 'JetBrains Mono',monospace}
+</style>
+</helmet>
+<div style="{{rootSt}}">
+<div aria-hidden="true" style="position: absolute; inset: 0; padding: 12px; display: flex; flex-direction: column; gap: 10px; box-sizing: border-box">
+<div class="ph" style="height: 44px"></div>
+<div class="ph" style="flex: 1; display: flex; align-items: center; justify-content: center; color: #6A6F82; font-size: 13px">[ Plan a sol screen behind ]</div>
+<div class="ph" style="height: 90px"></div>
+</div>
+<div aria-hidden="true" style="position: absolute; inset: 0; background: rgba(24,33,61,.4)"></div>
+<section role="dialog" aria-modal="true" aria-labelledby="d-title" style="{{sheetSt}}">
+<sc-if value="{{phone}}" hint-placeholder-val="{{ false }}"><div aria-hidden="true" style="flex: none; align-self: center; width: 48px; height: 5px; margin-top: 8px; border-radius: 3px; background: #CEC0AD"></div></sc-if>
+<div style="flex: none; display: flex; align-items: center; gap: 12px; padding: 12px 16px 8px; border-bottom: 1px solid #CEC0AD">
+<span aria-hidden="true" style="width: 40px; height: 40px; flex: none; border: 1px solid #CEC0AD; border-radius: 10px; background: #F6EDDD; display: flex; align-items: center; justify-content: center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#18213D" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h16l-2-5H8zM4 17a3 3 0 1 0 6 0a3 3 0 1 0-6 0M14 17a3 3 0 1 0 6 0a3 3 0 1 0-6 0"></path></svg></span>
+<h2 id="d-title" class="h" style="flex: 1; font-size: 22px">Rover trip</h2>
+<button type="button" class="x" aria-label="Close help">✕</button>
+</div>
+<div role="tablist" aria-label="Help" style="flex: none; display: flex; gap: 20px; padding: 0 16px; border-bottom: 1px solid #CEC0AD">
+<button type="button" role="tab" class="tab" aria-selected="{{aWhat}}" onClick="{{showWhat}}">What it does</button>
+<button type="button" role="tab" class="tab" aria-selected="{{aNums}}" onClick="{{showNums}}">Numbers</button>
+</div>
+<div role="tabpanel" tabindex="0" style="flex: 1; min-height: 0; overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; font-size: 16px; line-height: 1.5">
+<sc-if value="{{isWhat}}" hint-placeholder-val="{{ true }}">
+<div class="ph" style="flex: none; height: 140px; display: flex; align-items: center; justify-content: center; color: #6A6F82; font-size: 13px">[ 3D close-up of the rover, slowly turning ]</div>
+<p style="margin: 0">Drive the rover far away to study rocks. You earn lots of science, but you are far from the Shelter.</p>
+<p style="margin: 0">This job is outside. Out there you get more radiation (invisible energy from the Sun and space that is bad for the body), and storms hit hardest.</p>
+<p style="margin: 0; color: #4A5270; font-size: 14px">Only one astronaut can drive the rover each sol.</p>
+</sc-if>
+<sc-if value="{{isNums}}" hint-placeholder-val="{{ false }}">
+<div class="num"><i>2</i><span>power to run the rover</span></div>
+<div class="num"><i>+10</i><span>science when you get back</span></div>
+<div class="num"><i>+5</i><span>extra radiation for being outside</span></div>
+<div class="num"><i>4 s</i><span>to walk back in a storm (Commander mode)</span></div>
+</sc-if>
+</div>
+<p style="flex: none; margin: 0; padding: 10px 16px 14px; border-top: 1px solid #CEC0AD; font-size: 14px">Learn more from NASA: <a href="https://mars.nasa.gov/msl/home/" target="_blank" rel="noopener">the Curiosity rover</a></p>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"size":{"editor":"enum","options":["short","phone"],"default":"short"},"$preview":{"width":1024,"height":572}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { tab: 'what' }; }
+  renderVals() {
+    const phone = (this.props.size ?? 'short') === 'phone';
+    const t = this.state.tab;
+    return {
+      phone,
+      rootSt: { position: 'relative', width: phone ? '390px' : '1024px', height: phone ? '844px' : '572px', overflow: 'hidden', background: '#F6EDDD', fontFamily: 'Barlow, sans-serif', color: '#18213D' },
+      sheetSt: phone
+        ? { position: 'absolute', left: 0, right: 0, bottom: 0, maxHeight: '85%', height: '560px', display: 'flex', flexDirection: 'column', background: '#F9F2E5', borderRadius: '18px 18px 0 0', boxShadow: '0 -10px 30px rgba(24,33,61,.25)' }
+        : { position: 'absolute', right: 0, top: 0, bottom: 0, width: '400px', maxHeight: '100%', display: 'flex', flexDirection: 'column', background: '#F9F2E5', borderLeft: '1px solid #CEC0AD', boxShadow: '-10px 0 30px rgba(24,33,61,.25)' },
+      aWhat: t === 'what' ? 'true' : 'false', aNums: t === 'nums' ? 'true' : 'false', isWhat: t === 'what', isNums: t === 'nums',
+      showWhat: () => this.setState({ tab: 'what' }), showNums: () => this.setState({ tab: 'nums' }),
+    };
+  }
+}
+</script>
+</body>
+</html>
