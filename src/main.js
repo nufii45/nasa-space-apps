@@ -100,13 +100,30 @@ function show(...nodes) {
   app.className = '';
   app.replaceChildren(...nodes.filter(Boolean));
   app.querySelector('h1, h2')?.focus();
+  window.scrollTo?.(0, 0); // a new screen opens at its top, not at the old screen's scroll position
 }
+// Fit to the device (decision 0013): the desktop design is a 1280 x 800 canvas. A window at least 0.8 of it
+// (1 on touch, so controls stay 44 px) zooms the whole page to fill it; smaller ones keep the normal layouts and
+// scroll. Media queries see the real window, not the zoomed box, so the plan's three columns hang on a class and
+// its stage on boxWidth; --zoom lets the styles undo the zoom on vh lengths.
+let boxWidth = innerWidth;
+function fit() {
+  const f = Math.min(innerWidth / 1280, innerHeight / 800);
+  const zoom = f >= (window.matchMedia?.('(pointer: coarse)')?.matches ? 1 : 0.8) ? Math.min(f, 2.5) : 1;
+  const root = document.documentElement;
+  root.style.zoom = zoom;
+  root.style.setProperty('--zoom', zoom);
+  boxWidth = Math.round(innerWidth / zoom);
+  root.classList.toggle('is-wide', boxWidth >= 1280);
+}
+fit();
+window.addEventListener('resize', fit); // also fires on orientation change
 // Backdrop stages switch at 700 px, like the help drawer (src/ui/console/infoDrawer.js).
 const PHONE_QUERY = '(max-width: 699px)';
 // The plan screen's stage needs its 860 px desktop drawing, the 64 px rail, the column's 2 x 12 px padding
 // and room for a 16 px classic scrollbar; any narrower and it draws its phone layout, so it never scrolls sideways.
 const PLAN_STAGE_MIN = 860 + 64 + 2 * 12 + 16;
-const PLAN_NARROW_QUERY = `(max-width: ${PLAN_STAGE_MIN - 1}px)`;
+const planLayout = () => (boxWidth < PLAN_STAGE_MIN ? 'phone' : 'desktop');
 const layoutFor = (q) => (window.matchMedia?.(q)?.matches ? 'phone' : 'desktop');
 // The stage behind the title and storm screens is a picture: never focusable, never read out.
 function backdropStage(opts) {
@@ -243,7 +260,7 @@ function plan() {
   let selected = null; // station id
   let shown; // the station the Station tab shows
   let tab = 0;
-  let layout = layoutFor(PLAN_NARROW_QUERY);
+  let layout = planLayout();
   let ended = false; // a double press on END SOL must resolve the sol once
 
   const help = (id) => drawer.open(jobCard(id));
@@ -404,16 +421,17 @@ function plan() {
   app.className = 'is-plan';
   updateInstruments();
 
-  // The stage layout swaps live; the phone card goes back under the stage in the same task as the update.
-  const mq = window.matchMedia?.(PLAN_NARROW_QUERY);
+  // The stage layout swaps live (after fit(), which listens first); the phone card goes back under the stage
+  // in the same task as the update.
   const relayout = () => {
-    layout = layoutFor(PLAN_NARROW_QUERY);
+    if (planLayout() === layout) return;
+    layout = planLayout();
     stage.update({ layout });
     callouts.update({ layout });
     if (layout === 'phone') selectedSlot.append(callouts.el);
   };
-  mq?.addEventListener?.('change', relayout);
-  leave = () => { stage.destroy(); mq?.removeEventListener?.('change', relayout); };
+  window.addEventListener('resize', relayout);
+  leave = () => { stage.destroy(); window.removeEventListener('resize', relayout); };
 }
 
 // Thirst ends the whole run, so warn before it happens, not after.
