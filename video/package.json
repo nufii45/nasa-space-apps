@@ -1,0 +1,2 @@
+{"name":"outpost-dial-video","private":true,"type":"module","scripts":{"render":"remotion render src/index.jsx OutpostDial out/outpost-dial.mp4"},
+"dependencies":{"remotion":"4.0.540","@remotion/cli":"4.0.540","react":"18.3.1","react-dom":"18.3.1"}}
