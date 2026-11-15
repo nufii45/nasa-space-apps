@@ -24,7 +24,7 @@ document.body.append(drawer.el);
 document.body.prepend(el('header', { class: 'top-bar' }, createMuteSwitch().el));
 
 let sky = null;
-let game = null; // { state, run, mode, placements, log, gauges, lamps, rescueTimer, tapeLines }
+let game = null; // { state, run, mode, mission, placements, log, gauges, lamps, rescueTimer, tapeLines }
 
 async function loadSky() {
   const res = await fetch('./data/sky.json');
@@ -49,10 +49,11 @@ function stopGame() {
 }
 
 // ---------- Title ----------
-function title() {
+// last: { mode, mission } from "Change mission", so the knob and switch keep the previous choice.
+function title(last = {}) {
   stopGame();
-  const mission = createKnob({ label: 'Mission', options: [{ value: 'random', label: 'RANDOM WEEK' }, { value: 'sept2017', label: 'SEPT 2017' }] });
-  const mode = createToggle({ label: 'Commander mode', onLabel: 'COMMANDER', offLabel: 'CADET' });
+  const mission = createKnob({ label: 'Mission', value: last.mission, options: [{ value: 'random', label: 'RANDOM WEEK' }, { value: 'sept2017', label: 'SEPT 2017' }] });
+  const mode = createToggle({ label: 'Commander mode', on: last.mode === 'commander', onLabel: 'COMMANDER', offLabel: 'CADET' });
   const launch = createCoverButton({
     label: 'LAUNCH',
     onPress: () => { play('cheer'); start({ mode: mode.get() ? 'commander' : 'cadet', mission: mission.get() }); },
@@ -70,7 +71,7 @@ function start({ mode, mission }) {
   // The instruments live for the whole run: needles move and the log keeps every sol.
   stopGame();
   game = {
-    state: newGame(), run, mode, placements: {},
+    state: newGame(), run, mode, mission, placements: {},
     log: createMissionLog({ max: 300 }), // the kit keeps 40 lines by default; a full run logs more and must keep every sol
     gauges: {
       power: createGauge({ label: 'Power', icon: '⚡', max: LIMITS.power, low: LOW.power }),
@@ -274,7 +275,7 @@ function debrief() {
     : s.crew.some((c) => c.home) ? 'Tip: take turns going outside so nobody gets too much radiation.'
     : 'Tip: pump water into the walls when a CME is in the forecast.';
   const tape = createTickerTape();
-  const mode = game.mode;
+  const { mode, mission } = game;
   show(
     sampleBanner(),
     el('section', { class: 'card' },
@@ -284,7 +285,10 @@ function debrief() {
         ? el('p', {}, 'In September 2017 a big solar storm hit Mars. Curiosity, NASA\'s robot car on Mars, measured more than twice as much radiation as ever before. MAVEN, a NASA spacecraft that flies around Mars, saw the whole sky glow with aurora (colourful lights, like the northern lights on Earth). ',
           el('a', { href: 'https://www.jpl.nasa.gov/news/large-solar-storm-sparks-global-aurora-and-doubles-radiation-levels-on-the-martian-surface/', target: '_blank', rel: 'noopener' }, 'Read the NASA story'))
         : null),
-    el('p', { class: 'row' }, button('Try again', () => start({ mode, mission: 'random' }), 'primary'), button('Title', title)),
+    el('p', { class: 'row' },
+      button('Try again', () => start({ mode, mission }), 'primary'),
+      button('Change mission', () => title({ mode, mission })),
+      button('Title', () => title())),
     game.log.el,
   );
   if (s.result === 'win') play('cheer');
