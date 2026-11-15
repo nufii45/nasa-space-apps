@@ -1,0 +1,46 @@
+/* Isometric outpost stage (src/ui/stage). Board: docs/wireframes/source/Scene.dc.html. */
+.st { position: relative; display: inline-block; max-width: 100%; color: var(--od-ink, #18213D); font-family: var(--od-font-body, system-ui); }
+.st-view { position: relative; overflow: hidden; touch-action: none; user-select: none; cursor: grab; }
+.st-view:active { cursor: grabbing; }
+.st-layer { position: absolute; inset: 0; transform-origin: 50% 50%; }
+.st-svg { position: absolute; left: 0; top: 0; }
+.st-tags, .st-spots, .st-overlay { position: absolute; inset: 0; pointer-events: none; }
+.st-spots > *, .st-overlay > * { pointer-events: auto; }
+
+/* Hotspots: a 14 px dot inside a 44 px button. State is never colour alone: the free target
+   grows, the selected one gets a ring, a storm one shows "!", and every label says who is there. */
+.st-hs { position: absolute; width: 44px; height: 44px; margin: -22px 0 0 -22px; padding: 0; border: 0; border-radius: 50%; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.st-dot { box-sizing: border-box; width: 14px; height: 14px; border-radius: 50%; background: var(--od-teal, #1AA3A1); border: 3px solid var(--od-card, #F9F2E5); box-shadow: 0 0 0 2px var(--od-ink, #18213D), 0 0 14px 4px rgba(26, 163, 161, .55); animation: st-breathe 2.4s ease-in-out infinite; display: flex; align-items: center; justify-content: center; font: 700 11px/1 var(--od-font-head, system-ui); color: #FFFFFF; }
+.st-hs.is-target .st-dot { width: 20px; height: 20px; box-shadow: 0 0 0 2px var(--od-ink, #18213D), 0 0 0 8px rgba(26, 163, 161, .25), 0 0 18px 6px rgba(26, 163, 161, .6); }
+.st-hs.is-sel .st-dot { background: var(--od-ink, #18213D); border-color: var(--od-teal, #1AA3A1); box-shadow: 0 0 0 3px var(--od-teal, #1AA3A1), 0 0 16px 6px rgba(26, 163, 161, .5); }
+.st-hs.is-sel::after { content: ''; position: absolute; inset: 3px; border: 2px dashed var(--od-ink, #18213D); border-radius: 50%; }
+.st-hs.is-storm .st-dot { width: 18px; height: 18px; border-width: 2px; background: var(--od-orange, #C0652D); box-shadow: 0 0 0 2px var(--od-ink, #18213D), 0 0 16px 6px rgba(192, 101, 45, .65); animation-duration: .8s; }
+.st-hs.is-full .st-dot { background: var(--od-card, #F9F2E5); box-shadow: 0 0 0 2px var(--od-ink, #18213D); }
+.st-hs:focus-visible, .st-tool:focus-visible { outline: 3px solid var(--od-teal, #1AA3A1); outline-offset: 2px; }
+
+.st-tag { position: absolute; transform: translate(-50%, 0); padding: 1px 6px; border-radius: 6px; background: var(--od-ink, #18213D); color: var(--od-card, #F9F2E5); font: 700 10px/1.5 var(--od-font-mono, ui-monospace, monospace); letter-spacing: .04em; white-space: nowrap; }
+.st-tag.is-picked { background: var(--od-teal-text, #0E5F5E); }
+
+/* Toolbar, bottom centre of the stage. */
+.st-controls { position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: auto; }
+.st-bar { display: flex; align-items: center; gap: 2px; padding: 3px 6px; background: var(--od-card, #F9F2E5); border: 1px solid var(--od-line, #CEC0AD); border-radius: 12px; box-shadow: 0 4px 12px rgba(24, 33, 61, .10); }
+.st-tool { min-width: 44px; height: 44px; padding: 0 10px; border: 0; border-radius: 10px; background: transparent; color: var(--od-ink, #18213D); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.st-tool[aria-disabled="true"] { opacity: .4; cursor: default; }
+.st-tool[aria-expanded="true"] { background: #DDF1EF; color: var(--od-teal-text, #0E5F5E); }
+.st-sep { width: 1px; height: 24px; margin: 0 4px; background: var(--od-line, #CEC0AD); }
+.st-zoom { min-width: 3.5em; text-align: center; font: 500 12px var(--od-font-mono, ui-monospace, monospace); }
+.st-info { width: 300px; max-width: calc(100vw - 32px); box-sizing: border-box; padding: 8px 12px; background: var(--od-card, #F9F2E5); border: 1px solid var(--od-line, #CEC0AD); border-radius: 12px; box-shadow: 0 4px 12px rgba(24, 33, 61, .10); font-size: 13px; line-height: 1.35; }
+.st-info p { margin: 4px 0; }
+.st-info strong { font-family: var(--od-font-head, system-ui); text-transform: uppercase; letter-spacing: .06em; }
+
+.st-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+@keyframes st-breathe { 50% { transform: scale(1.18); } }
+
+/* Reduced motion: from the device or from the game's own setting (class on <html>). */
+@media (prefers-reduced-motion: reduce) {
+  .st-dot { animation: none; }
+  .st-flow { display: none; }
+}
+.reduced-motion .st-dot { animation: none; }
+.reduced-motion .st-flow { display: none; }
