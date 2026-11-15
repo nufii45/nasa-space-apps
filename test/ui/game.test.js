@@ -398,8 +398,8 @@ describe('sol result card', () => {
   it('each why agrees with its line, also when a job ran but its gauge went the other way', async () => {
     // The card's sentence for each gauge and direction (walls and science never go down).
     const WHY = {
-      power: { up: 'The Solar Field made more power than the base used.', down: 'The base used up power.' },
-      water: { up: 'The Recycler made more water than the base used.', down: 'The base used up water.' },
+      power: { up: 'The Solar Field made more power than the base used.', down: 'The base used power.' },
+      water: { up: 'The Recycler made more water than the base used.', down: 'The base used water.' },
       shield: { up: 'Water was pumped into the shelter walls.' },
       science: { up: 'The crew did science.' },
     };

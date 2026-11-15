@@ -312,8 +312,8 @@ function resolve(rescued) {
 // can be the cap clipping a gain, so the down sentences make no comparison (cold and thirsty sols included).
 // Empty when that direction cannot happen (walls and science never go down).
 const CHANGES = {
-  power: { word: 'power', up: 'The Solar Field made more power than the base used.', down: 'The base used up power.' },
-  tank: { word: 'water', up: 'The Recycler made more water than the base used.', down: 'The base used up water.' },
+  power: { word: 'power', up: 'The Solar Field made more power than the base used.', down: 'The base used power.' },
+  tank: { word: 'water', up: 'The Recycler made more water than the base used.', down: 'The base used water.' },
   wall: { word: 'shield', up: 'Water was pumped into the shelter walls.', down: '' },
   science: { word: 'science', up: 'The crew did science.', down: '' },
 };
