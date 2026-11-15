@@ -35,15 +35,13 @@ to D are the owners named in `README.md`. Requirements: `docs/PRD.md`. Plan that
 - [ ] **7. Deploy** (you, in the Cloudflare dashboard). Build command `npm run build`, output
   directory `dist`. Agents do not deploy. Then write the staging URL into `CLAUDE.md` under
   Project facts.
-- [ ] **8. Merge.** Review `feat/mvp-ui` and merge it into `main`.
+- [x] **8. Merge.** Merged into `main` and pushed 2026-11-15; CI and the Cloudflare build passed.
 - [ ] **9. Play it on a real phone and with a keyboard only.** No agent has done either. Check
   that the map and END SOL are easy to reach on a small screen: the four gauges fill most of
   the first screen.
 - [ ] **10. Playtest with children.** The numbers were tuned against a scripted player, not real
   ones. Watch how often an astronaut is sent home: it happens in about 4 runs in 10 in Cadet.
-- [ ] **11. Update `CLAUDE.md` Project facts.** They still say 17 tests, a 2 second balance run
-  and "fails if a fixed plan wins > 80%". Now: 146 tests in about 11 s, balance about 8 s on a
-  many-core machine, and the checks in decision 0007.
+- [x] **11. Update `CLAUDE.md` Project facts.** Done 2026-11-15, commands re-verified.
 
 ## Decisions needed from you
 
