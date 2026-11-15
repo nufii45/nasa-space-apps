@@ -750,6 +750,25 @@ describe('mission report: Try again and Change mission keep the mission and mode
     expect(timer() !== null).toBe(commander); // Commander keeps its countdown
   });
 
+  it('Random week: Try again reseeds from the clock and gives a new week', async () => {
+    const wide = makeSky([], { range: [day(0), day(60)] }); // calm: nobody placed, the water runs out and the run ends
+    await boot(wide);
+    await launch();
+    const first = runFor(wide).start;
+    expect(logLines()[0]).toBe(`Mission start. Your sky begins on ${first}.`);
+    while (!onReport()) {
+      await pressCovered('END SOL');
+      if (onCard()) await nextSol();
+    }
+    const later = NOW + 7 * 86_400_000;
+    vi.setSystemTime(later);
+    const second = buildRun(wide, { mode: 'cadet', featured: null, seed: later >>> 0 }).start;
+    expect(second).not.toBe(first); // precondition: the new seed picks another week
+    btn('Try again').click();
+    await settle();
+    expect(logLines()).toEqual([`Mission start. Your sky begins on ${second}.`]);
+  });
+
   it('Change mission returns to the title with the last mission and mode set; Title resets them', async () => {
     await boot(sky);
     await launch({ mission: 'SEPT 2017', commander: true });
