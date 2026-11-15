@@ -1,4 +1,6 @@
+@import './ui/theme.css';
 @import './ui/screens/screens.css';
+@import './ui/stage/stage.css';
 /* Console look tokens, shared by the game and the console kit (src/ui/console/console.css); keep these names. */
 :root {
   --console: #f6eddd;      /* cream, from the Learn Arduino inspiration */
@@ -13,10 +15,9 @@
   --tap: 64px;
   font-family: ui-rounded, 'Nunito', system-ui, sans-serif;
   color: var(--ink);
-  background: var(--console);
 }
 * { box-sizing: border-box; }
-body { margin: 0; min-height: 100vh; background: var(--console); display: flex; flex-direction: column; }
+body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; }
 main { flex: 1; width: min(960px, 100%); margin: 0 auto; padding: 16px; }
 h1, h2 { margin: 0 0 12px; letter-spacing: 0.02em; }
 button {
